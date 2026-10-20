@@ -26,21 +26,27 @@ export type {
 } from '../../src/shared/writing-skill-catalog'
 
 /** 技能根目录必须本身是真实目录：注入的根目录同样不能是符号链接。 */
-function trustedSkillsRoot(root: string): string | null {
+function isTrustedSkillsRoot(root: string): boolean {
   try {
-    if (!fs.existsSync(root)) return null
+    if (!fs.existsSync(root)) return false
     const info = fs.lstatSync(root)
-    if (info.isSymbolicLink() || !info.isDirectory()) return null
-    return fs.realpathSync.native(root)
+    return !info.isSymbolicLink() && info.isDirectory()
   } catch (error) {
     logFailure('Skill', 'failed to resolve skill root', error, { root })
-    return null
+    return false
   }
 }
 
 /** 用户级技能根目录；不是受信任的本地目录时返回 null（不读、不建）。 */
 export function userSkillsRoot(): string | null {
-  return trustedSkillsRoot(path.join(VELA_HOME, 'skills'))
+  const root = path.join(VELA_HOME, 'skills')
+  if (!isTrustedSkillsRoot(root)) return null
+  try {
+    return fs.realpathSync.native(root)
+  } catch (error) {
+    logFailure('Skill', 'failed to resolve user skill root', error, { root })
+    return null
+  }
 }
 
 /** 项目级技能根目录。调用方负责先做项目会话校验。 */
@@ -66,9 +72,9 @@ export async function loadWritingSkillCatalog(options: {
 
   const resolvedUserRoot = options.userRoot === undefined
     ? userSkillsRoot()
-    : options.userRoot === null
+    : options.userRoot === null || !isTrustedSkillsRoot(options.userRoot)
       ? null
-      : trustedSkillsRoot(options.userRoot)
+      : options.userRoot
   if (resolvedUserRoot) inputs.push({ path: resolvedUserRoot, source: 'user' })
 
   if (options.projectPath) {
