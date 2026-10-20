@@ -1,3 +1,4 @@
+import fs from 'node:fs'
 import path from 'node:path'
 
 import { atomicWriteFailureCommitState } from '../security/windows-safe-file-system'
@@ -17,6 +18,24 @@ import {
 
 /** 原子写实现：抛错时若带 `commitState`，调用方按它决定是否终止本轮。 */
 export type AtomicTextWrite = (fullPath: string, content: string) => Promise<void>
+
+
+/** 解析已存在路径的真实身份；不存在时回退到原路径（写入前的词法检查）。 */
+function canonicalIfExists(target: string): string {
+  try {
+    return fs.realpathSync.native
+      ? fs.realpathSync.native(target)
+      : fs.realpathSync(target)
+  } catch {
+    return target
+  }
+}
+
+/** 词法包含判断：`target` 与 `root` 相同或位于其下。 */
+function isWithin(root: string, target: string): boolean {
+  const relative = path.relative(root, target)
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative))
+}
 
 export interface ConfinedExecutionEnvOptions {
   /**
@@ -49,7 +68,10 @@ export interface ConfinedExecutionEnvOptions {
  */
 export class ConfinedExecutionEnv implements ExecutionEnv {
   private readonly roots: readonly string[]
+  /** 允许根的真实路径（junction / 8.3 短名等别名归一）；与 roots 交叉比较。 */
+  private readonly canonicalRoots: readonly string[]
   private readonly protectedPaths: readonly string[]
+  private readonly canonicalProtectedPaths: readonly string[]
   /** 写入失败但无法证明没落地的路径；上层读一次就清掉。 */
   private readonly unknownCommits = new Set<string>()
 
@@ -59,7 +81,9 @@ export class ConfinedExecutionEnv implements ExecutionEnv {
     private readonly options: ConfinedExecutionEnvOptions = {},
   ) {
     this.roots = roots.map(root => path.resolve(root))
+    this.canonicalRoots = this.roots.map(canonicalIfExists)
     this.protectedPaths = (options.protectedPaths ?? []).map(protectedPath => path.resolve(protectedPath))
+    this.canonicalProtectedPaths = this.protectedPaths.map(canonicalIfExists)
   }
 
   get cwd(): string {
@@ -248,19 +272,21 @@ export class ConfinedExecutionEnv implements ExecutionEnv {
 
   private inside(target: string): boolean {
     const resolved = path.resolve(target)
-    return this.roots.some((root) => {
-      const relative = path.relative(root, resolved)
-      return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative))
-    })
+    const canonical = canonicalIfExists(resolved)
+    return [...this.roots, ...this.canonicalRoots].some(
+      root => isWithin(root, resolved) || isWithin(root, canonical),
+    )
   }
 
   private isProtected(target: string): boolean {
     const resolved = path.resolve(target)
-    const targetToCheck = process.platform === 'win32' ? resolved.toLowerCase() : resolved
-    return this.protectedPaths.some((protectedPath) => {
+    const canonical = canonicalIfExists(resolved)
+    const targets = process.platform === 'win32'
+      ? [resolved.toLowerCase(), canonical.toLowerCase()]
+      : [resolved, canonical]
+    return [...this.protectedPaths, ...this.canonicalProtectedPaths].some((protectedPath) => {
       const baseToCheck = process.platform === 'win32' ? protectedPath.toLowerCase() : protectedPath
-      const relative = path.relative(baseToCheck, targetToCheck)
-      return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative))
+      return targets.some(candidate => isWithin(baseToCheck, candidate))
     })
   }
 
