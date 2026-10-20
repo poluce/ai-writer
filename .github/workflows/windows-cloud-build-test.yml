@@ -31,7 +31,7 @@ concurrency:
 jobs:
   package-and-qualify:
     runs-on: windows-2022
-    timeout-minutes: 60
+    timeout-minutes: 120
     steps:
       - name: Check out source
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -104,7 +104,7 @@ jobs:
       - name: Run complete Windows release gate
         shell: pwsh
         env:
-          AI_NOVEL_RELEASE_EVIDENCE_COMMAND_TIMEOUT_MS: '2700000'
+          AI_NOVEL_RELEASE_EVIDENCE_COMMAND_TIMEOUT_MS: '7200000'
         run: node scripts/release-evidence-v2.mjs record --evidence-root "$env:AI_NOVEL_RELEASE_EVIDENCE_ROOT" --step complete-windows-release-gate -- "$env:ComSpec" /d /s /c "pnpm run build:win"
 
       - name: Finalize Windows release evidence

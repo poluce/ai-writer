@@ -171,7 +171,7 @@ describe('real provider generation qualification contract', () => {
       kind: 'real-provider-generation-qualification',
       mode: 'dry-run',
       qualificationScope: 'provider-adapter',
-      executionSeam: 'generation-runtime-with-in-memory-adapter-lease',
+      executionSeam: 'generation-runtime-with-in-memory-adapter-environment',
       fixture: {
         id: QUALIFICATION_FIXTURE.id,
         blueprintChapterCount: 3,
