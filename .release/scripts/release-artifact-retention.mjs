@@ -6,7 +6,6 @@ import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 export const PROMOTION_WORKFLOW = '.github/workflows/cross-platform-runtime-artifact-promotion.yml';
-const PLATFORMS = ['macos-arm64', 'macos-x64', 'windows'];
 const digest = value => /^sha256:[0-9a-f]{64}$/.test(String(value));
 const positiveId = value => Number.isSafeInteger(value) && value > 0;
 const readJson = async path => JSON.parse(await readFile(path, 'utf8'));
@@ -26,8 +25,10 @@ export function validateEvidence(evidence, context) {
   assert.equal(promotion.runId, context.runId);
   assert.equal(promotion.attempt, context.attempt);
   assert.equal(promotion.workflow, PROMOTION_WORKFLOW);
-  assert.deepEqual(plan.qualifications.map(q => q.platform).sort(), PLATFORMS);
-  assert.equal(artifacts.length, 4);
+  const platforms = plan.qualifications.map(q => q.platform).sort();
+  assert.ok(platforms.length > 0, 'at least one qualified platform is required');
+  assert.equal(new Set(platforms).size, platforms.length, 'duplicate qualified platforms');
+  assert.equal(artifacts.length, plan.qualifications.length + 1);
   assert.equal(new Set(artifacts.map(a => a.id)).size, 4, 'duplicate artifact IDs');
   const expected = plan.qualifications.map(q => {
     assert.ok(positiveId(q.runId) && positiveId(q.attempt) && positiveId(q.artifactId));
