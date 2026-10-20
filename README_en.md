@@ -21,7 +21,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/poluce/ai-writer/releases/latest">Download desktop (Windows / macOS)</a>
+  <a href="https://github.com/poluce/ai-writer/releases/latest">Download desktop (Windows x64)</a>
 </p>
 
 <p align="center">
@@ -159,25 +159,16 @@ ai-writer-setup-<version>.exe
 
 The installer is not code-signed at present. Windows may show publisher or reputation warnings; continue only after confirming that the download page is this repository's official GitHub Release.
 
-### macOS (Apple Silicon and Intel)
+### macOS
 
-Download the installer matching your Mac architecture from [GitHub Releases](https://github.com/poluce/ai-writer/releases/latest):
-
-```text
-ai-writer-mac-arm64-<version>-installer.dmg
-ai-writer-mac-x64-<version>-installer.dmg
-```
-
-1. `arm64` supports Apple Silicon Macs (M1, M2, M3, M4, and later); `x64` supports Intel Macs.
-2. Drag the app from the DMG to Applications. The app can check the latest formal GitHub Release and display a reminder, but it does not download or replace the macOS app. The update action opens the official Release page so the user can download the installer for the correct architecture.
-3. Both installers are ad-hoc signed, have no Developer ID signature, and are not notarized. If Gatekeeper blocks it, confirm that the source is this repository's official GitHub Release, then Control-click the app in Finder and choose **Open**, or allow it in **System Settings → Privacy & Security**.
+0.1.0 does not ship a macOS installer yet: this release line qualifies and publishes Windows x64 first. macOS installers return in a later version, still as separate ARM64 and Intel builds.
 
 ## Current limits
 
 - A URL and key do not guarantee support for every third-party API; only implemented protocols and presets are in scope.
 - The app does not replace authorial judgment, fact checking, or copyright decisions. Review AI output before using it.
 - It does not provide online publishing, a reading community, or cloud-model accounts.
-- Formal installers are built in GitHub Actions. Windows, macOS ARM64, and macOS x64 candidates each pass their own qualification before they are listed in one GitHub Release.
+- Formal installers are built in GitHub Actions. The Windows x64 candidate must pass its qualification before it is listed in a GitHub Release.
 
 ## Development and architecture documentation
 

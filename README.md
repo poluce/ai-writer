@@ -21,7 +21,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/poluce/ai-writer/releases/latest">下载桌面版（Windows / macOS）</a>
+  <a href="https://github.com/poluce/ai-writer/releases/latest">下载桌面版（Windows x64）</a>
 </p>
 
 <p align="center">
@@ -145,25 +145,16 @@ ai-writer-setup-<版本号>.exe
 
 当前安装程序尚未进行代码签名。Windows 可能显示发布者或信誉提示；请确认下载页面属于本项目的官方 GitHub Release 后再继续。
 
-### macOS（Apple Silicon 与 Intel）
+### macOS
 
-从 [GitHub Releases](https://github.com/poluce/ai-writer/releases/latest) 下载与你的 Mac 架构对应的安装包：
-
-```text
-ai-writer-mac-arm64-<版本号>-installer.dmg
-ai-writer-mac-x64-<版本号>-installer.dmg
-```
-
-1. `arm64` 适用于 Apple Silicon Mac（M1、M2、M3、M4 等）；`x64` 适用于 Intel Mac。
-2. 将 DMG 中的应用拖入“应用程序”文件夹后启动。应用可以检查 GitHub 最新正式版并显示提醒，但不会在 macOS 内下载或替换程序；更新操作只打开官方 Release 页面，由用户手动下载对应架构的后续版本。
-3. 两个安装包均为 ad-hoc 签名，且均未使用 Developer ID 签名或公证。若 Gatekeeper 阻止打开，请确认来源是本项目的官方 GitHub Release，然后在 Finder 中按住 Control 点击应用并选择“打开”，或在“系统设置 → 隐私与安全性”中允许打开。
+0.1.0 暂未发布 macOS 安装包：本发行线先完成 Windows x64 的云端资格构建与发布，macOS 安装包将在后续版本恢复，届时仍按 ARM64 / Intel 分别发布。
 
 ## 当前限制
 
 - 不承诺任意第三方 API 都能仅靠 URL 和 Key 接入；只保证已实现协议与预设范围内的行为。
 - 不替代作者的创意、事实核查或版权判断；AI 输出需要作者审阅。
 - 不提供在线发布、阅读社区或云端模型账号。
-- 正式安装包由 GitHub Actions 云端构建；Windows、macOS ARM64 与 macOS x64 会各自通过资格检查后，才会进入同一个 GitHub Release。
+- 正式安装包由 GitHub Actions 云端构建；Windows x64 通过资格检查后才会进入 GitHub Release。
 
 ## 开发与架构文档
 

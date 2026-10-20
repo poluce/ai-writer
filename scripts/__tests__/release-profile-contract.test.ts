@@ -68,36 +68,10 @@ describe('desktop release profile contract', () => {
         'acceptance/signing.json',
       ],
     })
-    expect(profile.platforms['macos-arm64']).toMatchObject({
-      qualificationWorkflow: '.github/workflows/macos-arm64-cloud-build.yml',
-      artifactName: 'qualified-macos-arm64',
-      architectures: ['arm64'],
-      retentionDays: 14,
-      acceptanceReceipts: [
-        'acceptance/dmg-mount.json',
-        'acceptance/packaged-smoke.json',
-        'acceptance/signing.json',
-      ],
-    })
-    expect(profile.platforms['macos-x64']).toMatchObject({
-      qualificationWorkflow: '.github/workflows/macos-x64-cloud-build.yml',
-      artifactName: 'qualified-macos-x64',
-      architectures: ['x64'],
-      retentionDays: 14,
-      acceptanceReceipts: [
-        'acceptance/dmg-mount.json',
-        'acceptance/packaged-smoke.json',
-        'acceptance/signing.json',
-      ],
-    })
     expect(profile.releaseAssets).toEqual([
       { name: 'ai-writer-setup-{version}.exe', platform: 'windows', role: 'installer' },
       { name: 'ai-writer-setup-{version}.exe.blockmap', platform: 'windows', role: 'update-metadata' },
       { name: 'latest.yml', platform: 'windows', role: 'update-metadata' },
-      { name: 'ai-writer-mac-arm64-{version}-installer.dmg', platform: 'macos-arm64', role: 'installer' },
-      { name: 'ai-writer-mac-arm64-{version}-installer.dmg.sha256', platform: 'macos-arm64', role: 'checksum' },
-      { name: 'ai-writer-mac-x64-{version}-installer.dmg', platform: 'macos-x64', role: 'installer' },
-      { name: 'ai-writer-mac-x64-{version}-installer.dmg.sha256', platform: 'macos-x64', role: 'checksum' },
     ])
     expect(profile.promotion).toEqual({
       workflow: '.github/workflows/cross-platform-runtime-artifact-promotion.yml',

@@ -7,7 +7,7 @@ describe('v0.1.0 release metadata', () => {
     expect(pkg.version).toBe('0.1.0')
   })
 
-  it('resolves the release tag and exact seven-asset contract from the package version', () => {
+  it('resolves the release tag and exact three-asset contract from the package version', () => {
     const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as { version: string }
     const profile = JSON.parse(readFileSync('.release/release-profile.json', 'utf8')) as {
       releaseAssets: Array<{ name: string }>
@@ -18,10 +18,6 @@ describe('v0.1.0 release metadata', () => {
       'ai-writer-setup-0.1.0.exe',
       'ai-writer-setup-0.1.0.exe.blockmap',
       'latest.yml',
-      'ai-writer-mac-arm64-0.1.0-installer.dmg',
-      'ai-writer-mac-arm64-0.1.0-installer.dmg.sha256',
-      'ai-writer-mac-x64-0.1.0-installer.dmg',
-      'ai-writer-mac-x64-0.1.0-installer.dmg.sha256',
     ])
   })
 
@@ -33,10 +29,9 @@ describe('v0.1.0 release metadata', () => {
     for (const expected of [
       '独立发行线',
       '应用身份',
-      '七项资产',
+      '三项资产',
       '尚未进行代码签名',
-      'ad-hoc 签名',
-      '未使用 Developer ID 签名或公证',
+      'macOS',
       '委派',
       '分卷',
     ]) expect(notes).toContain(expected)
@@ -44,10 +39,9 @@ describe('v0.1.0 release metadata', () => {
     for (const expected of [
       'independent line',
       'app identity',
-      'Seven-asset contract',
+      'Three-asset contract',
       'not code-signed',
-      'ad-hoc signed',
-      'not notarized',
+      'macOS',
       'delegate',
     ]) expect(notes).toContain(expected)
 
@@ -65,30 +59,16 @@ describe('v0.1.0 release metadata', () => {
     for (const readme of [chineseReadme, englishReadme]) {
       for (const expected of [
         'Windows x64',
-        'Apple Silicon',
-        'Intel',
         'https://github.com/poluce/ai-writer/releases/latest',
       ]) expect(readme).toContain(expected)
 
       for (const installer of [
         /ai-writer-setup-<[^>\r\n]+>\.exe/u,
-        /ai-writer-mac-arm64-<[^>\r\n]+>-installer\.dmg/u,
-        /ai-writer-mac-x64-<[^>\r\n]+>-installer\.dmg/u,
       ]) expect(readme).toMatch(installer)
     }
 
-    for (const expected of [
-      '尚未进行代码签名',
-      'ad-hoc 签名',
-      '未使用 Developer ID 签名或公证',
-    ]) expect(chineseReadme).toContain(expected)
-
-    for (const expected of [
-      'not code-signed',
-      'ad-hoc signed',
-      'no Developer ID signature',
-      'not notarized',
-    ]) expect(englishReadme).toContain(expected)
+    expect(chineseReadme).toContain('尚未进行代码签名')
+    expect(englishReadme).toContain('not code-signed')
   })
 
   it('keeps stale Mythpen branding out of release metadata', () => {

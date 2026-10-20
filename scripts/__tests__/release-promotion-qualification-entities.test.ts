@@ -25,46 +25,31 @@ describe('desktop promotion qualification entities', () => {
     expect(provenance.body).toContain(`- app.exe: sha256:${'b'.repeat(64)}`)
   })
 
-  it('requires independent Windows, Apple Silicon, and Intel qualification run identities', () => {
+  it('requires the Windows qualification run identity declared by the profile', () => {
     const validated = validatePromotionProfile(profile)
     const entities = Object.keys(validated.platforms).sort()
-    expect(entities).toEqual(['macos-arm64', 'macos-x64', 'windows'])
+    expect(entities).toEqual(['windows'])
 
     const runs = parseQualificationRuns(JSON.stringify({
       windows: { runId: 101, attempt: 1, artifactId: 201 },
-      'macos-arm64': { runId: 102, attempt: 1, artifactId: 202 },
-      'macos-x64': { runId: 103, attempt: 1, artifactId: 203 },
     }), entities)
 
-    expect(runs).toEqual({
-      'macos-arm64': { runId: 102, attempt: 1, artifactId: 202 },
-      'macos-x64': { runId: 103, attempt: 1, artifactId: 203 },
-      windows: { runId: 101, attempt: 1, artifactId: 201 },
-    })
-    expect(validated.releaseAssets.filter(asset => asset.platform === 'macos-arm64').map(asset => asset.name))
-      .toEqual([
-        'ai-writer-mac-arm64-{version}-installer.dmg',
-        'ai-writer-mac-arm64-{version}-installer.dmg.sha256',
-      ])
-    expect(validated.releaseAssets.filter(asset => asset.platform === 'macos-x64').map(asset => asset.name))
-      .toEqual([
-        'ai-writer-mac-x64-{version}-installer.dmg',
-        'ai-writer-mac-x64-{version}-installer.dmg.sha256',
-      ])
+    expect(runs).toEqual({ windows: { runId: 101, attempt: 1, artifactId: 201 } })
+    expect(validated.releaseAssets.map(asset => asset.name)).toEqual([
+      'ai-writer-setup-{version}.exe',
+      'ai-writer-setup-{version}.exe.blockmap',
+      'latest.yml',
+    ])
   })
 
-  it('rejects a generic macOS alias or a run mapping that merges the two architectures', () => {
+  it('rejects an unsupported platform or a run mapping with unknown keys', () => {
     const genericMacos = structuredClone(profile)
-    genericMacos.platforms.macos = genericMacos.platforms['macos-arm64']
-    delete genericMacos.platforms['macos-arm64']
-    genericMacos.releaseAssets = genericMacos.releaseAssets.map((asset: { platform: string }) => (
-      asset.platform === 'macos-arm64' ? { ...asset, platform: 'macos' } : asset
-    ))
+    genericMacos.platforms.macos = genericMacos.platforms.windows
     expect(() => validatePromotionProfile(genericMacos)).toThrow('Unsupported platform: macos')
 
     expect(() => parseQualificationRuns(JSON.stringify({
       windows: { runId: 101, attempt: 1, artifactId: 201 },
       macos: { runId: 102, attempt: 1, artifactId: 202 },
-    }), ['windows', 'macos-arm64', 'macos-x64'])).toThrow('qualification run mapping keys must be exactly')
+    }), ['windows'])).toThrow('qualification run mapping keys must be exactly')
   })
 })
