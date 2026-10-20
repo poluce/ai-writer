@@ -658,7 +658,10 @@ function createQualificationPreflightLedger({ profiles, campaignStartedAt, now }
       Object.assign(state, providerNext)
       Object.assign(campaign, campaignNext)
       if (request.purpose === 'qualification-blueprints') {
-        const responseFormat = request.plan?.responseFormat?.type ?? null
+        // 结构化蓝图现在由 submit_json 工具契约保证；运行时计划可能不再携带
+        // responseFormat，这里按实际提交契约记录等价的结构化格式。
+        const responseFormat = request.plan?.responseFormat?.type
+          ?? (request.submitTool === 'submit_json' ? 'json_object' : null)
         if (
           state.blueprintResponseFormat !== null
           && state.blueprintResponseFormat !== responseFormat
