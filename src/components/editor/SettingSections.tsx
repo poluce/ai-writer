@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { ChevronDown, Loader2, Sparkles, Trash2 } from 'lucide-react'
 import { Button } from '../ui/Button'
+import MarkdownContent from '../ui/MarkdownContent'
 import { useLocaleStore } from '../../stores/locale-store'
 
 /** 长文本设置文档容器（小说配置 / 故事架构共用）。 */
@@ -42,6 +43,7 @@ export function SettingSection({
   clearDisabled = false,
   clearHidden = false,
   clearTitle,
+  extraActions,
   children,
 }: {
   title: string
@@ -56,6 +58,7 @@ export function SettingSection({
   clearDisabled?: boolean
   clearHidden?: boolean
   clearTitle?: string
+  extraActions?: ReactNode
   children: ReactNode
 }) {
   const text = useLocaleStore(s => s.text)
@@ -73,11 +76,12 @@ export function SettingSection({
           aria-expanded={!collapsed}
           onClick={onToggle}
         >
-          <ChevronDown size={14} style={{ transform: collapsed ? 'rotate(-90deg)' : 'none', transition: 'transform 120ms' }} />
+          <ChevronDown size={15} style={{ transform: collapsed ? 'rotate(-90deg)' : 'none', transition: 'transform 120ms' }} />
         </button>
-        <h3 className="text-sm font-semibold m-0" style={{ color: 'var(--color-text)' }}>{title}</h3>
-        {(Boolean(onClear && !clearHidden) || Boolean(onGenerate && !generateHidden)) && (
+        <h3 className="text-base font-bold m-0" style={{ color: 'var(--color-text)' }}>{title}</h3>
+        {(Boolean(onClear && !clearHidden) || Boolean(onGenerate && !generateHidden) || Boolean(extraActions)) && (
           <div className="ml-auto flex items-center gap-2 shrink-0">
+            {extraActions}
             {onClear && !clearHidden && (
               <Button
                 variant="outline"
@@ -145,5 +149,71 @@ export function DocumentBody({
         lineHeight: 1.7,
       }}
     />
+  )
+}
+
+/**
+ * 具有官方 Markdown 渲染与原位编辑能力的正文区组件。
+ * - 默认以官方 MarkdownContent 规范渲染富文本（小标题、粗体、列表项等）；
+ * - 支持点击或外部控制切入编辑态（DocumentBody）；
+ * - 编辑失焦或完成时自动切回官方 Markdown 渲染排版。
+ */
+export function MarkdownDocumentBody({
+  value,
+  onChange,
+  placeholder,
+  readOnly = false,
+  isEditing = false,
+  onStartEdit,
+  onEndEdit,
+}: {
+  value: string
+  onChange: (value: string) => void
+  placeholder?: string
+  readOnly?: boolean
+  isEditing?: boolean
+  onStartEdit?: () => void
+  onEndEdit?: () => void
+}) {
+  const text = useLocaleStore(s => s.text)
+
+  if (isEditing && !readOnly) {
+    return (
+      <div
+        className="pt-2"
+        onKeyDown={e => {
+          if (e.key === 'Escape') {
+            onEndEdit?.()
+          }
+        }}
+      >
+        <DocumentBody
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          readOnly={readOnly}
+        />
+      </div>
+    )
+  }
+
+  const hasContent = Boolean(value.trim())
+
+  return (
+    <div
+      className="group relative cursor-pointer rounded-lg px-2 py-3 transition-colors hover:bg-[var(--color-hover)]/30"
+      onClick={!readOnly ? onStartEdit : undefined}
+      title={!readOnly ? text('点击进入编辑', 'Click to edit') : undefined}
+    >
+      {hasContent ? (
+        <div className="text-sm leading-relaxed" style={{ color: 'var(--color-text)' }}>
+          <MarkdownContent content={value} />
+        </div>
+      ) : (
+        <div className="text-xs italic py-2" style={{ color: 'var(--color-text-muted)' }}>
+          {placeholder ?? text('暂无内容，点击开始编辑……', 'No content. Click to start editing…')}
+        </div>
+      )}
+    </div>
   )
 }

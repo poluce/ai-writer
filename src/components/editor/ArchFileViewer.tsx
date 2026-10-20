@@ -1,10 +1,16 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { Save, RefreshCw, Sparkles, Loader2, AlertTriangle, FileText } from 'lucide-react'
+import { Save, RefreshCw, Sparkles, Loader2, AlertTriangle, FileText, Pencil, Check } from 'lucide-react'
 import { renderIcon } from '../panels/sidebar/sidebar-icons'
 
 import { registerEditorExitSaveHandler, useEditorStore } from '../../stores/editor-store'
 import ArchitectureConfirmDialog from '../dialogs/ArchitectureConfirmDialog'
 import { Button } from '../ui/Button'
+import { SettingDocument, SettingSection, MarkdownDocumentBody } from './SettingSections'
+import {
+  parseDynamicArchSections,
+  serializeDynamicArchSections,
+  type ActiveSectionItem,
+} from './arch-structured-sections'
 import { ipc } from '../../services/ipc-client'
 import { requireIpcSuccess } from '../../services/ipc-result'
 import { CORE_FIELD_MAP, parseCoreField } from '../../services/vela-protocol'
@@ -42,7 +48,7 @@ import {
 type ArchStepKey = 'premise' | 'characters' | 'worldbuilding' | 'synopsis'
 
 /** 情节大纲已拆为独立页面，不再参与故事架构的批量生成。 */
-const ARCHITECTURE_STEP_KEYS = ['premise', 'characters', 'worldbuilding'] as const
+const ARCHITECTURE_STEP_KEYS = ['premise', 'worldbuilding', 'characters'] as const
 
 /** 与 Sidebar / WorldBuildingEditor 保持一致的架构文件元信息 */
 const ARCH_META: Record<ArchStepKey, { iconName: string; label: string; labelEn: string; desc: string; descEn: string }> = {
@@ -69,6 +75,7 @@ interface Props {
   projectKey: string
   content: string
   savedContent: string
+  initialViewMode?: 'cards' | 'markdown'
 }
 
 /**
@@ -92,9 +99,11 @@ function ArchFileViewerSession({
   filePath,
   projectKey,
   content: initialContent,
-  savedContent: initialSavedContent}: Props) {
+  savedContent: initialSavedContent,
+  initialViewMode}: Props) {
   const stepKey = detectStepKey(filePath)
   const isCharacterProjection = stepKey === 'characters'
+  const isStructuredStep = stepKey === 'premise' || stepKey === 'worldbuilding'
   const architectureStepKey = stepKey && (ARCHITECTURE_STEP_KEYS as readonly string[]).includes(stepKey)
     ? stepKey as (typeof ARCHITECTURE_STEP_KEYS)[number]
     : null
@@ -110,6 +119,20 @@ function ArchFileViewerSession({
   const currentContentRef = useRef(initialContent)
   // 传给 CodeMirrorEditor 的初始内容（只有『外部重载』时才更新，不随用户键入变化）
   const [editorContent, setEditorContent] = useState(initialContent)
+
+  // 结构化卡片视图与 Markdown 源码视图切换（前提概要与环境默认卡片模式）
+  const defaultStepTitle = meta ? text(meta.label, meta.labelEn) : text('正文', 'Document')
+  const [viewMode, setViewMode] = useState<'cards' | 'markdown'>(
+    initialViewMode ?? (isStructuredStep ? 'cards' : 'markdown'),
+  )
+  const [documentTitle, setDocumentTitle] = useState<string | undefined>(() =>
+    isStructuredStep ? parseDynamicArchSections(defaultStepTitle, initialContent).documentTitle : undefined,
+  )
+  const [sections, setSections] = useState<ActiveSectionItem[]>(() =>
+    isStructuredStep ? parseDynamicArchSections(defaultStepTitle, initialContent).sections : [],
+  )
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({})
+  const [editingSectionIds, setEditingSectionIds] = useState<Record<string, boolean>>({})
 
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -158,10 +181,15 @@ function ArchFileViewerSession({
       savedContentRef.current = initialContent
       currentContentRef.current = initialContent
       setEditorContent(initialContent)
+      if (isStructuredStep) {
+        const parsed = parseDynamicArchSections(defaultStepTitle, initialContent)
+        setDocumentTitle(parsed.documentTitle)
+        setSections(parsed.sections)
+      }
       setIsDirty(false)
       setRefreshBlockedMessage(null)
     }
-  }, [initialContent, projectMatches, tabId])
+  }, [defaultStepTitle, initialContent, isStructuredStep, projectMatches, tabId])
 
 
   // 内容变化回调：更新 ref，不触发重渲染，避免 content prop 回传导致光标跳末尾
@@ -178,6 +206,34 @@ function ArchFileViewerSession({
     // 同步 editor-store 的 tab.dirty，供标题栏警示灯、Tab 圆点、关闭确认使用
     writeArchEditState(useEditorStore.getState(), tabId, md, storeAction)
   }, [isCharacterProjection, tabId])
+
+  const handleSectionChange = useCallback((id: string, newText: string) => {
+    setSections(prev => {
+      const next = prev.map(s => s.id === id ? { ...s, content: newText } : s)
+      const serialized = serializeDynamicArchSections(next, documentTitle)
+      setEditorContent(serialized)
+      handleChange(serialized)
+      return next
+    })
+  }, [documentTitle, handleChange])
+
+  const handleClearSection = useCallback((id: string) => {
+    handleSectionChange(id, '')
+  }, [handleSectionChange])
+
+  const handleSwitchToCards = useCallback(() => {
+    if (isStructuredStep) {
+      const parsed = parseDynamicArchSections(defaultStepTitle, currentContentRef.current)
+      setDocumentTitle(parsed.documentTitle)
+      setSections(parsed.sections)
+    }
+    setViewMode('cards')
+  }, [defaultStepTitle, isStructuredStep])
+
+  const handleSwitchToMarkdown = useCallback(() => {
+    setEditorContent(currentContentRef.current)
+    setViewMode('markdown')
+  }, [])
 
   /** 保存（统一走 vela://core/ DB 路径） */
   const handleSave = useCallback(async (md: string, propagateFailure = false) => {
@@ -316,8 +372,14 @@ function ArchFileViewerSession({
         savedContentRef.current = decision.content
         currentContentRef.current = decision.content
         setEditorContent(decision.content)
+        if (isStructuredStep) {
+          const parsed = parseDynamicArchSections(defaultStepTitle, decision.content)
+          setDocumentTitle(parsed.documentTitle)
+          setSections(parsed.sections)
+        }
         setIsDirty(false)
         setRefreshBlockedMessage(null)
+        useEditorStore.getState().syncTabContent(tabId, decision.content)
         useEditorStore.getState().markTabSaved(tabId, decision.content)
       }
     } catch (error) {
@@ -332,7 +394,7 @@ function ArchFileViewerSession({
         setLoading(false)
       }
     }
-  }, [filePath, projectKey, tabId])
+  }, [defaultStepTitle, filePath, isStructuredStep, projectKey, tabId])
 
   useEffect(() => {
     const reloadGate = reloadGateRef.current
@@ -439,6 +501,175 @@ function ArchFileViewerSession({
     writeArchEditState(useEditorStore.getState(), tabId, projection, 'sync-saved')
   }, [initialSavedContent, isCharacterProjection, rosterSnapshot?.renderedMarkdown, tabId])
 
+  const activeCharCount = isStructuredStep && viewMode === 'cards'
+    ? sections.reduce((acc, s) => acc + s.content.replace(/\s/g, '').length, 0)
+    : charCount
+
+  if (isStructuredStep && viewMode === 'cards') {
+    return (
+      <div className="h-full overflow-y-auto">
+        <div className="w-full px-8 py-6">
+          {/* 头部：与小说配置风格完全统一 */}
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-lg font-bold" style={{ color: 'var(--color-text)' }}>
+                {meta ? text(meta.label, meta.labelEn) : text('架构文档', 'Architecture document')}
+              </h2>
+              <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
+                {meta ? text(meta.desc, meta.descEn) : ''}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {/* 字数 */}
+              {activeCharCount > 0 && (
+                <span className="text-xs tabular-nums mr-1" style={{ color: 'var(--color-text-muted)' }}>
+                  {activeCharCount.toLocaleString()} {text('字', 'characters')}
+                </span>
+              )}
+
+              {/* 保存状态提示灯 */}
+              {saving && (
+                <span className="text-xs mr-1" style={{ color: 'var(--color-accent)' }}>{text('保存中...', 'Saving...')}</span>
+              )}
+              {isDirty && !saving && (
+                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 mr-1" style={{ backgroundColor: 'var(--color-warning)' }} title={text('有未保存的修改', 'Unsaved changes')} />
+              )}
+
+              {/* 模式切换：卡片模式 / Markdown 源码 */}
+              <div className="flex items-center rounded-lg border p-0.5" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-sidebar)' }}>
+                <button
+                  type="button"
+                  className="px-2.5 py-1 text-xs rounded-md transition-colors bg-[var(--color-bg)] font-medium text-[var(--color-text)] shadow-xs"
+                  onClick={handleSwitchToCards}
+                >
+                  {text('卡片模式', 'Card view')}
+                </button>
+                <button
+                  type="button"
+                  className="px-2.5 py-1 text-xs rounded-md transition-colors text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+                  onClick={handleSwitchToMarkdown}
+                >
+                  {text('Markdown 源码', 'Markdown source')}
+                </button>
+              </div>
+
+              {/* 刷新按钮 */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleReload}
+                title={text('从磁盘重新加载（AI 生成完成后可点击刷新）', 'Reload from disk (refresh after AI generation completes)')}
+                disabled={loading || !projectMatches}
+              >
+                <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+              </Button>
+
+              {/* AI 生成按钮 */}
+              {architectureStepKey && (
+                <Button
+                  variant="ai"
+                  size="sm"
+                  onClick={handleOpenDialog}
+                  disabled={checkingArch || !projectMatches}
+                  title={generated
+                    ? text(`AI 重新生成「${meta?.label}」`, `AI Regenerate “${meta?.labelEn}”`)
+                    : text(`AI 生成「${meta?.label}」`, `AI Generate “${meta?.labelEn}”`)}
+                >
+                  {checkingArch ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                  {generated ? text('AI 重新生成', 'AI Regenerate') : text('AI 生成', 'AI Generate')}
+                </Button>
+              )}
+
+              {/* 保存按钮 */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleSave(currentContentRef.current)}
+                disabled={saving || !projectMatches}
+                title={text('保存（Cmd+S）', 'Save (Cmd+S)')}
+              >
+                <Save size={13} />
+                {saving ? text('保存中...', 'Saving...') : text('保存', 'Save')}
+              </Button>
+            </div>
+          </div>
+
+          {visibleBlockedMessage && (
+            <div
+              role="status"
+              className="flex items-center gap-2 p-3 mb-4 rounded-lg text-xs"
+              style={{
+                color: 'var(--color-warning-text)',
+                backgroundColor: 'var(--color-editor-bg)',
+                border: '1px solid var(--color-border)'}}
+            >
+              <AlertTriangle size={13} className="flex-shrink-0" />
+              <span>{visibleBlockedMessage}</span>
+            </div>
+          )}
+
+          {currentContentRef.current.trim() === '' && (
+            <div className="p-3 mb-4 rounded-lg text-xs" style={{ backgroundColor: 'var(--color-editor-bg)', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)' }}>
+              {text(
+                '尚未生成内容，点击右上角「AI 生成」或直接在此编辑...',
+                'No content yet. Click “AI Generate” in the top-right or start editing here...',
+              )}
+            </div>
+          )}
+
+          {/* 卡片文档 SettingDocument */}
+          <SettingDocument>
+            {sections.map(section => {
+              const isEditing = Boolean(editingSectionIds[section.id])
+              return (
+                <SettingSection
+                  key={section.id}
+                  title={section.title}
+                  collapsed={Boolean(collapsedSections[section.id])}
+                  onToggle={() => setCollapsedSections(c => ({ ...c, [section.id]: !c[section.id] }))}
+                  clearDisabled={!section.content.trim()}
+                  onClear={() => handleClearSection(section.id)}
+                  extraActions={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setEditingSectionIds(c => ({ ...c, [section.id]: !c[section.id] }))}
+                      title={isEditing ? text('完成编辑并渲染', 'Done and render') : text('编辑小节内容', 'Edit section')}
+                      className="gap-1 text-xs"
+                    >
+                      {isEditing ? <Check size={11} /> : <Pencil size={11} />}
+                      {isEditing ? text('完成', 'Done') : text('编辑', 'Edit')}
+                    </Button>
+                  }
+                >
+                  <MarkdownDocumentBody
+                    value={section.content}
+                    onChange={(val) => handleSectionChange(section.id, val)}
+                    placeholder={section.placeholder}
+                    isEditing={isEditing}
+                    onStartEdit={() => setEditingSectionIds(c => ({ ...c, [section.id]: true }))}
+                    onEndEdit={() => setEditingSectionIds(c => ({ ...c, [section.id]: false }))}
+                  />
+                </SettingSection>
+              )
+            })}
+          </SettingDocument>
+        </div>
+
+        {/* AI 生成确认弹窗 */}
+        {architectureStepKey && (
+          <ArchitectureConfirmDialog
+            isOpen={showDialog}
+            onClose={() => setShowDialog(false)}
+            archStatus={fullArchStatus}
+            initialSelectedSteps={[architectureStepKey]}
+            onConfirm={handleConfirm}
+          />
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* 工具栏（背景与编辑区一致，内嵌在内容区中而非独立标题栏） */}
@@ -480,6 +711,26 @@ function ArchFileViewerSession({
           )}
           {isDirty && !saving && (
             <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: 'var(--color-warning)' }} title={text('有未保存的修改', 'Unsaved changes')} />
+          )}
+
+          {/* 模式切换：卡片模式 / Markdown 源码 */}
+          {isStructuredStep && (
+            <div className="flex items-center rounded-lg border p-0.5" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-sidebar)' }}>
+              <button
+                type="button"
+                className="px-2 py-0.5 text-xs rounded-md transition-colors text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+                onClick={handleSwitchToCards}
+              >
+                {text('卡片模式', 'Card view')}
+              </button>
+              <button
+                type="button"
+                className="px-2 py-0.5 text-xs rounded-md transition-colors bg-[var(--color-bg)] font-medium text-[var(--color-text)] shadow-xs"
+                onClick={handleSwitchToMarkdown}
+              >
+                {text('Markdown 源码', 'Markdown source')}
+              </button>
+            </div>
           )}
 
           {/* 刷新按钮 */}

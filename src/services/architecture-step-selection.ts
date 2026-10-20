@@ -5,7 +5,7 @@
  */
 export type ArchStepKey = 'premise' | 'characters' | 'worldbuilding'
 
-const ARCH_STEP_ORDER: ArchStepKey[] = ['premise', 'characters', 'worldbuilding']
+const ARCH_STEP_ORDER: ArchStepKey[] = ['premise', 'worldbuilding', 'characters']
 
 export function createDefaultArchitectureSelection(
   archStatus: Record<string, boolean>,

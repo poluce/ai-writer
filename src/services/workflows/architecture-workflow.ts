@@ -66,7 +66,7 @@ export function createArchitectureWorkflow(
   const resumingSynopsis = params.resumeSynopsis === true
   const sel = resumingSynopsis
     ? ['synopsis' as const]
-    : params.selectedSteps ?? ['premise', 'characters', 'worldbuilding', 'synopsis']
+    : params.selectedSteps ?? ['premise', 'worldbuilding', 'synopsis', 'characters']
   const expectedProjectPath = params.projectPath
   const project = useProjectStore.getState().currentProject
   const currentProjectSession = projectSessionContextFromProject(project)
@@ -92,23 +92,13 @@ export function createArchitectureWorkflow(
 
   const allSteps = [
     {
-      name: text('前提概要', 'Premise summary'),
+      name: text('故事前提', 'Story premise'),
       key: 'premise',
-      description: stepDesc('premise', '提炼前提概要与核心卖点', 'Refine the premise summary and its core appeal'),
+      description: stepDesc('premise', '提炼故事前提与核心卖点', 'Refine the story premise and its core appeal'),
       executor: async (step: unknown, context: WorkflowContext, callbacks: StepCallbacks) => {
         context.data.stepGuidance = guidance
         const { GenerateCoreSeedCommand } = await import('./commands/architecture.command')
         return new GenerateCoreSeedCommand(projectSnapshot).execute({ step, context, callbacks })
-      },
-    },
-    {
-      name: text('人物', 'Character dynamics'),
-      key: 'characters',
-      description: stepDesc('characters', '构建核心角色关系网与角色弧光', 'Build core character relationships and arcs'),
-      executor: async (step: unknown, context: WorkflowContext, callbacks: StepCallbacks) => {
-        context.data.stepGuidance = guidance
-        const { GenerateCharactersCommand } = await import('./commands/architecture.command')
-        return new GenerateCharactersCommand(projectSnapshot).execute({ step, context, callbacks })
       },
     },
     {
@@ -134,6 +124,16 @@ export function createArchitectureWorkflow(
           resumeSynopsis: params.resumeSynopsis,
           synopsisRange: params.synopsisRange ?? null,
         }).execute({ step, context, callbacks })
+      },
+    },
+    {
+      name: text('人物', 'Character dynamics'),
+      key: 'characters',
+      description: stepDesc('characters', '构建核心角色关系网与角色弧光', 'Build core character relationships and arcs'),
+      executor: async (step: unknown, context: WorkflowContext, callbacks: StepCallbacks) => {
+        context.data.stepGuidance = guidance
+        const { GenerateCharactersCommand } = await import('./commands/architecture.command')
+        return new GenerateCharactersCommand(projectSnapshot).execute({ step, context, callbacks })
       },
     },
   ]

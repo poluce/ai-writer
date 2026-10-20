@@ -74,9 +74,49 @@ const LABEL_PATTERNS: ReadonlyArray<{ pattern: RegExp; ranged: boolean }> = [
   { pattern: BEFORE_UNIT_RANGE, ranged: true },
   { pattern: SINGLE_CHAPTER, ranged: false },
 ]
-const VOLUME_HEADING = /^#{1,6}\s*(第\s*[0-9零一二两三四五六七八九十百千]+\s*卷.*)$/
 const DOC_TITLE = /^#\s+(.+?)\s*$/
 const BATCH_MARKER = /^(?:>\s*)?(?:本大纲已覆盖至第|本大纲未完成|This outline covers chapters|This outline is incomplete)/
+
+export interface ParsedVolumeHeading {
+  rawText: string
+  volumeName: string
+  title: string
+  startChapter: number | null
+  endChapter: number | null
+}
+
+/** 解析形如 `## 第一卷：车库里的硅基火种（第1-25章）` 的分卷标题 */
+export function parseVolumeHeadingInfo(line: string): ParsedVolumeHeading | null {
+  const trimmed = line.trim()
+  if (!trimmed.startsWith('#')) return null
+  const match = trimmed.match(/^#{1,6}\s*(?:第\s*([0-9零一二两三四五六七八九十百千]+)\s*卷|卷\s*([0-9零一二两三四五六七八九十百千]+))(.*)$/)
+  if (!match) return null
+
+  const numStr = match[1] || match[2]
+  const volumeName = `第${numStr}卷`
+  const rest = (match[3] || '').trim().replace(/^[:：\s]+/, '')
+
+  let startChapter: number | null = null
+  let endChapter: number | null = null
+  let title = rest
+
+  // 匹配括号里的章节范围：(第1-25章) 或 (1-25) 或 （第26–50章）
+  const rangePattern = new RegExp(`[（(]\\s*(?:第\\s*)?(${NUMBER_SOURCE})\\s*(?:${RANGE_SEPARATOR})\\s*(?:第\\s*)?(${NUMBER_SOURCE})\\s*[章回节]?\\s*[)）]`)
+  const rangeMatch = rest.match(rangePattern)
+  if (rangeMatch) {
+    startChapter = parseChapterNumber(rangeMatch[1])
+    endChapter = parseChapterNumber(rangeMatch[2])
+    title = rest.replace(rangeMatch[0], '').trim().replace(/^[:：\s–—~～-]+|[:：\s–—~～-]+$/g, '')
+  }
+
+  return {
+    rawText: match[0],
+    volumeName,
+    title: title || volumeName,
+    startChapter,
+    endChapter: endChapter !== null && startChapter !== null ? Math.max(startChapter, endChapter) : endChapter,
+  }
+}
 
 /** 中文数字 / 阿拉伯数字 → number；无法解析返回 null。 */
 export function parseChapterNumber(value: string): number | null {
@@ -161,8 +201,34 @@ export function parseSynopsis(text: string): ParsedSynopsis {
   let titleEnd = 0
   let markerStart: number | null = null
   const drafts: DraftNode[] = []
-  let pendingVolume: { start: number; text: string } | null = null
+  let pendingVolume: {
+    start: number
+    bodyStart: number
+    volumeName: string
+    title: string
+    from: number | null
+    to: number | null
+    hasChildChapters: boolean
+  } | null = null
+  let activeVolumeLabel: string | undefined = undefined
   let sawFirstContent = false
+
+  const flushPendingVolume = (endPos: number) => {
+    if (!pendingVolume || pendingVolume.hasChildChapters) return
+    const prevTo = drafts.length > 0 && drafts[drafts.length - 1].to > 0 ? drafts[drafts.length - 1].to : 0
+    const from = pendingVolume.from ?? (prevTo > 0 ? prevTo + 1 : 1)
+    const to = pendingVolume.to ?? (from + 19)
+    drafts.push({
+      headingStart: pendingVolume.start,
+      bodyStart: pendingVolume.bodyStart,
+      bodyEnd: endPos,
+      from,
+      to,
+      title: pendingVolume.title || pendingVolume.volumeName,
+      volume: pendingVolume.volumeName,
+    })
+    pendingVolume = null
+  }
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index]
@@ -185,36 +251,57 @@ export function parseSynopsis(text: string): ParsedSynopsis {
       }
     }
 
-    const volume = VOLUME_HEADING.exec(trimmed)
-    if (volume) {
-      pendingVolume = { start: line.start, text: volume[1] }
+    const vol = parseVolumeHeadingInfo(trimmed)
+    if (vol) {
+      if (pendingVolume && !pendingVolume.hasChildChapters) {
+        flushPendingVolume(line.start)
+      } else if (drafts.length > 0) {
+        drafts[drafts.length - 1].bodyEnd = line.start
+      }
+      activeVolumeLabel = vol.volumeName + (vol.title && vol.title !== vol.volumeName ? `：${vol.title}` : '')
+      pendingVolume = {
+        start: line.start,
+        bodyStart: nextLineStart,
+        volumeName: activeVolumeLabel,
+        title: vol.title,
+        from: vol.startChapter,
+        to: vol.endChapter,
+        hasChildChapters: false,
+      }
       continue
     }
 
     const label = matchChapterLabel(line.text)
     if (label) {
+      const firstChildVolumeStart = pendingVolume && !pendingVolume.hasChildChapters ? pendingVolume.start : null
       if (drafts.length > 0) {
-        drafts[drafts.length - 1].bodyEnd = pendingVolume?.start ?? line.start
+        if (firstChildVolumeStart === null) {
+          drafts[drafts.length - 1].bodyEnd = line.start
+        }
+      }
+      if (pendingVolume) {
+        pendingVolume.hasChildChapters = true
       }
       drafts.push({
-        headingStart: pendingVolume?.start ?? line.start,
+        headingStart: firstChildVolumeStart ?? line.start,
         bodyStart: nextLineStart,
         from: label.from,
         to: label.to,
         title: label.title,
-        ...(pendingVolume ? { volume: pendingVolume.text } : {}),
+        volume: activeVolumeLabel,
       })
-      pendingVolume = null
       continue
     }
+  }
 
-    if (trimmed) pendingVolume = null
+  const bodyEnd = markerStart ?? text.length
+  if (pendingVolume && !pendingVolume.hasChildChapters) {
+    flushPendingVolume(bodyEnd)
+  } else if (drafts.length > 0) {
+    drafts[drafts.length - 1].bodyEnd = bodyEnd
   }
 
   const firstHeadingStart = drafts.length > 0 ? drafts[0].headingStart : (markerStart ?? text.length)
-  const bodyEnd = markerStart ?? text.length
-  if (drafts.length > 0) drafts[drafts.length - 1].bodyEnd = bodyEnd
-
   // 标题与首个结构节点之间的总览文字也要可编辑。
   if (drafts.length > 0 && firstHeadingStart > titleEnd) {
     const rawBody = text.slice(titleEnd, firstHeadingStart)
@@ -317,31 +404,32 @@ export function maxCoveredChapter(nodes: readonly SynopsisNode[]): number {
 export const SYNOPSIS_GROUP_SPAN = 10
 export interface SynopsisNodeGroup {
   id: string
-  /** `总览` 或 `第1–10章`。 */
+  /** `总览` 或 `第一卷：车库里的硅基火种` 或 `第1–10章`。 */
   label: string
+  /** 卷名称（若按卷分组）。 */
+  volumeName?: string
   startChapter: number | null
   endChapter: number | null
   nodes: SynopsisNode[]
+  /** 拖拽分组的原始卷序号（用于拖拽重排）。 */
+  volumeIndex?: number
+  /** 是否支持拖拽（总览不支持，分卷支持拖拽）。 */
+  draggable?: boolean
 }
 
-/** 把结构节点按每 10 章分组；`总览`/`全文` 一类的无章号节点单独成组。 */
+/** 把结构节点按分卷（Volume）分组；若无分卷标记则回退到每 10 章分组。`总览`/`全文` 单独成组。 */
 export function groupSynopsisNodes(
   nodes: readonly SynopsisNode[],
   span: number = SYNOPSIS_GROUP_SPAN,
 ): SynopsisNodeGroup[] {
   const intro: SynopsisNode[] = []
-  const buckets = new Map<number, SynopsisNode[]>()
-
-  for (const node of nodes) {
-    if (node.startChapter === null) {
-      intro.push(node)
-      continue
+  const chapterNodes = nodes.filter(n => {
+    if (n.startChapter === null) {
+      intro.push(n)
+      return false
     }
-    const bucketStart = Math.floor((node.startChapter - 1) / span) * span + 1
-    const bucket = buckets.get(bucketStart)
-    if (bucket) bucket.push(node)
-    else buckets.set(bucketStart, [node])
-  }
+    return true
+  })
 
   const groups: SynopsisNodeGroup[] = []
   if (intro.length > 0) {
@@ -351,8 +439,54 @@ export function groupSynopsisNodes(
       startChapter: null,
       endChapter: null,
       nodes: intro,
+      draggable: false,
     })
   }
+
+  // 检查是否包含带 volume 的节点
+  const hasVolumes = chapterNodes.some(n => Boolean(n.volume))
+
+  if (hasVolumes) {
+    // 按 volume 顺次分层归并（保持文档自然顺序）
+    const volumeMap = new Map<string, SynopsisNode[]>()
+    const volumeOrder: string[] = []
+
+    for (const node of chapterNodes) {
+      const volKey = node.volume || '未分卷'
+      if (!volumeMap.has(volKey)) {
+        volumeMap.set(volKey, [])
+        volumeOrder.push(volKey)
+      }
+      volumeMap.get(volKey)!.push(node)
+    }
+
+    volumeOrder.forEach((volKey, idx) => {
+      const groupNodes = volumeMap.get(volKey)!
+      const start = Math.min(...groupNodes.map(n => n.startChapter ?? 1))
+      const end = Math.max(...groupNodes.map(n => n.endChapter ?? start))
+      groups.push({
+        id: `vol-${idx}:${start}-${end}`,
+        label: volKey,
+        volumeName: volKey,
+        startChapter: start,
+        endChapter: end,
+        nodes: groupNodes,
+        volumeIndex: idx,
+        draggable: volKey !== '未分卷',
+      })
+    })
+    return groups
+  }
+
+  // 兜底：无任何分卷标记时，回退到按 10 章机械分桶
+  const buckets = new Map<number, SynopsisNode[]>()
+  for (const node of chapterNodes) {
+    const bucketStart = Math.floor((node.startChapter! - 1) / span) * span + 1
+    const bucket = buckets.get(bucketStart)
+    if (bucket) bucket.push(node)
+    else buckets.set(bucketStart, [node])
+  }
+
   for (const bucketStart of [...buckets.keys()].sort((a, b) => a - b)) {
     groups.push({
       id: `${bucketStart}-${bucketStart + span - 1}`,
@@ -360,9 +494,60 @@ export function groupSynopsisNodes(
       startChapter: bucketStart,
       endChapter: bucketStart + span - 1,
       nodes: buckets.get(bucketStart)!,
+      draggable: false,
     })
   }
   return groups
+}
+
+/**
+ * 拖动调整分卷大纲顺序：无损重排 Markdown 文本中的分卷大块。
+ */
+export function reorderSynopsisVolumes(
+  text: string,
+  fromVolumeIndex: number,
+  toVolumeIndex: number,
+): string {
+  if (fromVolumeIndex === toVolumeIndex) return text
+
+  const lines = toLines(text)
+  const volumeStarts: number[] = []
+
+  let markerStart: number | null = null
+  for (const line of lines) {
+    const trimmed = line.text.trim()
+    if (markerStart === null && BATCH_MARKER.test(trimmed)) {
+      markerStart = line.start
+      break
+    }
+    const vol = parseVolumeHeadingInfo(trimmed)
+    if (vol) {
+      volumeStarts.push(line.start)
+    }
+  }
+
+  if (volumeStarts.length < 2) return text
+  if (fromVolumeIndex < 0 || fromVolumeIndex >= volumeStarts.length) return text
+  if (toVolumeIndex < 0 || toVolumeIndex >= volumeStarts.length) return text
+
+  const preambleEnd = volumeStarts[0]
+  const contentEnd = markerStart ?? text.length
+  const preamble = text.slice(0, preambleEnd)
+  const suffix = text.slice(contentEnd)
+
+  const volumeSlices: string[] = []
+  for (let i = 0; i < volumeStarts.length; i++) {
+    const start = volumeStarts[i]
+    const end = i + 1 < volumeStarts.length ? volumeStarts[i + 1] : contentEnd
+    let slice = text.slice(start, end)
+    if (!slice.endsWith('\n')) slice += '\n'
+    volumeSlices.push(slice)
+  }
+
+  const [moved] = volumeSlices.splice(fromVolumeIndex, 1)
+  volumeSlices.splice(toVolumeIndex, 0, moved)
+
+  return preamble + volumeSlices.join('') + suffix
 }
 
 /**

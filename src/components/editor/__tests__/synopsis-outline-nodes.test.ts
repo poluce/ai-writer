@@ -7,6 +7,7 @@ import {
   parseChapterNumber,
   parseSynopsis,
   pickCurrentNodeId,
+  reorderSynopsisVolumes,
   replaceSynopsisNodeBody,
   synopsisNodeBody,
 } from '../synopsis-outline-nodes'
@@ -74,7 +75,7 @@ describe('parseSynopsis', () => {
     expect(parsed.nodes.map(node => [node.label, node.title, node.volume])).toEqual([
       ['总览', '', undefined],
       ['第1–20章', '核对记录', '第一卷'],
-      ['第21章', '破门', undefined],
+      ['第21章', '破门', '第一卷'],
       ['第22–100章', '反噬', '第二卷'],
     ])
     expect(synopsisNodeBody(parsed.nodes[1])).toContain('林舟逐条核对旧案记录')
@@ -101,14 +102,14 @@ describe('parseSynopsis', () => {
 })
 
 describe('groupSynopsisNodes', () => {
-  it('folds the chapter sections into ten-chapter groups and keeps 总览 separate', () => {
+  it('groups sections by volume tab and keeps 总览 separate when volumes exist', () => {
     const parsed = parseSynopsis(outline)
     const groups = groupSynopsisNodes(parsed.nodes)
 
     expect(groups.map(group => [group.label, group.nodes.map(node => node.label)])).toEqual([
       ['总览', ['总览']],
-      ['第1–10章', ['第1–20章']],
-      ['第21–30章', ['第21章', '第22–100章']],
+      ['第一卷', ['第1–20章', '第21章']],
+      ['第二卷', ['第22–100章']],
     ])
   })
 
@@ -197,5 +198,64 @@ describe('replaceSynopsisNodeBody', () => {
     expect(next).not.toContain('林舟逐条核对旧案记录')
     expect(next).toContain('第1–20章：核对记录\n\n第21章：破门')
     expect(parseSynopsis(next).nodes).toHaveLength(4)
+  })
+
+  it('correctly splits multi-volume outlines where later volumes have no child chapters', () => {
+    const multiVolumeDoc = [
+      '# 全书情节大纲',
+      '',
+      '全书宏观脉络概述。',
+      '',
+      '## 第一卷：车库里的硅基火种（第1-25章）',
+      '- **第1章：开端**',
+      '第一章正文。',
+      '- **第2-25章：发展**',
+      '第二到二十五章正文。',
+      '',
+      '## 第二卷：学术海啸与算力基建（第26-50章）',
+      '- **主要内容**：注意力机制论文引爆全球。',
+      '- **卷末里程碑**：自建超算中心。',
+      '',
+      '## 第三卷：红海封锁与芯片战争（第51-75章）',
+      '- **主要内容**：自研NPU芯片。',
+    ].join('\n')
+
+    const parsed = parseSynopsis(multiVolumeDoc)
+    expect(parsed.nodes.map(n => [n.label, n.title, n.volume])).toEqual([
+      ['总览', '', undefined],
+      ['第1章', '开端', '第一卷：车库里的硅基火种'],
+      ['第2–25章', '发展', '第一卷：车库里的硅基火种'],
+      ['第26–50章', '学术海啸与算力基建', '第二卷：学术海啸与算力基建'],
+      ['第51–75章', '红海封锁与芯片战争', '第三卷：红海封锁与芯片战争'],
+    ])
+    // 确保第二卷正文没有泄漏进第2-25章
+    expect(synopsisNodeBody(parsed.nodes[2])).toBe('第二到二十五章正文。')
+    expect(synopsisNodeBody(parsed.nodes[3])).toContain('注意力机制论文引爆全球')
+    expect(synopsisNodeBody(parsed.nodes[4])).toContain('自研NPU芯片')
+  })
+})
+
+describe('reorderSynopsisVolumes', () => {
+  it('reorders volumes in markdown without touching preamble or contents', () => {
+    const doc = [
+      '# 全书情节大纲',
+      '宏观总览。',
+      '## 第一卷：起步（第1-20章）',
+      '第一卷内容。',
+      '## 第二卷：发展（第21-40章）',
+      '第二卷内容。',
+      '## 第三卷：高潮（第41-60章）',
+      '第三卷内容。',
+    ].join('\n')
+
+    // 将第三卷 (index 2) 拖到 第一卷前面 (index 0)
+    const reordered = reorderSynopsisVolumes(doc, 2, 0)
+    const parsed = parseSynopsis(reordered)
+    expect(parsed.nodes.map(n => n.volume)).toEqual([
+      undefined,
+      '第三卷：高潮',
+      '第一卷：起步',
+      '第二卷：发展',
+    ])
   })
 })

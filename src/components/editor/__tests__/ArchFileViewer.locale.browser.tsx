@@ -94,6 +94,10 @@ describe('ArchFileViewer locale', () => {
       expect(view.state.doc.toString()).toBe('')
       expect(container.querySelector('[title="保存（Cmd+S）"]')).toBeNull()
     } else if (key === 'premise') {
+      const mdBtn = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('Markdown'))
+      if (mdBtn) {
+        await act(async () => mdBtn.click())
+      }
       const view = EditorView.findFromDOM(container.querySelector('.cm-editor') as HTMLElement)!
       expect(view.state.readOnly).toBe(false)
       await act(async () => view.contentDOM.dispatchEvent(new KeyboardEvent('keydown', {

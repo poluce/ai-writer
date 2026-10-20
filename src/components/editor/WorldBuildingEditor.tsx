@@ -46,12 +46,12 @@ const ARCH_FILES: Array<{
   descEn: string
 }> = [
     { key: 'premise', fileName: 'premise.md', labelZh: '前提概要', labelEn: 'Story premise', iconName: 'target', descZh: '故事钩子 · 核心冲突链 · 主角优势 · 悬念骨架', descEn: 'Story hook · core conflict · protagonist edge · suspense structure' },
-    { key: 'characters', fileName: 'characters.md', labelZh: '人物', labelEn: 'Characters', iconName: 'users', descZh: '角色弧光 · 关系网络 · 矛盾交织', descEn: 'Character arcs · relationships · interlocking tensions' },
     { key: 'worldbuilding', fileName: 'worldbuilding.md', labelZh: '环境', labelEn: 'Setting', iconName: 'globe', descZh: '核心规则 · 社会结构 · 深层危机', descEn: 'Core rules · social structure · underlying crisis' },
+    { key: 'characters', fileName: 'characters.md', labelZh: '人物', labelEn: 'Characters', iconName: 'users', descZh: '角色弧光 · 关系网络 · 矛盾交织', descEn: 'Character arcs · relationships · interlocking tensions' },
   ]
 
 /** 可单块 AI 生成、按顺序解锁的三个步骤。 */
-const GENERATABLE_STEPS: ArchStepKey[] = ['premise', 'characters', 'worldbuilding']
+const GENERATABLE_STEPS: ArchStepKey[] = ['premise', 'worldbuilding', 'characters']
 
 /** 故事架构编辑器 — 三块与小说配置同款设置文档 + 单块 AI 生成（情节大纲已拆为独立页面） */
 export default function WorldBuildingEditor({ projectKey }: { projectKey: string }) {
@@ -312,8 +312,8 @@ export default function WorldBuildingEditor({ projectKey }: { projectKey: string
     if (generatingBlock || isArchRunning || loading) return false
     if (archStatus[key]) return true
     if (key === 'premise') return true
-    if (key === 'characters') return Boolean(archStatus.premise)
-    return Boolean(archStatus.characters)
+    if (key === 'worldbuilding') return Boolean(archStatus.premise)
+    return Boolean(archStatus.worldbuilding)
   }
 
   const sectionProps = (key: 'premise' | 'characters' | 'worldbuilding') => ({
@@ -372,7 +372,7 @@ export default function WorldBuildingEditor({ projectKey }: { projectKey: string
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-3xl mx-auto px-4 py-4">
+        <div className="w-full px-8 py-6">
           {/* 前三块：与小说配置同款设置文档 + 单块 AI 生成 */}
           <SettingDocument>
             {GENERATABLE_STEPS.map(key => {
@@ -389,15 +389,15 @@ export default function WorldBuildingEditor({ projectKey }: { projectKey: string
                   generating={s.generating}
                   generateDisabled={s.disabled}
                   generateTitle={!s.disabled ? undefined : text(
-                    key === 'characters'
+                    key === 'worldbuilding'
                       ? '请先完成「前提概要」生成'
-                      : key === 'worldbuilding'
-                        ? '请先完成「人物」生成'
+                      : key === 'characters'
+                        ? '请先完成「环境」生成'
                         : '正在生成中…',
-                    key === 'characters'
+                    key === 'worldbuilding'
                       ? 'Generate the premise summary first'
-                      : key === 'worldbuilding'
-                        ? 'Generate characters first'
+                      : key === 'characters'
+                        ? 'Generate setting first'
                         : 'Generating…',
                   )}
                   onGenerate={s.generating || s.disabled ? undefined : () => void handleGenerateBlock(key)}
@@ -447,12 +447,16 @@ export default function WorldBuildingEditor({ projectKey }: { projectKey: string
                     placeholder={s.generated
                       ? text('（内容已生成，可直接编辑）', '(Generated — edit directly)')
                       : text(
-                        key === 'characters'
+                        key === 'worldbuilding'
                           ? '点击右上角「AI 生成」或先完成前提概要'
-                          : '点击右上角「AI 生成」生成内容',
-                        key === 'characters'
+                          : key === 'characters'
+                            ? '点击右上角「AI 生成」或先完成环境'
+                            : '点击右上角「AI 生成」生成内容',
+                        key === 'worldbuilding'
                           ? 'Click “AI 生成” above, or generate the premise first'
-                          : 'Click “AI 生成” above to generate content',
+                          : key === 'characters'
+                            ? 'Click “AI 生成” above, or generate setting first'
+                            : 'Click “AI 生成” above to generate content',
                       )}
                     onChange={key === 'characters'
                       ? () => {}

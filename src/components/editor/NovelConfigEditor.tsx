@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Save, Sparkles, Info, RotateCcw } from 'lucide-react'
+import { Save, Info, RotateCcw } from 'lucide-react'
 import { useProjectStore } from '../../stores/project-store'
 import { registerEditorExitSaveHandler } from '../../stores/editor-store'
 import { useLLMStore } from '../../stores/llm-store'
@@ -20,7 +20,6 @@ import { confirm } from '../ui/Confirm'
 import { Input } from '../ui/Input'
 import { NativeSelect } from '../ui/NativeSelect'
 import { toast } from '../ui/Toast'
-import GenerateConfigDialog from '../dialogs/GenerateConfigDialog'
 import { useLocaleStore } from '../../stores/locale-store'
 import { useLayoutStore } from '../../stores/layout-store'
 import {
@@ -52,10 +51,8 @@ function NovelConfigEditorSession({ projectKey }: { projectKey: string }) {
   //    避免 AI 流式生成时 globalLogs 高频更新导致本组件被动重渲染
   const addLog = useWorkflowStore.getState().addLog
   const [saving, setSaving] = useState(false)
-  const [showGenerateConfig, setShowGenerateConfig] = useState(false)
   const text = useLocaleStore(s => s.text)
   const locale = useLocaleStore(s => s.locale)
-  const [generateSession, setGenerateSession] = useState<ReturnType<typeof captureProjectSession>>(null)
 
   // 各区块的独立生成状态
   const [generatingField, setGeneratingField] = useState<GeneratableField | null>(null)
@@ -111,20 +108,6 @@ function NovelConfigEditorSession({ projectKey }: { projectKey: string }) {
       </span>
     </div>
   )
-
-  /** AI 生成配置 — 打开弹框 */
-  const handleAIGenerate = () => {
-    const projectSession = captureProjectSession(currentProject)
-    if (!projectSession || !isProjectSessionPath(projectSession, projectKey)) return
-    const effectiveModelId = useLLMStore.getState().resolveTaskModelId('outline')
-    if (!effectiveModelId) {
-      toast.warning(text('请先在「设置 → AI 生成模型」中配置默认模型', 'Configure an AI model in Settings first.'))
-      useLayoutStore.getState().openSettings('llm')
-      return
-    }
-    setGenerateSession(projectSession)
-    setShowGenerateConfig(true)
-  }
 
   const FIELD_LABELS: Record<GeneratableField, { zhCN: string; enUS: string }> = {
     coreOutline: { zhCN: '核心大纲', enUS: 'Core outline' },
@@ -214,7 +197,7 @@ function NovelConfigEditorSession({ projectKey }: { projectKey: string }) {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="max-w-3xl mx-auto px-8 py-6">
+      <div className="w-full px-8 py-6">
         {/* 头部 */}
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -226,9 +209,6 @@ function NovelConfigEditorSession({ projectKey }: { projectKey: string }) {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ai" onClick={handleAIGenerate}>
-              <Sparkles size={13} /> {text('AI 填充配置', 'Fill with AI')}
-            </Button>
             <Button variant="outline" onClick={handleSave} disabled={saving}>
               <Save size={13} /> {saving ? text('保存中...', 'Saving...') : text('保存', 'Save')}
             </Button>
@@ -523,21 +503,6 @@ function NovelConfigEditorSession({ projectKey }: { projectKey: string }) {
           </SettingDocument>
         </div>
       </div>
-
-      {/* AI 生成配置弹框 */}
-      <GenerateConfigDialog
-        isOpen={showGenerateConfig}
-        onClose={() => {
-          setGenerateSession(null)
-          setShowGenerateConfig(false)
-        }}
-        onGenerated={(parsed) => {
-          const projectSession = generateSession
-          if (!isProjectSessionCurrent(projectSession)) return
-          // 只允许开启对话框时冻结的会话提交生成结果。
-          updateNovelConfig(parsed, projectSession)
-        }}
-      />
     </div>
   )
 }
@@ -555,7 +520,7 @@ function Section({
     <div className="p-4 rounded-xl bg-[var(--color-sidebar)] border border-[var(--color-border)]">
       <div className="flex items-start justify-between mb-3">
         <div className="min-w-0 flex-1">
-          <h3 className="text-sm font-semibold text-[var(--color-text)]">{title}</h3>
+          <h3 className="text-base font-bold text-[var(--color-text)]">{title}</h3>
           {desc && <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{desc}</p>}
         </div>
       </div>

@@ -222,16 +222,15 @@ describe('SynopsisEditor', () => {
     })
   })
 
-  it('renders the whole outline as one document and drives it from the ten-chapter table of contents', async () => {
+  it('renders the whole outline as one document and drives it from the volume table of contents', async () => {
     core = { synopsis: OUTLINE, totalChapters: 100, writingLanguage: 'zh-CN' }
     await renderEditor()
 
-    // 左侧是每 10 章折叠的目录。
+    // 左侧是按分卷组织的活页标签目录。
     const toc = () => container.querySelector('[data-testid="synopsis-toc"]')?.textContent ?? ''
     expect(toc()).toContain('总览')
-    expect(toc()).toContain('第1–10章')
-    expect(toc()).toContain('第21–30章')
-    expect(toc()).not.toContain('第22–100章')
+    expect(toc()).toContain('第一卷')
+    expect(toc()).toContain('第二卷')
 
     // 右侧是整份拼接好的大纲，所有段落都在同一篇文档里。
     const doc = container.querySelector('[data-testid="synopsis-document"]') as HTMLElement
@@ -241,14 +240,16 @@ describe('SynopsisEditor', () => {
     expect(doc.textContent).toContain('本大纲已覆盖至第 20 章')
     expect(doc.querySelectorAll('[data-node-id]')).toHaveLength(4)
 
-    // 展开分组并点击目录项 → 该项成为当前段落（右侧文档随之滚动定位）。
-    await act(async () => page.getByText('第21–30章', { exact: true }).click())
+    // 展开第一卷与第二卷分组并点击目录项 → 该项成为当前段落（右侧文档随之滚动定位）。
+    const tocGroup = page.getByTestId('synopsis-toc')
+    await act(async () => tocGroup.getByText('第一卷', { exact: true }).click())
+    await act(async () => tocGroup.getByText('第二卷', { exact: true }).click())
     expect(toc()).toContain('第22–100章')
-    await act(async () => page.getByText('第21章', { exact: true }).click())
+    await act(async () => tocGroup.getByText('第21章', { exact: true }).click())
     expect(container.querySelector('[aria-current="true"]')?.textContent).toContain('第21章')
 
-    // 再次点击分组标题可折叠回去。
-    await act(async () => page.getByText('第21–30章', { exact: true }).click())
+    // 再次点击分卷标签可折叠回去。
+    await act(async () => tocGroup.getByText('第二卷', { exact: true }).click())
     expect(toc()).not.toContain('第22–100章')
   })
 
@@ -257,7 +258,8 @@ describe('SynopsisEditor', () => {
     container.style.height = '400px'
     await renderEditor()
 
-    await act(async () => page.getByText('第21–30章', { exact: true }).click())
+    const tocGroup = page.getByTestId('synopsis-toc')
+    await act(async () => tocGroup.getByText('第一卷', { exact: true }).click())
     const editor = page.getByRole('textbox', { name: '第21章的大纲正文' })
     await act(async () => editor.fill('林舟破门而入，却发现传承早已被人取走。'))
 
@@ -311,5 +313,25 @@ describe('SynopsisEditor', () => {
     await expect.element(page.getByRole('heading', { name: '全文' })).toBeVisible()
     await expect.element(page.getByRole('textbox', { name: '全文的大纲正文' }))
       .toHaveValue('第一幕：主角失去家园。\n\n第二幕：主角夺回主动权。')
+  })
+
+  it('supports drag resizing the table of contents width and persists to storage', async () => {
+    core = { synopsis: OUTLINE, totalChapters: 100, writingLanguage: 'zh-CN' }
+    await renderEditor()
+
+    const sash = container.querySelector('[role="separator"]') as HTMLElement
+    expect(sash).not.toBeNull()
+
+    const tocPanel = container.querySelector('[data-testid="synopsis-toc"]')?.parentElement as HTMLElement
+    const initialWidth = tocPanel.offsetWidth
+
+    // 模拟拖拽移动 50px
+    await act(async () => {
+      sash.dispatchEvent(new PointerEvent('pointerdown', { clientX: 200, bubbles: true }))
+      window.dispatchEvent(new PointerEvent('pointermove', { clientX: 250, bubbles: true }))
+      window.dispatchEvent(new PointerEvent('pointerup', { clientX: 250, bubbles: true }))
+    })
+
+    expect(tocPanel.offsetWidth).toBe(initialWidth + 50)
   })
 })

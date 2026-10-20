@@ -17,9 +17,9 @@ export const ARCH_FILES: Array<{
   desc: string
 }> = [
     { key: 'premise', label: '前提概要', emoji: '🎯', desc: 'Logline · 核心冲突链 · 金手指定位 · 悬念骨架' },
-    { key: 'characters', label: '人物', emoji: '👥', desc: '角色弧光 · 关系网络 · 矛盾交织' },
     { key: 'worldbuilding', label: '环境', emoji: '🌍', desc: '核心规则 · 阶层断层 · 深层危机' },
     { key: 'synopsis', label: '情节', emoji: '🗺️', desc: '三幕结构 · 拐点节奏 · 伏笔闭环' },
+    { key: 'characters', label: '人物', emoji: '👥', desc: '角色弧光 · 关系网络 · 矛盾交织' },
   ]
 
 /**

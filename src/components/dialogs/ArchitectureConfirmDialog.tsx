@@ -24,8 +24,8 @@ const ARCH_FILES: Array<{
   descEn: string
 }> = [
   { key: 'premise', fileName: 'premise.md', label: '前提概要', labelEn: 'Premise', iconName: 'target', desc: 'Logline、核心冲突、金手指定位', descEn: 'Logline, core conflict, and protagonist advantage' },
-  { key: 'characters', fileName: 'characters.md', label: '人物', labelEn: 'Characters', iconName: 'users', desc: '角色弧光、关系网、矛盾交织', descEn: 'Character arcs, relationships, and conflicts' },
   { key: 'worldbuilding', fileName: 'worldbuilding.md', label: '环境', labelEn: 'World building', iconName: 'globe', desc: '核心规则、阶层断层、深层危机', descEn: 'Core rules, social fault lines, and hidden crises' },
+  { key: 'characters', fileName: 'characters.md', label: '人物', labelEn: 'Characters', iconName: 'users', desc: '角色弧光、关系网、矛盾交织', descEn: 'Character arcs, relationships, and conflicts' },
 ]
 
 function architectureFileActionLabel(

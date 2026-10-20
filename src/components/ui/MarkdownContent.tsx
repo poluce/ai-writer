@@ -54,8 +54,15 @@ function renderLines(lines: string[]): React.ReactNode {
       continue
     }
 
-    // H1 ~ H3 标题
-    if (line.startsWith('### ')) {
+    // H1 ~ H4 标题
+    if (line.startsWith('#### ')) {
+      elements.push(
+        <div key={i} className="font-semibold mt-2 mb-1 text-xs"
+          style={{ color: 'var(--color-text)' }}>
+          {renderInline(line.slice(5))}
+        </div>
+      )
+    } else if (line.startsWith('### ')) {
       elements.push(
         <div key={i} className="font-semibold mt-3 mb-1 text-sm"
           style={{ color: 'var(--color-text)' }}>

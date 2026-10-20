@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Map, AlertTriangle, CheckCircle2, Circle, RefreshCw, FileText, Save, RotateCcw, ChevronDown, ChevronRight } from 'lucide-react'
+import { Map, AlertTriangle, CheckCircle2, Circle, RefreshCw, FileText, Save, RotateCcw, ChevronDown, ChevronRight, Bookmark, GripVertical } from 'lucide-react'
 import { useProjectStore } from '../../stores/project-store'
 import { useWorkflowStore } from '../../stores/workflow-store'
 import { useLocaleStore } from '../../stores/locale-store'
@@ -28,6 +28,7 @@ import {
   groupSynopsisNodes,
   parseSynopsis,
   pickCurrentNodeId,
+  reorderSynopsisVolumes,
   replaceSynopsisNodeBody,
   synopsisNodeBody,
   type ParsedSynopsis,
@@ -41,6 +42,10 @@ import {
 
 /** 续批按钮默认的每批章数上限（可在范围内调整，避免一次请求剩余全部章节）。 */
 const CONTINUATION_BATCH_SPAN = 20
+
+const MIN_TOC_WIDTH = 120
+const MAX_TOC_WIDTH = 500
+const DEFAULT_TOC_WIDTH = 160
 
 /** 情节大纲生成范围默认批量阈值：超过此章数时默认只生成首批。 */
 const SCOPE_WARNING_THRESHOLD = 20
@@ -91,6 +96,56 @@ export default function SynopsisEditor({ projectKey }: { projectKey: string }) {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
+  const [draggingVolumeIndex, setDraggingVolumeIndex] = useState<number | null>(null)
+  const [dragOverVolumeIndex, setDragOverVolumeIndex] = useState<number | null>(null)
+
+  const [tocWidth, setTocWidth] = useState(() => {
+    try {
+      const saved = Number(localStorage.getItem('synopsis_toc_width'))
+      if (Number.isFinite(saved) && saved >= MIN_TOC_WIDTH && saved <= MAX_TOC_WIDTH) {
+        return saved
+      }
+    } catch {
+      // ignore
+    }
+    return DEFAULT_TOC_WIDTH
+  })
+  const tocWidthRef = useRef(tocWidth)
+  tocWidthRef.current = tocWidth
+  const [isResizingToc, setIsResizingToc] = useState(false)
+
+  const handleSashPointerDown = useCallback((e: React.PointerEvent) => {
+    e.preventDefault()
+    setIsResizingToc(true)
+    const startX = e.clientX
+    const startWidth = tocWidthRef.current
+
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+
+    const onPointerMove = (ev: PointerEvent) => {
+      const delta = ev.clientX - startX
+      const nextWidth = Math.min(Math.max(startWidth + delta, MIN_TOC_WIDTH), MAX_TOC_WIDTH)
+      tocWidthRef.current = nextWidth
+      setTocWidth(nextWidth)
+    }
+
+    const onPointerUp = () => {
+      setIsResizingToc(false)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      window.removeEventListener('pointermove', onPointerMove)
+      window.removeEventListener('pointerup', onPointerUp)
+      try {
+        localStorage.setItem('synopsis_toc_width', String(tocWidthRef.current))
+      } catch {
+        // ignore
+      }
+    }
+
+    window.addEventListener('pointermove', onPointerMove)
+    window.addEventListener('pointerup', onPointerUp)
+  }, [])
   const lastCompletedRunRef = useRef<string | null>(null)
   const requestGate = useRef(new LatestRequestGate())
   /** 右侧整份文档的滚动容器与各段落元素（左侧目录滚动定位用）。 */
@@ -456,6 +511,53 @@ export default function SynopsisEditor({ projectKey }: { projectKey: string }) {
     }
   }
 
+  /** 拖拽调整分卷顺序：重新排序 Markdown 文本中的分卷大块并保存 */
+  const handleDropVolume = async (targetVolumeIndex: number) => {
+    if (draggingVolumeIndex === null || draggingVolumeIndex === targetVolumeIndex) {
+      setDraggingVolumeIndex(null)
+      setDragOverVolumeIndex(null)
+      return
+    }
+    const projectSession = captureProjectSession(currentProject)
+    if (!projectMatches || !projectSession || !isProjectSessionPath(projectSession, projectKey)) return
+    if (!isProjectSessionCurrent(projectSession)) return
+
+    const current = outlineText
+    const reordered = reorderSynopsisVolumes(current, draggingVolumeIndex, targetVolumeIndex)
+    setDraggingVolumeIndex(null)
+    setDragOverVolumeIndex(null)
+    if (reordered === current) return
+
+    setSaving(true)
+    try {
+      requireIpcSuccess(
+        await ipc.invokeWithProjectSession(
+          projectSession,
+          'db:project-core-update',
+          { synopsis: reordered },
+          projectSession.projectPath,
+        ),
+        text('调整分卷顺序', 'Reorder volumes'),
+      )
+      if (!isProjectSessionCurrent(projectSession)) return
+      setOutlineText(reordered)
+      setParsed(parseSynopsis(reordered))
+      const tabId = createProjectArchTabId(projectKey, SYNOPSIS_FILE_PATH)
+      const store = useEditorStore.getState()
+      if (store.tabs.some(tab => tab.id === tabId)) {
+        store.syncTabContent(tabId, reordered)
+        store.markTabSaved(tabId, reordered)
+      }
+      toast.success(text('已调整分卷顺序', 'Volume order updated'))
+      await loadStatus()
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error)
+      toast.error(text(`调序失败：${detail}`, `Failed to reorder: ${detail}`))
+    } finally {
+      if (isProjectSessionCurrent(projectSession)) setSaving(false)
+    }
+  }
+
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* 顶部工具栏：生成入口与视图切换 */}
@@ -640,21 +742,19 @@ export default function SynopsisEditor({ projectKey }: { projectKey: string }) {
             )}
           </span>
         )}
-        {totalChapters > SCOPE_WARNING_THRESHOLD && (
-          <span style={{ color: 'var(--color-text-muted)' }}>
-            {text(
-              '长篇建议分批：一次请求过多章节容易触发输出长度上限，已确认区间不会被覆盖。',
-              'For long books, generate in batches: too many chapters at once can hit the output length limit, and confirmed ranges are never overwritten.',
-            )}
-          </span>
-        )}
       </div>
 
       {/* 主区域：左侧章节区间列表 + 右侧大纲正文 */}
       <div className="flex-1 flex overflow-hidden">
         <div
-          className="flex flex-col flex-shrink-0 w-[220px] border-r overflow-hidden"
-          style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-sidebar)' }}
+          className="flex flex-col flex-shrink-0 border-r overflow-hidden"
+          style={{
+            width: tocWidth,
+            minWidth: MIN_TOC_WIDTH,
+            maxWidth: MAX_TOC_WIDTH,
+            borderColor: 'var(--color-border)',
+            backgroundColor: 'var(--color-sidebar)',
+          }}
         >
           {parsed.nodes.length === 0 ? (
             <div className="flex flex-col items-center justify-center flex-1 gap-3 opacity-40 p-4">
@@ -672,26 +772,86 @@ export default function SynopsisEditor({ projectKey }: { projectKey: string }) {
                 const open = isGroupOpen(group.id)
                 const groupDirty = group.nodes.some(node => drafts[node.id] !== undefined)
                 const holdsSelection = group.id === selectedGroupId
+                const isDragging = draggingVolumeIndex === group.volumeIndex
+                const isDragOver = dragOverVolumeIndex === group.volumeIndex && draggingVolumeIndex !== group.volumeIndex
+
                 return (
-                  <div key={group.id} className="mb-0.5">
-                    {/* 分组标题：每 10 章一段，点击折叠/展开 */}
+                  <div
+                    key={group.id}
+                    className={`mb-1 transition-all rounded ${
+                      isDragOver ? 'border-t-2 border-[var(--color-accent)]' : ''
+                    } ${isDragging ? 'opacity-40' : ''}`}
+                    onDragOver={group.draggable ? (e) => { e.preventDefault(); setDragOverVolumeIndex(group.volumeIndex!) } : undefined}
+                    onDragLeave={group.draggable ? () => { setDragOverVolumeIndex(null) } : undefined}
+                    onDrop={group.draggable ? (e) => { e.preventDefault(); void handleDropVolume(group.volumeIndex!) } : undefined}
+                  >
+                    {/* 活页笔记本分卷标签卡片头 */}
                     <div
-                      className={`flex items-center gap-1 rounded-md px-2 py-1.5 text-xs cursor-pointer select-none transition-colors ${
+                      draggable={group.draggable}
+                      onDragStart={group.draggable ? (e) => {
+                        e.dataTransfer.setData('text/plain', String(group.volumeIndex))
+                        setDraggingVolumeIndex(group.volumeIndex!)
+                      } : undefined}
+                      onDragEnd={() => {
+                        setDraggingVolumeIndex(null)
+                        setDragOverVolumeIndex(null)
+                      }}
+                      className={`group relative flex items-center gap-1 rounded px-1.5 py-1 text-xs select-none transition-colors ${
+                        group.draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
+                      } ${
                         holdsSelection && !open
                           ? 'bg-[var(--color-active)] text-[var(--color-text)]'
-                          : 'hover:bg-[var(--color-hover)]'
+                          : 'hover:bg-[var(--color-hover)] text-[var(--color-text-secondary)]'
+                      } ${
+                        group.volumeName ? 'border-l-2' : ''
                       }`}
-                      style={{ color: holdsSelection && !open ? undefined : 'var(--color-text-secondary)' }}
+                      style={{
+                        borderLeftColor: group.volumeName ? 'var(--color-accent)' : undefined,
+                        color: holdsSelection && !open ? undefined : 'var(--color-text-secondary)',
+                      }}
                       onClick={() => toggleGroup(group.id)}
-                      title={text(
-                        `${group.label}（${group.nodes.length} 段）`,
-                        `${group.label} (${group.nodes.length} sections)`,
-                      )}
+                      title={group.volumeName
+                        ? `${group.label}${group.startChapter ? ` (${group.startChapter}–${group.endChapter}章)` : ''}`
+                        : `${group.label}（${group.nodes.length} 段）`
+                      }
                     >
-                      {open
-                        ? <ChevronDown size={12} className="flex-shrink-0" style={{ color: 'var(--color-text-muted)' }} />
-                        : <ChevronRight size={12} className="flex-shrink-0" style={{ color: 'var(--color-text-muted)' }} />}
-                      <span className="font-medium truncate flex-1">{group.label}</span>
+                      {group.draggable && (
+                        <span className="opacity-0 group-hover:opacity-60 transition-opacity -ml-0.5 shrink-0 cursor-grab">
+                          <GripVertical size={11} />
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        className="flex items-center justify-center p-0.5 shrink-0"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          toggleGroup(group.id)
+                        }}
+                      >
+                        {open
+                          ? <ChevronDown size={12} className="flex-shrink-0" style={{ color: 'var(--color-text-muted)' }} />
+                          : <ChevronRight size={12} className="flex-shrink-0" style={{ color: 'var(--color-text-muted)' }} />}
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1">
+                          <span className="font-semibold truncate text-xs text-[var(--color-text)]">
+                            {group.volumeName
+                              ? group.volumeName.split(/[:：]/)[0]
+                              : group.label
+                            }
+                          </span>
+                          {group.startChapter && (
+                            <span className="font-mono text-[0.65rem] shrink-0" style={{ color: 'var(--color-text-muted)' }}>
+                              {group.startChapter}–{group.endChapter}
+                            </span>
+                          )}
+                        </div>
+                        {group.volumeName && group.volumeName.includes('：') && (
+                          <div className="text-[0.68rem] truncate opacity-70 leading-tight" style={{ color: 'var(--color-text-muted)' }}>
+                            {group.volumeName.split(/[:：]/).slice(1).join('：')}
+                          </div>
+                        )}
+                      </div>
                       {groupDirty && (
                         <span
                           aria-hidden="true"
@@ -699,7 +859,7 @@ export default function SynopsisEditor({ projectKey }: { projectKey: string }) {
                           style={{ backgroundColor: 'var(--color-accent)' }}
                         />
                       )}
-                      <span className="text-[0.7rem] flex-shrink-0" style={{ color: 'var(--color-text-muted)' }}>
+                      <span className="text-[0.65rem] px-1 py-0.2 rounded bg-[var(--color-hover)] flex-shrink-0" style={{ color: 'var(--color-text-muted)' }}>
                         {group.nodes.length}
                       </span>
                     </div>
@@ -712,16 +872,16 @@ export default function SynopsisEditor({ projectKey }: { projectKey: string }) {
                           return (
                             <div
                               key={node.id}
-                              className={`relative ml-2 px-2.5 py-2 rounded-md text-xs cursor-pointer mb-0.5 transition-colors ${
+                              className={`relative ml-2 px-2 py-1.5 rounded-md text-xs cursor-pointer mb-0.5 transition-colors ${
                                 active
-                                  ? 'bg-[var(--color-active)] text-[var(--color-text)]'
+                                  ? 'bg-[var(--color-active)] text-[var(--color-text)] font-medium'
                                   : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-hover)]'
                               }`}
                               onClick={() => scrollToNode(node.id)}
                               aria-current={active ? 'true' : undefined}
-                              title={node.title || node.label}
+                              title={node.title ? `${node.label}：${node.title}` : node.label}
                             >
-                              <div className="flex items-center gap-1.5">
+                              <div className="flex items-center gap-1">
                                 <span className="font-mono text-[0.7rem] opacity-40 flex-shrink-0">
                                   {node.startChapter ?? '—'}
                                 </span>
@@ -734,14 +894,11 @@ export default function SynopsisEditor({ projectKey }: { projectKey: string }) {
                                   />
                                 )}
                               </div>
-                              <div className="flex items-center gap-1 mt-0.5">
-                                {node.title && <span className="truncate flex-1 opacity-80">{node.title}</span>}
-                                {node.volume && (
-                                  <span className="text-[0.7rem] px-1 py-0.5 rounded bg-[var(--color-hover)] flex-shrink-0">
-                                    {node.volume}
-                                  </span>
-                                )}
-                              </div>
+                              {node.title && (
+                                <div className="text-[0.68rem] truncate opacity-75 mt-0.5 pl-3.5" style={{ color: 'var(--color-text-muted)' }}>
+                                  {node.title}
+                                </div>
+                              )}
                             </div>
                           )
                         })}
@@ -752,6 +909,22 @@ export default function SynopsisEditor({ projectKey }: { projectKey: string }) {
               })}
             </div>
           )}
+        </div>
+
+        {/* 目录宽度拖拽分割条 */}
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label={text('调整目录宽度', 'Resize table of contents')}
+          className={`relative flex-shrink-0 w-1 cursor-col-resize select-none transition-colors ${
+            isResizingToc ? 'bg-[var(--color-accent)]' : 'hover:bg-[var(--color-accent)] hover:opacity-75'
+          }`}
+          style={{
+            backgroundColor: isResizingToc ? 'var(--color-accent)' : undefined,
+          }}
+          onPointerDown={handleSashPointerDown}
+        >
+          <div className="absolute inset-y-0 -left-1.5 -right-1.5 z-20" />
         </div>
 
         {/* 右侧：整份大纲拼接成一篇文档，左侧目录负责滚动定位 */}
@@ -773,80 +946,93 @@ export default function SynopsisEditor({ projectKey }: { projectKey: string }) {
               />
             </div>
           ) : (
-            <div className="max-w-3xl mx-auto px-6 py-5">
+            <div className="w-full px-6 py-5">
               <h1 className="text-base font-bold mb-4" style={{ color: 'var(--color-text)' }}>
                 {parsed.title || text('情节', 'Plot')}
               </h1>
 
               <div className="space-y-1">
-                {parsed.nodes.map(node => {
+                {parsed.nodes.map((node, nodeIdx) => {
                   const body = drafts[node.id] ?? synopsisNodeBody(node)
                   const dirty = drafts[node.id] !== undefined
                   const active = node.id === selectedNodeId
+                  const isNewVolume = Boolean(node.volume && (nodeIdx === 0 || parsed.nodes[nodeIdx - 1]?.volume !== node.volume))
                   return (
-                    <section
-                      key={node.id}
-                      ref={element => { sectionRefs.current[node.id] = element }}
-                      data-node-id={node.id}
-                      className="rounded-md px-3 py-2 transition-colors"
-                      style={{ backgroundColor: active ? 'var(--color-hover)' : 'transparent' }}
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <h2 className="text-sm font-bold truncate" style={{ color: 'var(--color-text)' }}>
-                          {node.label}
-                          {node.title ? `：${node.title}` : ''}
-                        </h2>
-                        {node.volume && (
-                          <span
-                            className="text-[0.7rem] px-1 py-0.5 rounded flex-shrink-0"
-                            style={{ backgroundColor: 'var(--color-active)', color: 'var(--color-text-muted)' }}
-                          >
+                    <div key={node.id}>
+                      {isNewVolume && (
+                        <div
+                          className="flex items-center gap-2 pt-6 pb-2 mb-2 border-b"
+                          style={{ borderColor: 'var(--color-border)' }}
+                        >
+                          <Bookmark size={14} style={{ color: 'var(--color-accent)' }} />
+                          <span className="text-sm font-bold" style={{ color: 'var(--color-text)' }}>
                             {node.volume}
                           </span>
-                        )}
-                        {dirty && (
-                          <span
-                            aria-hidden="true"
-                            className="h-1.5 w-1.5 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: 'var(--color-accent)' }}
-                          />
-                        )}
-                        <span className="flex-1" />
-                        {dirty && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="gap-1"
-                              disabled={saving}
-                              onClick={() => handleDiscardNodes([node.id])}
-                              aria-label={text(`放弃「${node.label}」的修改`, `Discard changes to ${node.label}`)}
-                              title={text(`放弃「${node.label}」的修改`, `Discard changes to ${node.label}`)}
+                        </div>
+                      )}
+                      <section
+                        ref={element => { sectionRefs.current[node.id] = element }}
+                        data-node-id={node.id}
+                        className="rounded-md px-3 py-2 transition-colors"
+                        style={{ backgroundColor: active ? 'var(--color-hover)' : 'transparent' }}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <h2 className="text-sm font-bold truncate" style={{ color: 'var(--color-text)' }}>
+                            {node.label}
+                            {node.title ? `：${node.title}` : ''}
+                          </h2>
+                          {node.volume && (
+                            <span
+                              className="text-[0.7rem] px-1 py-0.5 rounded flex-shrink-0"
+                              style={{ backgroundColor: 'var(--color-active)', color: 'var(--color-text-muted)' }}
                             >
-                              <RotateCcw size={11} />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-1"
-                              disabled={saving}
-                              onClick={() => void saveNodes([node.id])}
-                              aria-label={text(`保存「${node.label}」`, `Save ${node.label}`)}
-                              title={text(`保存「${node.label}」`, `Save ${node.label}`)}
-                            >
-                              <Save size={11} />
-                              {text('保存', 'Save')}
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                      <AutoGrowTextarea
-                        value={body}
-                        onChange={value => handleNodeBodyChange(node, value)}
-                        ariaLabel={text(`${node.label}的大纲正文`, `Outline body of ${node.label}`)}
-                        placeholder={text('写下这个章节区间的结构拐点…', 'Describe the turning points for this chapter range…')}
-                      />
-                    </section>
+                              {node.volume.split(/[:：]/)[0]}
+                            </span>
+                          )}
+                          {dirty && (
+                            <span
+                              aria-hidden="true"
+                              className="h-1.5 w-1.5 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: 'var(--color-accent)' }}
+                            />
+                          )}
+                          <span className="flex-1" />
+                          {dirty && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="gap-1"
+                                disabled={saving}
+                                onClick={() => handleDiscardNodes([node.id])}
+                                aria-label={text(`放弃「${node.label}」的修改`, `Discard changes to ${node.label}`)}
+                                title={text(`放弃「${node.label}」的修改`, `Discard changes to ${node.label}`)}
+                              >
+                                <RotateCcw size={11} />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="gap-1"
+                                disabled={saving}
+                                onClick={() => void saveNodes([node.id])}
+                                aria-label={text(`保存「${node.label}」`, `Save ${node.label}`)}
+                                title={text(`保存「${node.label}」`, `Save ${node.label}`)}
+                              >
+                                <Save size={11} />
+                                {text('保存', 'Save')}
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                        <AutoGrowTextarea
+                          value={body}
+                          onChange={value => handleNodeBodyChange(node, value)}
+                          ariaLabel={text(`${node.label}的大纲正文`, `Outline body of ${node.label}`)}
+                          placeholder={text('写下这个章节区间的结构拐点…', 'Describe the turning points for this chapter range…')}
+                        />
+                      </section>
+                    </div>
                   )
                 })}
               </div>
@@ -867,7 +1053,7 @@ export default function SynopsisEditor({ projectKey }: { projectKey: string }) {
   )
 }
 
-/** 右侧文档里的段落正文：随内容自动增高，看起来像连续正文而不是输入框。 */
+/** 右侧文档里的段落正文：随内容自动增高，完全展现内容，绝不压缩高度或出现内部滚动条。 */
 function AutoGrowTextarea({
   value,
   onChange,
@@ -886,12 +1072,24 @@ function AutoGrowTextarea({
     if (!element) return
     const resize = () => {
       element.style.height = 'auto'
-      element.style.height = `${element.scrollHeight}px`
+      element.style.height = `${Math.max(element.scrollHeight, 24)}px`
     }
     resize()
-    // 面板宽度变化会改变折行，需要重新量一次高度。
+
+    let prevWidth = element.offsetWidth
+    const observer = new ResizeObserver(() => {
+      if (element.offsetWidth !== prevWidth) {
+        prevWidth = element.offsetWidth
+        requestAnimationFrame(resize)
+      }
+    })
+    observer.observe(element)
+
     window.addEventListener('resize', resize)
-    return () => window.removeEventListener('resize', resize)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', resize)
+    }
   }, [value])
 
   return (
@@ -902,8 +1100,14 @@ function AutoGrowTextarea({
       onChange={event => onChange(event.target.value)}
       aria-label={ariaLabel}
       placeholder={placeholder}
-      className="w-full resize-none bg-transparent outline-none rounded-sm px-1 py-0.5 text-xs leading-relaxed font-mono"
-      style={{ color: 'var(--color-text-secondary)', minHeight: 24 }}
+      className="w-full resize-none bg-transparent outline-none rounded-sm px-1 py-0.5 text-xs leading-relaxed font-mono overflow-hidden"
+      style={{
+        color: 'var(--color-text-secondary)',
+        minHeight: 24,
+        overflow: 'hidden',
+        overflowY: 'hidden',
+        overflowX: 'hidden',
+      }}
       onFocus={event => { event.currentTarget.style.backgroundColor = 'var(--color-panel)' }}
       onBlur={event => { event.currentTarget.style.backgroundColor = 'transparent' }}
     />
