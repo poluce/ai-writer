@@ -124,7 +124,7 @@ describe('Windows cloud build workflow contract', () => {
     expect(workflow).not.toMatch(/^\s{2}(?:push|pull_request|schedule):/m)
     expect(workflow).toMatch(/^permissions:\r?\n\s{2}contents:\s*read\s*$/m)
     expect(workflow).toContain('runs-on: windows-2022')
-    expect(workflow).toContain('timeout-minutes: 60')
+    expect(workflow).toContain('timeout-minutes: 120')
     expect(workflow).toMatch(/concurrency:\r?\n\s+group:\s+.+\r?\n\s+cancel-in-progress:\s+false/)
 
     const actionUses = [...workflow.matchAll(/^\s*uses:\s*([^\s#]+)/gm)].map(match => match[1])
