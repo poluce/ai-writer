@@ -29,7 +29,7 @@ export function validateEvidence(evidence, context) {
   assert.ok(platforms.length > 0, 'at least one qualified platform is required');
   assert.equal(new Set(platforms).size, platforms.length, 'duplicate qualified platforms');
   assert.equal(artifacts.length, plan.qualifications.length + 1);
-  assert.equal(new Set(artifacts.map(a => a.id)).size, 4, 'duplicate artifact IDs');
+  assert.equal(new Set(artifacts.map(a => a.id)).size, artifacts.length, 'duplicate artifact IDs');
   const expected = plan.qualifications.map(q => {
     assert.ok(positiveId(q.runId) && positiveId(q.attempt) && positiveId(q.artifactId));
     assert.equal(q.headSha, plan.expectedSha);

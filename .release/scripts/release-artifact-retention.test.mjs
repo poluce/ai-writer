@@ -2,10 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { cleanup, validateEvidence, PROMOTION_WORKFLOW } from './release-artifact-retention.mjs';
 
-function fixture() {
+function fixture(platforms = ['macos-arm64', 'macos-x64', 'windows']) {
   const sha = 'a'.repeat(40), zip = 'b'.repeat(64);
   const context = { repository: 'example/desktop', expectedSha: sha, tag: 'v1.0.0', runId: 40, attempt: 1, verifiedId: 400, verifiedDigest: zip };
-  const qualifications = ['macos-arm64', 'macos-x64', 'windows'].map((platform, i) => ({
+  const qualifications = platforms.map((platform, i) => ({
     platform, runId: i + 10, attempt: 1, artifactId: i + 100,
     artifactName: `qualified-${platform}`, headSha: sha,
   }));
@@ -58,6 +58,13 @@ test('successful publication deletes only the four exact IDs after complete pref
   assert.equal(result.deletedBytes, 600);
   assert.ok(f.live.has(999));
 });
+test('windows-only qualification keeps the exact artifact set', async () => {
+  const f = fixture(['windows']);
+  const result = await cleanup(f.evidence, f.context, f.api, 40);
+  assert.deepEqual(f.deletes, [100, 400]);
+  assert.equal(result.deletedBytes, 400);
+});
+
 test('missing publication receipt blocks deletion', () => refused(f => { f.evidence.receipt.publicationVerified = false; }));
 test('draft releases retain artifacts', () => refused(f => { f.release.draft = true; }));
 test('changed tag target blocks deletion', () => refused(f => { f.tag.sha = 'f'.repeat(40); }));
