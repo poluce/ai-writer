@@ -87,7 +87,7 @@ describe('applyDraftExcerptReplace', () => {
     })
     expect(result.ok).toBe(false)
     if (result.ok) throw new Error('expected failure')
-    expect(result.error).toContain('不止一次')
+    expect(result.error).toContain('匹配不唯一')
     expect(invokeWithProjectSession).not.toHaveBeenCalled()
   })
 
@@ -119,7 +119,7 @@ describe('applyDraftExcerptReplace', () => {
     })
     expect(result.ok).toBe(false)
     if (result.ok) throw new Error('expected failure')
-    expect(result.error).toContain('找不到')
+    expect(result.error).toContain('未在草稿中找到')
     expect(useEditorStore.getState().tabs[0]?.content).toBe('顾舟停在潮门口。风很大。')
     expect(invokeWithProjectSession).not.toHaveBeenCalled()
   })

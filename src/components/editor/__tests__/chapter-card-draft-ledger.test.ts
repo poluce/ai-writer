@@ -287,9 +287,9 @@ describe('chapter-card draft ledger', () => {
       'function currentProjectSessionForPath(projectKey: string): ProjectSessionContext | null',
     )
     expect(componentSource).toContain(
-      'sameProjectSessionContext(dataProjectSessionRef.current, projectSession)',
+      'sameProjectSessionContext(dataProjectSessionRef.current, activeSession)',
     )
-    expect(componentSource).toContain('loadRemote: () => loadDirectoryBlueprints(projectKey, projectSession)')
+    expect(componentSource).toContain('loadRemote: () => loadDirectoryBlueprints(projectKey, activeSession)')
     expect(componentSource).toContain('await saveChapterBlueprint(selected, projectKey, projectSession)')
     expect(componentSource).toContain('await saveAllBlueprints(saveInput, projectKey, projectSession)')
     expect(componentSource).toContain(
@@ -329,7 +329,7 @@ describe('chapter-card draft ledger', () => {
     const source = normalizeSourceEol(
       readFileSync('src/components/editor/ChapterCardEditor.tsx', 'utf8'),
     )
-    const handlerStart = source.indexOf('const handleClearLegacyImportedText = async () => {')
+    const handlerStart = source.indexOf('async function handleClearLegacyImportedText(): Promise<void> {')
     const handlerEnd = source.indexOf('\n  if (loading)', handlerStart)
     const recoveryHandler = source.slice(handlerStart, handlerEnd)
 
@@ -337,10 +337,10 @@ describe('chapter-card draft ledger', () => {
       'const canRecoverLegacyImportedText = projectDataReady\n    && legacyImportedTextRecoveryChapter !== null',
     )
     expect(source).toContain(
-      'const recoveryChapter = error instanceof AuthoritativeChapterSequenceError',
+      'recoveryChapterFromSequenceError(error)',
     )
     expect(source).toContain('error.sequence.firstGapChapterNumber')
-    expect(source).toContain('setLegacyImportedTextRecoveryChapter(recoveryChapter)')
+    expect(source).toContain('setLegacyImportedTextRecoveryChapter(recoveryChapterFromSequenceError(error))')
     expect(source).toContain('setNextWriteChapter(null)')
     expect(source).toContain('{canRecoverLegacyImportedText && (')
     expect(source).toContain('onClick={handleClearLegacyImportedText}')

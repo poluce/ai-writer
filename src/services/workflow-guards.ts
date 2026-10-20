@@ -134,7 +134,7 @@ export async function guardDirectoryGeneration(
       message: localize(
         uiLocale,
         '「前提概要」尚未生成，它是章节蓝图的基础。\n\n请先在「故事架构」中点击「AI 生成架构」，生成前提概要后再来生成章节蓝图。',
-        'The premise summary has not been generated, and chapter blueprints depend on it.\n\nGenerate the premise summary in Story Architecture before generating chapter blueprints.',
+        'The story premise has not been generated, and chapter blueprints depend on it.\n\nGenerate the story premise in Story Architecture before generating chapter blueprints.',
       ),
       action: 'open-world-building',
     }

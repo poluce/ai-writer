@@ -2,6 +2,27 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { StepCallbacks, WorkflowContext } from '../../../../stores/workflow-store'
 import { useLLMStore } from '../../../../stores/llm-store'
+
+/** 生成运行时按模型档案解析默认模型；仅有 defaultModelId 会被判为未配置。 */
+const TEST_GENERATION_MODEL = {
+  id: 'legacy-repair-model',
+  name: 'Legacy repair model',
+  provider: 'custom',
+  protocol: 'openai',
+  modelName: 'legacy-repair-model',
+  apiKey: '',
+  baseUrl: 'https://example.invalid/v1',
+  temperature: 0,
+  maxTokens: 8192,
+  purposes: ['generation'],
+  capabilities: {
+    contextWindowTokens: 32000,
+    maxOutputTokens: 8192,
+    reasoning: false,
+    structuredOutput: true,
+    usage: false,
+  },
+} as ReturnType<typeof useLLMStore.getState>['models'][number]
 import { useProjectStore } from '../../../../stores/project-store'
 import { FinalizeChapterCommand } from '../finalize-chapter.command'
 
@@ -162,6 +183,7 @@ describe('FinalizeChapterCommand blueprint character fallback', () => {
 
     let completionIndex = 0
     useLLMStore.setState({
+      models: [{ ...TEST_GENERATION_MODEL, id: 'test-model', name: 'Test model', modelName: 'test-model' }],
       defaultModelId: 'test-model',
       generateStream: vi.fn(async (_messages, streamCallbacks) => {
         completionIndex += 1

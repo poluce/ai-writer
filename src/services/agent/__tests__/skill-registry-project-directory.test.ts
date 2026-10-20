@@ -87,7 +87,7 @@ describe('project skill catalog loading', () => {
     expect(skillRegistry.getById('project:scene-craft')).toMatchObject({
       source: 'project',
       content: '每个场景围绕一次有代价的选择展开。',
-      projectSession: expect.objectContaining({ leaseId: 'lease-1' }),
+      projectSession: expect.objectContaining({ projectId: 'project-1' }),
       metadata: { name: 'scene-craft', description: '场景塑造' },
     })
   })

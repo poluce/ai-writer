@@ -7,6 +7,27 @@ import type { CharacterRosterEntry, CharacterRosterSnapshot } from '../../../sha
 import { migrateLegacyCharacterRoster } from '../architecture-workflow'
 
 const projectPath = 'C:\\novels\\legacy-roster'
+
+/** 生成运行时按模型档案解析默认模型；仅有 defaultModelId 会被判为未配置。 */
+const TEST_GENERATION_MODEL = {
+  id: 'legacy-repair-model',
+  name: 'Legacy repair model',
+  provider: 'custom',
+  protocol: 'openai',
+  modelName: 'legacy-repair-model',
+  apiKey: '',
+  baseUrl: 'https://example.invalid/v1',
+  temperature: 0,
+  maxTokens: 8192,
+  purposes: ['generation'],
+  capabilities: {
+    contextWindowTokens: 32000,
+    maxOutputTokens: 8192,
+    reasoning: false,
+    structuredOutput: true,
+    usage: false,
+  },
+} as ReturnType<typeof useLLMStore.getState>['models'][number]
 const projectSession = {
   projectId: 'legacy-project',
   projectPath,
@@ -131,7 +152,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   useProjectStore.setState({ currentProject: activeProject() as never })
   useWorkflowStore.setState({ activeRuns: [], history: [], globalLogs: [] })
-  useLLMStore.setState({ defaultModelId: 'legacy-repair-model' })
+  useLLMStore.setState({ models: [TEST_GENERATION_MODEL], defaultModelId: 'legacy-repair-model' })
 })
 
 afterEach(() => {
@@ -155,7 +176,7 @@ describe('legacy character roster repair public workflow seam', () => {
       callbacks.onDone?.(modelResponse, undefined, 'stop')
       return Promise.resolve('legacy-repair-request')
     })
-    useLLMStore.setState({ generateStream })
+    useLLMStore.setState({ models: [TEST_GENERATION_MODEL], generateStream })
 
     const invoke = vi.fn(async (channel: string) => {
       switch (channel) {
@@ -212,7 +233,7 @@ describe('legacy character roster repair public workflow seam', () => {
       callbacks.onDone?.(output, undefined, 'stop')
       return Promise.resolve(`legacy-json-${generateStream.mock.calls.length}`)
     })
-    useLLMStore.setState({ generateStream })
+    useLLMStore.setState({ models: [TEST_GENERATION_MODEL], generateStream })
     const invoke = vi.fn(async (channel: string) => {
       if (channel === 'db:character-roster-read') return pendingLegacyRoster
       if (channel === 'db:character-roster-commit') {
@@ -249,7 +270,7 @@ describe('legacy character roster repair public workflow seam', () => {
       callbacks.onDone?.('{"schemaVersion":1,"entries":[', undefined, 'length')
       return Promise.resolve('legacy-truncated')
     })
-    useLLMStore.setState({ generateStream })
+    useLLMStore.setState({ models: [TEST_GENERATION_MODEL], generateStream })
     const invoke = vi.fn(async (channel: string) => {
       if (channel === 'db:character-roster-read') return pendingLegacyRoster
       throw new Error(`Unexpected IPC channel: ${channel}`)
@@ -273,7 +294,7 @@ describe('legacy character roster repair public workflow seam', () => {
       legacyMarkdown: existingCards.legacyMarkdown,
     }
     const generateStream = vi.fn()
-    useLLMStore.setState({ generateStream })
+    useLLMStore.setState({ models: [TEST_GENERATION_MODEL], generateStream })
     const invoke = vi.fn(async (channel: string) => {
       if (channel === 'db:character-roster-read') return existingCards
       if (channel === 'db:character-roster-commit') {
@@ -307,7 +328,7 @@ describe('legacy character roster repair public workflow seam', () => {
       finishGeneration = () => callbacks.onDone?.(response, undefined, 'stop')
       return Promise.resolve('legacy-switch')
     })
-    useLLMStore.setState({ generateStream })
+    useLLMStore.setState({ models: [TEST_GENERATION_MODEL], generateStream })
     const invoke = vi.fn(async (channel: string) => {
       if (channel === 'db:character-roster-read') return pendingLegacyRoster
       throw new Error(`Unexpected IPC channel: ${channel}`)
@@ -337,7 +358,7 @@ describe('legacy character roster repair public workflow seam', () => {
       finishGeneration = () => callbacks.onDone?.(JSON.stringify({ schemaVersion: 1, entries: repairedEntries }), undefined, 'stop')
       return Promise.resolve('legacy-cancel')
     })
-    useLLMStore.setState({ generateStream })
+    useLLMStore.setState({ models: [TEST_GENERATION_MODEL], generateStream })
     const invoke = vi.fn(async (channel: string) => {
       if (channel === 'db:character-roster-read') return pendingLegacyRoster
       throw new Error(`Unexpected IPC channel: ${channel}`)
@@ -363,7 +384,7 @@ describe('legacy character roster repair public workflow seam', () => {
       callbacks.onDone?.('{"schemaVersion":1,"entries":[]}', undefined, 'stop')
       return Promise.resolve('legacy-semantic-invalid')
     })
-    useLLMStore.setState({ generateStream })
+    useLLMStore.setState({ models: [TEST_GENERATION_MODEL], generateStream })
     const invoke = vi.fn(async (channel: string) => {
       if (channel === 'db:character-roster-read') return pendingLegacyRoster
       if (channel === 'db:character-roster-commit') return { success: false, error: '角色名单不能为空' }
