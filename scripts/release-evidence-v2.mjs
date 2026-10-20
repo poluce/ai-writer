@@ -18,6 +18,9 @@ import { canonicalPnpmLockfileSha256 } from './canonical-pnpm-lockfile-hash.mjs'
 const scriptPath = fileURLToPath(import.meta.url)
 const repositoryRoot = path.resolve(path.dirname(scriptPath), '..')
 
+/** 单条证据命令的超时上限：与发布门禁最长作业时间（120 分钟）一致。 */
+export const MAX_EVIDENCE_COMMAND_TIMEOUT_MS = 120 * 60 * 1000
+
 const MACOS_QUALIFICATION_ENTITIES = Object.freeze({
   'macos-arm64': {
     architecture: 'arm64',
@@ -432,7 +435,7 @@ function commandTimeoutMilliseconds() {
   if (configured === undefined) return 15 * 60 * 1000
   assert(/^\d+$/.test(configured), 'Release evidence command timeout must be numeric')
   const timeout = Number(configured)
-  assert(timeout > 0 && timeout <= 60 * 60 * 1000, 'Release evidence command timeout must be between 1ms and 1 hour')
+  assert(timeout > 0 && timeout <= MAX_EVIDENCE_COMMAND_TIMEOUT_MS, 'Release evidence command timeout must be between 1ms and 2 hours')
   return timeout
 }
 
@@ -492,7 +495,7 @@ function validateCommandLedger(ledger, platform, requireEndedAt) {
     assert(startedAt >= previousTime && endedAt >= startedAt, `Release evidence command order is invalid: ${record.step}`)
     assert(record.exitCode === 0 && record.timedOut === false, `Release evidence command did not succeed: ${record.step}`)
     assert(nonEmptyString(record.command?.executable) && Number.isInteger(record.command?.argumentCount) && record.command.argumentCount >= 0, `Release evidence command identity is invalid: ${record.step}`)
-    assert(Number.isInteger(record.timeoutMs) && record.timeoutMs > 0 && record.timeoutMs <= 60 * 60 * 1000, `Release evidence command timeout is invalid: ${record.step}`)
+    assert(Number.isInteger(record.timeoutMs) && record.timeoutMs > 0 && record.timeoutMs <= MAX_EVIDENCE_COMMAND_TIMEOUT_MS, `Release evidence command timeout is invalid: ${record.step}`)
     previousTime = endedAt
   }
   if (requireEndedAt) {
