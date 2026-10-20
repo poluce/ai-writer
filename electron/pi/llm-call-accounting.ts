@@ -28,7 +28,7 @@ function logAgentCall(record: AgentCallRecord, startedAt: number, success: boole
       errorMessage: record.errorMessage,
     })
   } catch (error) {
-    console.warn('[AI Novel Writer] Agent LLM call statistics were not recorded.', error)
+    console.warn('[AI Writer] Agent LLM call statistics were not recorded.', error)
   }
 }
 

@@ -4,7 +4,7 @@ import { ArrowRight } from 'lucide-react'
 import { Button } from '../components/ui/Button'
 
 const meta = {
-  title: 'AI Novel Writer UI/Button',
+  title: 'AI Writer UI/Button',
   component: Button,
   tags: ['autodocs'],
   argTypes: {

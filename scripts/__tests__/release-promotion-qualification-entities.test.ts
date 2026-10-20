@@ -43,13 +43,13 @@ describe('desktop promotion qualification entities', () => {
     })
     expect(validated.releaseAssets.filter(asset => asset.platform === 'macos-arm64').map(asset => asset.name))
       .toEqual([
-        'ai-novel-writer-mac-arm64-{version}-installer.dmg',
-        'ai-novel-writer-mac-arm64-{version}-installer.dmg.sha256',
+        'ai-writer-mac-arm64-{version}-installer.dmg',
+        'ai-writer-mac-arm64-{version}-installer.dmg.sha256',
       ])
     expect(validated.releaseAssets.filter(asset => asset.platform === 'macos-x64').map(asset => asset.name))
       .toEqual([
-        'ai-novel-writer-mac-x64-{version}-installer.dmg',
-        'ai-novel-writer-mac-x64-{version}-installer.dmg.sha256',
+        'ai-writer-mac-x64-{version}-installer.dmg',
+        'ai-writer-mac-x64-{version}-installer.dmg.sha256',
       ])
   })
 

@@ -260,7 +260,8 @@ function Test-AiNovelVisibleMainWindow {
   if ([string]::IsNullOrWhiteSpace($title)) {
     return $false
   }
-  return $title.IndexOf('AI小说作家', [System.StringComparison]::OrdinalIgnoreCase) -ge 0 `
+  return $title.IndexOf('AI Writer', [System.StringComparison]::OrdinalIgnoreCase) -ge 0 `
+    -or $title.IndexOf('AI小说作家', [System.StringComparison]::OrdinalIgnoreCase) -ge 0 `
     -or $title.IndexOf('AI Novel Writer', [System.StringComparison]::OrdinalIgnoreCase) -ge 0
 }
 
@@ -851,7 +852,7 @@ if ($LoadProbeLibrary) {
 if ([string]::IsNullOrWhiteSpace($ExePath)) {
   $root = Split-Path -Parent $PSScriptRoot
   $packageJson = Get-Content -LiteralPath (Join-Path $root 'package.json') -Raw | ConvertFrom-Json
-  $ExePath = Join-Path $root ("release\{0}\win-unpacked\AI小说作家.exe" -f [string]$packageJson.version)
+  $ExePath = Join-Path $root ("release\{0}\win-unpacked\AI Writer.exe" -f [string]$packageJson.version)
 }
 
 $resolvedExe = (Resolve-Path -LiteralPath $ExePath).Path
@@ -880,9 +881,9 @@ $appProcessStartTimeTicks = @{}
 $targetNames = @(
   [System.IO.Path]::GetFileName($resolvedExe),
   [System.IO.Path]::GetFileNameWithoutExtension($resolvedExe),
-  'AI小说作家.exe',
-  'AI小说作家',
-  'ai-novel-writer'
+  'AI Writer.exe',
+  'AI Writer',
+  'ai-writer'
   $RelatedTargetNames
 )
 $baselineWindowIdentities = $WindowBaselineIdentities

@@ -69,7 +69,7 @@ describe('cloud Windows build manifest', () => {
   it('finalizes the runtime-qualified package from its pre-build evidence contract', () => {
     const releaseDir = fixture()
     const evidenceRoot = fixture()
-    const installerName = `ai-novel-writer-setup-${packageMetadata.version}.exe`
+    const installerName = `ai-writer-setup-${packageMetadata.version}.exe`
     const installer = Buffer.from('verified-nsis-installer')
     const blockmap = Buffer.from('{"version":"2","files":[]}')
     const latest = Buffer.from(`version: ${packageMetadata.version}\n`)
@@ -94,7 +94,7 @@ describe('cloud Windows build manifest', () => {
       'init',
       '--platform', 'windows',
       '--evidence-root', evidenceRoot,
-      '--repository', 'poluce/AI-Novel-Writer',
+      '--repository', 'poluce/ai-writer',
       '--commit', commit,
       '--run-id', '101',
       '--run-attempt', '1',

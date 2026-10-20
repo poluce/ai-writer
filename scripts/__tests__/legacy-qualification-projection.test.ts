@@ -8,7 +8,7 @@ import { projectLegacyQualificationBundle } from '../../.release/scripts/project
 const roots: string[] = []
 const repositoryRoot = path.resolve(import.meta.dirname, '..', '..')
 const version = (JSON.parse(fs.readFileSync(path.join(repositoryRoot, 'package.json'), 'utf8')) as { version: string }).version
-const dmg = `ai-novel-writer-mac-arm64-${version}-installer.dmg`
+const dmg = `ai-writer-mac-arm64-${version}-installer.dmg`
 const checksum = `${dmg}.sha256`
 const acceptance = [
   'qualification/acceptance/dmg-mount.json',
@@ -47,7 +47,7 @@ function fixture() {
   write(path.join(sourceRoot, 'latest-mac.yml'), 'not a release asset')
   write(path.join(sourceRoot, `${dmg}.blockmap`), 'not a release asset')
   write(path.join(sourceRoot, 'builder-debug.yml'), 'not release evidence')
-  write(path.join(sourceRoot, 'mac-arm64', 'AI Novel Writer.app', 'Contents', 'Frameworks', 'Electron Framework.framework', 'Electron Framework'), 'unpacked intermediary')
+  write(path.join(sourceRoot, 'mac-arm64', 'AI Writer.app', 'Contents', 'Frameworks', 'Electron Framework.framework', 'Electron Framework'), 'unpacked intermediary')
   write(profilePath, JSON.stringify({
     platforms: {
       'macos-arm64': {
@@ -56,8 +56,8 @@ function fixture() {
       },
     },
     releaseAssets: [
-      { name: 'ai-novel-writer-mac-arm64-{version}-installer.dmg', platform: 'macos-arm64', role: 'installer' },
-      { name: 'ai-novel-writer-mac-arm64-{version}-installer.dmg.sha256', platform: 'macos-arm64', role: 'checksum' },
+      { name: 'ai-writer-mac-arm64-{version}-installer.dmg', platform: 'macos-arm64', role: 'installer' },
+      { name: 'ai-writer-mac-arm64-{version}-installer.dmg.sha256', platform: 'macos-arm64', role: 'checksum' },
     ],
   }))
   const manifest = {

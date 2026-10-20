@@ -1149,7 +1149,7 @@ function Test-AiNovelGateNsisInstallerImage {
       return $false
     }
     $fileName = [System.IO.Path]::GetFileName($ImagePath)
-    return $fileName -match '^ai-novel-writer-setup-\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?\.exe$'
+    return $fileName -match '^(?:ai-novel-writer|ai-writer)-setup-\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?\.exe$'
   }
   catch {
     return $false
@@ -1293,10 +1293,10 @@ function Test-AiNovelGateNsisUninstallerImage {
     return $false
   }
   try {
-    return [string]::Equals(
-      [System.IO.Path]::GetFileName([System.IO.Path]::GetFullPath($ImagePath)),
-      'Uninstall AI小说作家.exe',
-      [System.StringComparison]::OrdinalIgnoreCase
+    $fileName = [System.IO.Path]::GetFileName([System.IO.Path]::GetFullPath($ImagePath))
+    return (
+      [string]::Equals($fileName, 'Uninstall AI Writer.exe', [System.StringComparison]::OrdinalIgnoreCase) -or
+      [string]::Equals($fileName, 'Uninstall AI小说作家.exe', [System.StringComparison]::OrdinalIgnoreCase)
     )
   }
   catch {
@@ -1464,19 +1464,28 @@ function Test-AiNovelGateKnownNsisCmdProcessCheckCommand {
   }
   try {
     $expectedFindPath = Join-Path ([System.IO.Path]::GetDirectoryName($CmdImagePath)) 'find.exe'
-    $prefix = ' /C tasklist /FI "USERNAME eq %USERNAME%" /FI "IMAGENAME eq AI小说作家.exe" /FO CSV | "'
-    $suffix = '" "AI小说作家.exe"'
-    if (
-      -not $arguments.StartsWith($prefix, [System.StringComparison]::Ordinal) -or
-      -not $arguments.EndsWith($suffix, [System.StringComparison]::Ordinal)
-    ) {
+    $matchedPrefix = $null
+    $matchedSuffix = $null
+    foreach ($productExeName in @('AI Writer.exe', 'AI小说作家.exe')) {
+      $candidatePrefix = ' /C tasklist /FI "USERNAME eq %USERNAME%" /FI "IMAGENAME eq ' + $productExeName + '" /FO CSV | "'
+      $candidateSuffix = '" "' + $productExeName + '"'
+      if (
+        $arguments.StartsWith($candidatePrefix, [System.StringComparison]::Ordinal) -and
+        $arguments.EndsWith($candidateSuffix, [System.StringComparison]::Ordinal)
+      ) {
+        $matchedPrefix = $candidatePrefix
+        $matchedSuffix = $candidateSuffix
+        break
+      }
+    }
+    if ($null -eq $matchedPrefix) {
       return $false
     }
-    $findPathLength = $arguments.Length - $prefix.Length - $suffix.Length
+    $findPathLength = $arguments.Length - $matchedPrefix.Length - $matchedSuffix.Length
     if ($findPathLength -le 0) {
       return $false
     }
-    $findPath = $arguments.Substring($prefix.Length, $findPathLength)
+    $findPath = $arguments.Substring($matchedPrefix.Length, $findPathLength)
     return Test-AiNovelGateSameBoundSystemExecutablePath -Left $findPath -Right $expectedFindPath
   }
   catch {
@@ -1495,7 +1504,10 @@ function Test-AiNovelGateKnownNsisFindNoMatchCommand {
     -ImagePath $FindImagePath
   return (
     $null -ne $arguments -and
-    [string]::Equals($arguments, '  "AI小说作家.exe"', [System.StringComparison]::Ordinal)
+    (
+      [string]::Equals($arguments, '  "AI Writer.exe"', [System.StringComparison]::Ordinal) -or
+      [string]::Equals($arguments, '  "AI小说作家.exe"', [System.StringComparison]::Ordinal)
+    )
   )
 }
 
@@ -2249,7 +2261,7 @@ function New-AiNovelGateLegacyBridgeState {
   $installer = $bridge.expectedInstaller
   if (
     $null -eq $installer -or
-    [string]$installer.name -notmatch '^ai-novel-writer-setup-\d+\.\d+\.\d+\.exe$' -or
+    [string]$installer.name -notmatch '^(?:ai-novel-writer|ai-writer)-setup-\d+\.\d+\.\d+\.exe$' -or
     [long]$installer.size -le 0 -or
     [string]$installer.sha256 -notmatch '^[a-fA-F0-9]{64}$' -or
     [string]::IsNullOrWhiteSpace($env:LOCALAPPDATA) -or
@@ -2257,8 +2269,15 @@ function New-AiNovelGateLegacyBridgeState {
   ) {
     throw 'Release gate rejected incomplete legacy bridge installer metadata.'
   }
-  $expectedPath = [System.IO.Path]::GetFullPath((Join-Path $env:LOCALAPPDATA (Join-Path 'ai-novel-writer-updater\pending' ([string]$installer.name))))
-  if (-not (Test-AiNovelGateSameAbsolutePath -Left ([string]$bridge.expectedPendingInstallerPath) -Right $expectedPath)) {
+  $expectedPath = $null
+  foreach ($cacheDirName in @('ai-writer-updater', 'ai-novel-writer-updater')) {
+    $candidatePath = [System.IO.Path]::GetFullPath((Join-Path $env:LOCALAPPDATA (Join-Path (Join-Path $cacheDirName 'pending') ([string]$installer.name))))
+    if (Test-AiNovelGateSameAbsolutePath -Left ([string]$bridge.expectedPendingInstallerPath) -Right $candidatePath) {
+      $expectedPath = $candidatePath
+      break
+    }
+  }
+  if ($null -eq $expectedPath) {
     throw 'Release gate rejected a legacy bridge pending installer path outside LOCALAPPDATA.'
   }
   return [pscustomobject]@{
@@ -2502,16 +2521,23 @@ function Test-AiNovelGateNativeUpdaterPendingInstallerIdentity {
   }
   try {
     $installerName = [System.IO.Path]::GetFileName([string]$InstallerIdentity.executablePath)
-    if ($installerName -notmatch '^ai-novel-writer-setup-\d+\.\d+\.\d+\.exe$') {
+    if ($installerName -notmatch '^(?:ai-novel-writer|ai-writer)-setup-\d+\.\d+\.\d+\.exe$') {
       return $false
     }
-    $expectedPendingInstallerPath = [System.IO.Path]::GetFullPath((Join-Path `
-      $env:LOCALAPPDATA `
-      (Join-Path 'ai-novel-writer-updater\pending' $installerName)))
-    return (
-      (Test-AiNovelGateSameAbsolutePath `
+    $pendingMatches = $false
+    foreach ($cacheDirName in @('ai-writer-updater', 'ai-novel-writer-updater')) {
+      $expectedPendingInstallerPath = [System.IO.Path]::GetFullPath((Join-Path `
+        $env:LOCALAPPDATA `
+        (Join-Path (Join-Path $cacheDirName 'pending') $installerName)))
+      if (Test-AiNovelGateSameAbsolutePath `
         -Left ([string]$InstallerIdentity.executablePath) `
-        -Right $expectedPendingInstallerPath) -and
+        -Right $expectedPendingInstallerPath) {
+        $pendingMatches = $true
+        break
+      }
+    }
+    return (
+      $pendingMatches -and
       (Test-AiNovelGateCapturedParentIdentity `
         -ChildIdentity $InstallerIdentity `
         -ParentIdentity $OldApplicationIdentity)
@@ -3028,6 +3054,9 @@ $trackedProcessStartTimeTicks = @{}
 $trackedProcessIdentities = @{}
 $trackedNames = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 foreach ($name in @(
+  'AI Writer.exe',
+  'AI Writer',
+  'ai-writer',
   'AI小说作家.exe',
   'AI小说作家',
   'ai-novel-writer',

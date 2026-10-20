@@ -28,7 +28,7 @@ function sha512(content: string | Buffer) {
 }
 
 function createFormalWindowsRelease(root: string, options: { sha512?: string; releaseType?: string } = {}) {
-  const installerName = 'AI小说作家-0.2.6-setup.exe'
+  const installerName = 'AI Writer-0.2.6-setup.exe'
   const installer = Buffer.from('known-good-nsis-installer')
   const installerSha512 = options.sha512 ?? sha512(installer)
 
@@ -55,7 +55,7 @@ function createFormalWindowsRelease(root: string, options: { sha512?: string; re
     [
       'provider: github',
       'owner: poluce',
-      'repo: AI-Novel-Writer',
+      'repo: ai-writer',
       `releaseType: ${options.releaseType ?? 'release'}`,
       'channel: latest',
       'tagNamePrefix: v',
@@ -83,7 +83,7 @@ describe('Windows update release artifact verification', () => {
       version: '0.2.6',
       provider: 'github',
       owner: 'poluce',
-      repo: 'AI-Novel-Writer',
+      repo: 'ai-writer',
       releaseType: 'release',
     })
   })
@@ -123,11 +123,11 @@ describe('Windows update release artifact verification', () => {
     const windowsPublish = Array.isArray(config.win?.publish) ? config.win.publish[0] : config.win?.publish
 
     expect(windowsTargets).toEqual([{ target: 'nsis', arch: ['x64'] }])
-    expect(config.nsis?.artifactName).toBe('ai-novel-writer-setup-${version}.${ext}')
+    expect(config.nsis?.artifactName).toBe('ai-writer-setup-${version}.${ext}')
     expect(windowsPublish).toMatchObject({
       provider: 'github',
       owner: 'poluce',
-      repo: 'AI-Novel-Writer',
+      repo: 'ai-writer',
       releaseType: 'release',
       publishAutoUpdate: true,
       tagNamePrefix: 'v',

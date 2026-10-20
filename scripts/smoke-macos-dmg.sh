@@ -24,7 +24,7 @@ if [[ "$runner_machine_arch" != "$expected_runner_machine_arch" ]]; then
   echo "macOS runner architecture mismatch: expected $expected_runner_machine_arch for $target_arch, got $runner_machine_arch" >&2
   exit 1
 fi
-dmg="$release_directory/ai-novel-writer-mac-$target_arch-$version-installer.dmg"
+dmg="$release_directory/ai-writer-mac-$target_arch-$version-installer.dmg"
 qualification_directory="$release_directory/qualification"
 evidence_root="${AI_NOVEL_RELEASE_EVIDENCE_ROOT:-$qualification_directory}"
 acceptance_directory="$evidence_root/acceptance"
@@ -130,7 +130,7 @@ if [[ -z "$app" ]]; then
   echo 'Mounted DMG does not contain an application bundle.' >&2
   exit 1
 fi
-executable="$app/Contents/MacOS/AI小说作家"
+executable="$app/Contents/MacOS/AI Writer"
 if [[ ! -x "$executable" ]]; then
   echo "Missing executable in mounted application: $executable" >&2
   exit 1

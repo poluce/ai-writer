@@ -29,7 +29,7 @@ afterEach(() => {
 describe('packaged release vector smoke', () => {
   it('requires both the release-smoke environment flag and its one-time CLI token', () => {
     const token = 'a'.repeat(32)
-    const args = ['AI小说作家.exe', `--ai-novel-release-smoke=${token}`]
+    const args = ['AI Writer.exe', `--ai-novel-release-smoke=${token}`]
 
     expect(parseReleaseVectorSmokeInvocation(args, releaseSmokeEnv())).toBeUndefined()
     expect(parseReleaseVectorSmokeInvocation(args, releaseSmokeEnv({ AI_NOVEL_RELEASE_SMOKE: '1' }))).toBeUndefined()

@@ -5,41 +5,39 @@
 </div>
 
 <p align="center">
-  <img src="docs/assets/readme/ai-novel-writer-logo-transparent.png" width="104" height="104" alt="AI Novel Writer Logo" />
+  <img src="docs/assets/readme/ai-writer-logo-transparent.png" width="104" height="104" alt="AI Writer Logo" />
 </p>
 
-<h1 align="center">AI Novel Writer / AI 小说作家</h1>
+<h1 align="center">AI Writer</h1>
 
 <p align="center">
   A local-first desktop workspace for long-form fiction. It organizes “premise → characters → worldbuilding → chapter blueprints → draft → review → revision → final” as a traceable writing workflow. You configure the model; your project material stays on your computer.
 </p>
 
 <p align="center">
-  <a href="https://github.com/poluce/AI-Novel-Writer/releases"><img src="https://badgen.net/github/tag/poluce/AI-Novel-Writer?label=release" alt="Release" /></a>
-  <a href="https://github.com/poluce/AI-Novel-Writer/blob/master/LICENSE"><img src="https://badgen.net/badge/license/GPL-3.0/blue" alt="GPL-3.0 License" /></a>
-  <a href="https://github.com/poluce/AI-Novel-Writer/stargazers"><img src="https://badgen.net/github/stars/poluce/AI-Novel-Writer" alt="GitHub stars" /></a>
+  <a href="https://github.com/poluce/ai-writer/releases"><img src="https://badgen.net/github/tag/poluce/ai-writer?label=release" alt="Release" /></a>
+  <a href="https://github.com/poluce/ai-writer/blob/main/LICENSE"><img src="https://badgen.net/badge/license/GPL-3.0/blue" alt="GPL-3.0 License" /></a>
+  <a href="https://github.com/poluce/ai-writer/stargazers"><img src="https://badgen.net/github/stars/poluce/ai-writer" alt="GitHub stars" /></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/poluce/AI-Novel-Writer/releases/latest">Download desktop (Windows / macOS)</a>
+  <a href="https://github.com/poluce/ai-writer/releases/latest">Download desktop (Windows / macOS)</a>
 </p>
 
 <p align="center">
-  <img src="docs/assets/readme/hero-en-v2.png" alt="AI Novel Writer — a local-first desktop workspace for long-form fiction" width="100%" />
+  <img src="docs/assets/readme/hero-en-v2.png" alt="AI Writer — a local-first desktop workspace for long-form fiction" width="100%" />
 </p>
 
-> ## v1.1.0
+> ## v0.1.0 — first release of the independent line
 >
-> - **Source-grounded continuity material** — Author-provided character information, model-derived progress, and legacy data with unknown provenance are no longer presented as the same kind of fact; later writing prefers finalized source prose with an identifiable origin.
-> - **Layered chapter materials** — The current task, future plans, finalized history, and candidate drafts are shown separately, with adjacent source paragraphs retained when they carry causality, negation, or item transfers across sentences.
-> - **Reliable candidate context** — Review-draft batches continue from the exact saved draft versions and prose in the current run and label them as unfinalized.
-> - **Goal-by-goal review** — Each chapter event shows whether it is completed, unmet, or needs verification, alongside source excerpts, so preparation or a promise is not automatically treated as completion.
-> - **Author-controlled goal revision** — Unverified items are not passed checks, and unmet or unverified chapter goals enter revision only when the author explicitly includes them, reducing rework caused by model misjudgments.
-> - **Update, export, and notification fixes** — Update checks no longer repeat during a download, split Markdown exports use independent directories, and workflow-completion notifications keep the full title.
+> This repository derives from upstream GPL-3.0 code and now ships independently: the app identity (appId, install directory, update channel) no longer collides with older builds, and versioning restarts at 0.1.0.
 >
-> These changes reduce the risk that a mistaken summary or outdated state affects later chapters, but they do not replace author review or guarantee drift-free prose or perfect target-length compliance.
+> - **Assistant delegation and queueing** — The project assistant can delegate work to the architecture and chapter-blueprint assistants; their sessions are reused and queued when busy instead of spawning fragmented conversations.
+> - **Instant tool-confirmation feedback** — Approving a tool flips its card to running immediately and routes the confirmation back to the conversation that owns the card.
+> - **Notebook-style outline volumes** — Volume tabs can be reordered by dragging, the table-of-contents width is draggable and remembered, and later volumes no longer merge into the preceding chapter range.
+> - **Structured setting cards** — Premise, setting, and characters render as section cards that stay editable in place; story architecture follows premise → setting → plot → characters.
 
-### Features retained from 1.0.0
+### Current capabilities
 
 - Writing Skills can be installed independently and used for planning, drafting, review, or polishing.
 - The story map shows main and side-story progress and links to the supporting chapter.
@@ -48,11 +46,11 @@
 - The Chinese long-form workflow connects blueprints, drafts, reviews, revisions, and final chapters.
 - Windows and macOS users can view and start the update intended for their computer.
 
-The 1.0.0 fixes for multi-draft saves, stale requests, source recovery, exports, and installation checks remain included; see the [bilingual 1.1.0 notes](.release/notes/v1.1.0.md) for each change. Official installers are published through [GitHub Releases](https://github.com/poluce/AI-Novel-Writer/releases/latest).
+See the [bilingual 0.1.0 notes](.release/notes/v0.1.0.md) for each change. Official installers are published through this repository's [GitHub Releases](https://github.com/poluce/ai-writer/releases/latest).
 
-> ## v0.9.0 feature baseline (historical release)
+> ## Feature baseline inherited from upstream (historical)
 >
-> [v0.9.0](https://github.com/poluce/AI-Novel-Writer/releases/tag/v0.9.0) makes continuity, chapter control, and review-driven revision more complete for long-form fiction while continuing to ship Windows, macOS Apple Silicon, and macOS Intel installers:
+> Earlier upstream builds established continuity, chapter control, and review-driven revision for long-form fiction, shipping Windows, macOS Apple Silicon, and macOS Intel installers:
 >
 > - **Long-form continuity context** — Explicit author settings, the premise, characters, worldbuilding, outline, blueprints, and finalized facts carry into later writing to reduce forgotten setup and contradictions.
 > - **Foreshadowing and narrative threads** — See suggested hooks, planting and payoff chapters, active threads, and overdue reminders in one place, making long-running suspense easier to plan and resolve.
@@ -62,13 +60,13 @@ The 1.0.0 fixes for multi-draft saves, stale requests, source recovery, exports,
 > - **Smoother model setup** — Advanced model settings expose supported reasoning effort and temperature controls. After entering an API key and Base URL, fetch the model list directly without first saving an incomplete configuration.
 > - **More precise failure messages** — Content restrictions, provider failures, and duplicate jobs report a more specific cause, and incomplete output is not saved as successful project content.
 >
-> One Release uses the exact seven-asset contract: `ai-novel-writer-setup-0.9.0.exe`, `ai-novel-writer-setup-0.9.0.exe.blockmap`, `latest.yml`, `ai-novel-writer-mac-arm64-0.9.0-installer.dmg`, `ai-novel-writer-mac-arm64-0.9.0-installer.dmg.sha256`, `ai-novel-writer-mac-x64-0.9.0-installer.dmg`, and `ai-novel-writer-mac-x64-0.9.0-installer.dmg.sha256`. The Windows installer is not code-signed; both macOS installers use ad-hoc signing, have no Developer ID signature, and are not notarized, so their platform security prompts may require manual confirmation on first launch.
+> One Release uses the exact seven-asset contract: `ai-writer-setup-0.9.0.exe`, `ai-writer-setup-0.9.0.exe.blockmap`, `latest.yml`, `ai-writer-mac-arm64-0.9.0-installer.dmg`, `ai-writer-mac-arm64-0.9.0-installer.dmg.sha256`, `ai-writer-mac-x64-0.9.0-installer.dmg`, and `ai-writer-mac-x64-0.9.0-installer.dmg.sha256`. The Windows installer is not code-signed; both macOS installers use ad-hoc signing, have no Developer ID signature, and are not notarized, so their platform security prompts may require manual confirmation on first launch.
 
 
 
 ## What this product is
 
-AI Novel Writer is not a hosted model service or an online fiction platform. It is the orchestration layer for a writing project: it keeps project state, organizes prompts and context, manages blueprints and draft versions, and connects generation, review, and revision.
+AI Writer is not a hosted model service or an online fiction platform. It is the orchestration layer for a writing project: it keeps project state, organizes prompts and context, manages blueprints and draft versions, and connects generation, review, and revision.
 
 You may connect local or cloud models; the app does not provide or host model quotas. For long-form work, it assembles the current chapter blueprint, relevant character material, worldbuilding, history summaries, and optional style references instead of putting an entire novel into one chat transcript.
 
@@ -84,7 +82,7 @@ flowchart LR
 
 ## Interface preview
 
-![AI Novel Writer main window showing the project structure, welcome page, AI writing assistant and task panel](docs/assets/readme/ui-en.png)
+![AI Writer main window showing the project structure, welcome page, AI writing assistant and task panel](docs/assets/readme/ui-en.png)
 
 ## Core capabilities
 
@@ -151,10 +149,10 @@ The app does not provide model accounts, cloud generation, or operational-messag
 Formal releases use a Windows NSIS installer:
 
 ```text
-ai-novel-writer-setup-<version>.exe
+ai-writer-setup-<version>.exe
 ```
 
-1. Download formal installers only from [GitHub Releases](https://github.com/poluce/AI-Novel-Writer/releases/latest).
+1. Download formal installers only from [GitHub Releases](https://github.com/poluce/ai-writer/releases/latest).
 2. The installer updates the application and should not delete novel projects, character cards, or existing settings. Back up important work before any upgrade.
 3. After installation, use **Check for updates** on the welcome page. The app also performs at most one successful silent check per local day after startup. A discovered update is announced first and downloads only after the user chooses **Download update**; when the download finishes, the app offers **Restart and update / Later**.
 4. Older portable ZIP builds cannot obtain their first updater automatically. Install a formal installer manually once; new portable ZIP releases are no longer maintained.
@@ -163,11 +161,11 @@ The installer is not code-signed at present. Windows may show publisher or reput
 
 ### macOS (Apple Silicon and Intel)
 
-Download the installer matching your Mac architecture from [GitHub Releases](https://github.com/poluce/AI-Novel-Writer/releases/latest):
+Download the installer matching your Mac architecture from [GitHub Releases](https://github.com/poluce/ai-writer/releases/latest):
 
 ```text
-ai-novel-writer-mac-arm64-<version>-installer.dmg
-ai-novel-writer-mac-x64-<version>-installer.dmg
+ai-writer-mac-arm64-<version>-installer.dmg
+ai-writer-mac-x64-<version>-installer.dmg
 ```
 
 1. `arm64` supports Apple Silicon Macs (M1, M2, M3, M4, and later); `x64` supports Intel Macs.

@@ -38,14 +38,14 @@ describe('release dependency contract', () => {
     const macConfig = builder.slice(builder.indexOf('"mac":'), builder.indexOf('"win":'))
     expect(macConfig).toContain('"identity": "-"')
     expect(macConfig).toContain('"hardenedRuntime": false')
-    const macArtifactTemplate = 'ai-novel-writer-mac-${arch}-${version}-installer.${ext}'
+    const macArtifactTemplate = 'ai-writer-mac-${arch}-${version}-installer.${ext}'
     expect(builder).toContain(macArtifactTemplate)
     const resolveMacArtifactName = (architecture: 'arm64' | 'x64') => macArtifactTemplate
       .replace('${arch}', architecture)
       .replace('${version}', '0.0.0')
       .replace('${ext}', 'dmg')
-    expect(resolveMacArtifactName('arm64')).toBe('ai-novel-writer-mac-arm64-0.0.0-installer.dmg')
-    expect(resolveMacArtifactName('x64')).toBe('ai-novel-writer-mac-x64-0.0.0-installer.dmg')
+    expect(resolveMacArtifactName('arm64')).toBe('ai-writer-mac-arm64-0.0.0-installer.dmg')
+    expect(resolveMacArtifactName('x64')).toBe('ai-writer-mac-x64-0.0.0-installer.dmg')
     expect(builder).toContain('node_modules/@lancedb/lancedb/**/*')
     expect(builder).toContain('node_modules/@lancedb/lancedb-darwin-*/**/*')
     expect(builder).toContain('node_modules/@lancedb/lancedb-win32-x64-msvc/**/*')
@@ -203,7 +203,7 @@ describe('release dependency contract', () => {
 
     expect(
       createHash('sha256').update(releaseMonitor).digest('hex'),
-    ).toBe('663969e64b6a937e9106a6ea01ff265bed16b6e5ac5fa6973b474c5037050085')
+    ).toBe('430c623298923ceebab5d11df94e8e5b6fb2bb0e3c6c00f4de9d64625c6bf7b1')
   })
 
   it('blocks direct Windows artifact builds outside the release gate', () => {

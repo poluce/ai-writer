@@ -22,7 +22,7 @@ $script:aiNovelUpgradeDataFixtureScript = Join-Path $PSScriptRoot 'upgrade-data-
 $script:aiNovelElectronNodeRunner = Join-Path $root 'node_modules\electron\dist\electron.exe'
 $packageJson = Get-Content -LiteralPath (Join-Path $root 'package.json') -Raw | ConvertFrom-Json
 if ([string]::IsNullOrWhiteSpace($InstallerPath)) {
-  $InstallerPath = Join-Path $root ("release\{0}\ai-novel-writer-setup-{0}.exe" -f [string]$packageJson.version)
+  $InstallerPath = Join-Path $root ("release\{0}\ai-writer-setup-{0}.exe" -f [string]$packageJson.version)
 }
 
 $resolvedInstaller = (Resolve-Path -LiteralPath $InstallerPath).Path
@@ -40,7 +40,7 @@ $velaHome = Join-Path $smokeRoot 'vela-home'
 $globalConfig = Join-Path $velaHome 'config.json'
 $recentProjects = Join-Path $velaHome 'recent-projects.json'
 $upgradeFixtureRoot = Join-Path $smokeRoot 'user-projects\upgrade-preservation-fixture'
-$uninstaller = Join-Path $installRoot 'Uninstall AI小说作家.exe'
+$uninstaller = Join-Path $installRoot 'Uninstall AI Writer.exe'
 $lastWindowSnapshot = @()
 $observedProcessIds = [System.Collections.Generic.HashSet[int]]::new()
 $observedProcessStartTimeTicks = @{}
@@ -48,6 +48,9 @@ $roundTargetNames = [System.Collections.Generic.List[string]]::new()
 foreach ($name in @(
   [System.IO.Path]::GetFileName($resolvedInstaller),
   [System.IO.Path]::GetFileNameWithoutExtension($resolvedInstaller),
+  'AI Writer.exe',
+  'AI Writer',
+  'ai-writer',
   'AI小说作家.exe',
   'AI小说作家',
   'ai-novel-writer'
@@ -466,7 +469,7 @@ function Invoke-AiNovelPackagedOfficialHomepageSmoke {
       $null -ne $result.trustedIntent -and
       $result.trustedIntent.channel -eq 'official-homepage:open' -and
       $result.trustedIntent.requestArgumentCount -eq 0 -and
-      $result.trustedIntent.url -eq 'https://github.com/poluce/AI-Novel-Writer' -and
+      $result.trustedIntent.url -eq 'https://github.com/poluce/ai-writer' -and
       $result.trustedIntent.success -eq $true -and
       $result.trustedIntent.shellOpenExternalCalls -eq 1 -and
       $null -ne $result.failedOpenExternal -and
@@ -818,7 +821,7 @@ try {
   Install-Silently $resolvedInstaller
 $currentInstallCompleted = $true
 
-  $exePath = Join-Path $installRoot 'AI小说作家.exe'
+  $exePath = Join-Path $installRoot 'AI Writer.exe'
   if (-not (Test-Path -LiteralPath $exePath)) {
     throw "Installed application is missing: $exePath"
   }
@@ -949,7 +952,7 @@ finally {
         -Operation 'Uninstaller'
       $uninstallReceipt = Assert-AiNovelUninstallPostcondition `
         -InstallRoot $installRoot `
-        -InstalledExecutable (Join-Path $installRoot 'AI小说作家.exe')
+        -InstalledExecutable (Join-Path $installRoot 'AI Writer.exe')
       Write-AiNovelAcceptanceReceipt `
         -Directory $script:aiNovelAcceptanceDirectory `
         -FileName 'uninstall.json' `

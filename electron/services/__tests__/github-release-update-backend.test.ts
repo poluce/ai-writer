@@ -12,7 +12,7 @@ describe('GitHub latest release update backend', () => {
       status: 200,
       json: async () => ({
         tag_name: 'v0.9.3',
-        name: 'AI Novel Writer v0.9.3',
+        name: 'AI Writer v0.9.3',
         body: 'Release notes',
         published_at: '2026-09-03T00:00:00.000Z',
         html_url: 'https://attacker.invalid/not-used',
@@ -23,7 +23,7 @@ describe('GitHub latest release update backend', () => {
     await expect(backend.checkForUpdates()).resolves.toEqual({
       updateInfo: {
         version: '0.9.3',
-        releaseName: 'AI Novel Writer v0.9.3',
+        releaseName: 'AI Writer v0.9.3',
         releaseNotes: 'Release notes',
         releaseDate: '2026-09-03T00:00:00.000Z',
       },

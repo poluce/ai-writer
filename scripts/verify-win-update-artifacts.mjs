@@ -10,7 +10,7 @@ const repositoryRoot = path.resolve(path.dirname(scriptPath), '..')
 const expectedGithubSource = Object.freeze({
   provider: 'github',
   owner: 'poluce',
-  repo: 'AI-Novel-Writer',
+  repo: 'ai-writer',
   releaseType: 'release',
   channel: 'latest',
   tagNamePrefix: 'v',
@@ -181,7 +181,7 @@ export function verifyWindowsUpdateBuildConfig(config) {
   assert(updateSource.publishAutoUpdate === true, 'electron-builder must publish latest.yml update metadata')
   assert(updateSource.tagNamePrefix === 'v', 'electron-builder must use v-prefixed formal release tags')
   assert(
-    nsis.artifactName === 'ai-novel-writer-setup-${version}.${ext}',
+    nsis.artifactName === 'ai-writer-setup-${version}.${ext}',
     'electron-builder NSIS artifactName must match the installer name written to latest.yml',
   )
 

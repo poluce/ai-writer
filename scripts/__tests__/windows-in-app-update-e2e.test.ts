@@ -82,7 +82,7 @@ function response(body: unknown, contentType = 'application/json'): Response {
 
 function releaseFixture(tag: string) {
   const version = tag.slice(1)
-  const installerName = `ai-novel-writer-setup-${version}.exe`
+  const installerName = `ai-writer-setup-${version}.exe`
   const installer = Buffer.from(`official installer ${tag}`, 'utf8')
   const blockMap = Buffer.from(`official blockmap ${tag}`, 'utf8')
   const latestYml = Buffer.from([
@@ -131,13 +131,13 @@ function fixtureFetcher(fromTag: string, expectedTag: string, options: { latestT
   const fetcher = async (url: string | URL) => {
     const value = String(url)
     requests.push(value)
-    if (value === 'https://api.github.com/repos/poluce/AI-Novel-Writer/releases/latest') {
+    if (value === 'https://api.github.com/repos/poluce/ai-writer/releases/latest') {
       return response({ ...expected.release, tag_name: latestTag })
     }
-    if (value === `https://api.github.com/repos/poluce/AI-Novel-Writer/releases/tags/${fromTag}`) {
+    if (value === `https://api.github.com/repos/poluce/ai-writer/releases/tags/${fromTag}`) {
       return response(from.release)
     }
-    if (value === `https://api.github.com/repos/poluce/AI-Novel-Writer/releases/tags/${expectedTag}`) {
+    if (value === `https://api.github.com/repos/poluce/ai-writer/releases/tags/${expectedTag}`) {
       return response(expected.release)
     }
     const bytes = from.files.get(value) ?? expected.files.get(value)
@@ -210,7 +210,7 @@ describe('Windows official in-app update E2E contract', () => {
   })
 
   it('pins the official repository and accepts final semantic release tags only', () => {
-    expect(OFFICIAL_UPDATE_REPOSITORY).toEqual({ owner: 'poluce', repo: 'AI-Novel-Writer' })
+    expect(OFFICIAL_UPDATE_REPOSITORY).toEqual({ owner: 'poluce', repo: 'ai-writer' })
     expect(normalizeFinalReleaseTag('v0.5.2', 'from_tag')).toBe('v0.5.2')
     expect(normalizeFinalReleaseTag('0.6.0', 'expected_tag')).toBe('v0.6.0')
 
@@ -237,14 +237,14 @@ describe('Windows official in-app update E2E contract', () => {
       expected: { tag: 'v0.6.0', version: '0.6.0' },
       latest: { tag: 'v0.6.0' },
     })
-    expect(plan.expected.assets.installer.name).toBe('ai-novel-writer-setup-0.6.0.exe')
+    expect(plan.expected.assets.installer.name).toBe('ai-writer-setup-0.6.0.exe')
     expect(readFileSync(join(evidenceRoot, 'release-plan.json'), 'utf8')).toContain('sha256:')
     expect(requests).toEqual(expect.arrayContaining([
-      'https://api.github.com/repos/poluce/AI-Novel-Writer/releases/latest',
-      'https://api.github.com/repos/poluce/AI-Novel-Writer/releases/tags/v0.5.2',
-      'https://api.github.com/repos/poluce/AI-Novel-Writer/releases/tags/v0.6.0',
+      'https://api.github.com/repos/poluce/ai-writer/releases/latest',
+      'https://api.github.com/repos/poluce/ai-writer/releases/tags/v0.5.2',
+      'https://api.github.com/repos/poluce/ai-writer/releases/tags/v0.6.0',
     ]))
-    expect(requests.every(url => url.includes('poluce/AI-Novel-Writer') || url.startsWith('https://downloads.example.test/'))).toBe(true)
+    expect(requests.every(url => url.includes('poluce/ai-writer') || url.startsWith('https://downloads.example.test/'))).toBe(true)
   })
 
   it('rejects a non-latest expected tag and any mismatched GitHub asset digest', async () => {
@@ -270,7 +270,7 @@ describe('Windows official in-app update E2E contract', () => {
         tag: 'v0.7.0',
         assets: {
           installer: {
-            name: 'ai-novel-writer-setup-0.7.0.exe',
+            name: 'ai-writer-setup-0.7.0.exe',
             size: 234_679_883,
             sha256: 'd751d4ed6edbef1589380304c1cfff521f0b97eeb9f1a2f0936b0032f579f66c',
           },
@@ -283,9 +283,9 @@ describe('Windows official in-app update E2E contract', () => {
     })).toEqual({
       mode: 'legacy-bridge',
       sourceTag: 'v0.6.0',
-      expectedPendingInstallerPath: 'C:\\Users\\runneradmin\\AppData\\Local\\ai-novel-writer-updater\\pending\\ai-novel-writer-setup-0.7.0.exe',
+      expectedPendingInstallerPath: 'C:\\Users\\runneradmin\\AppData\\Local\\ai-writer-updater\\pending\\ai-writer-setup-0.7.0.exe',
       expectedInstaller: {
-        name: 'ai-novel-writer-setup-0.7.0.exe',
+        name: 'ai-writer-setup-0.7.0.exe',
         size: 234_679_883,
         sha256: 'd751d4ed6edbef1589380304c1cfff521f0b97eeb9f1a2f0936b0032f579f66c',
       },
@@ -331,7 +331,7 @@ describe('Windows official in-app update E2E contract', () => {
     expect(workflow).toContain('${{ env.AI_NOVEL_UPDATE_E2E_EVIDENCE_ROOT }}/*.json')
     expect(workflow).not.toContain('path: ${{ env.AI_NOVEL_UPDATE_E2E_EVIDENCE_ROOT }}')
     expect(workflow).toContain('node scripts/windows-in-app-update-e2e.mjs run')
-    expect(workflow).toContain('poluce/AI-Novel-Writer')
+    expect(workflow).toContain('poluce/ai-writer')
     expect(workflow).toContain('v0.5.2')
     expect(workflow).toContain('v0.6.0')
 
@@ -564,7 +564,7 @@ $velaHome = 'C:\\polluted-by-dot-source'
   })
 
   windowsPowerShellIt('waits only for the exact pending installer root to exit before force-run cleanup', () => {
-    const pendingInstallerPath = 'C:\\Users\\runneradmin\\AppData\\Local\\ai-novel-writer-updater\\pending\\ai-novel-writer-setup-0.8.0.exe'
+    const pendingInstallerPath = 'C:\\Users\\runneradmin\\AppData\\Local\\ai-writer-updater\\pending\\ai-writer-setup-0.8.0.exe'
     const output = runWindowsE2ePowerShellFunctions([
       'Assert-E2eCondition',
       'Test-E2eSameAbsolutePath',
@@ -618,7 +618,7 @@ try {
     return [pscustomobject]@{
       processId = 5936
       startTimeTicks = '639219050918203812'
-      executablePath = 'C:\\unexpected\\ai-novel-writer-setup-0.8.0.exe'
+      executablePath = 'C:\\unexpected\\ai-writer-setup-0.8.0.exe'
     }
   })
 }

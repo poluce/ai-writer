@@ -28,7 +28,7 @@ afterEach(() => {
 describe('packaged official homepage smoke', () => {
   it('requires both the explicit environment opt-in and one-time command token', () => {
     const token = 'a'.repeat(32)
-    const args = ['AI小说作家.exe', `--ai-novel-release-homepage-smoke=${token}`]
+    const args = ['AI Writer.exe', `--ai-novel-release-homepage-smoke=${token}`]
 
     expect(parseReleaseOfficialHomepageSmokeInvocation(args, releaseHomepageSmokeEnv())).toBeUndefined()
     expect(parseReleaseOfficialHomepageSmokeInvocation(args, releaseHomepageSmokeEnv({

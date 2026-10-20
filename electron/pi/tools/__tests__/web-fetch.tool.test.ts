@@ -14,15 +14,15 @@ describe('optimizeGithubUrl', () => {
   })
 
   it('converts GitHub repo home URL to raw README.md link', () => {
-    expect(optimizeGithubUrl('https://github.com/poluce/AI-Novel-Writer')).toEqual({
-      fetchUrl: 'https://raw.githubusercontent.com/poluce/AI-Novel-Writer/HEAD/README.md',
+    expect(optimizeGithubUrl('https://github.com/poluce/ai-writer')).toEqual({
+      fetchUrl: 'https://raw.githubusercontent.com/poluce/ai-writer/HEAD/README.md',
       isGithubRepoHome: true,
     })
   })
 
   it('converts GitHub blob file URL to raw githubusercontent link', () => {
-    expect(optimizeGithubUrl('https://github.com/poluce/AI-Novel-Writer/blob/main/docs/arch.md')).toEqual({
-      fetchUrl: 'https://raw.githubusercontent.com/poluce/AI-Novel-Writer/main/docs/arch.md',
+    expect(optimizeGithubUrl('https://github.com/poluce/ai-writer/blob/main/docs/arch.md')).toEqual({
+      fetchUrl: 'https://raw.githubusercontent.com/poluce/ai-writer/main/docs/arch.md',
       isGithubRepoHome: false,
     })
   })
@@ -140,7 +140,7 @@ describe('web_fetch tool execution', () => {
   })
 
   it('optimizes GitHub repo link to fetch raw README first', async () => {
-    const mockReadme = '# AI Novel Writer\nProject description and architecture.'
+    const mockReadme = '# AI Writer\nProject description and architecture.'
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -150,15 +150,15 @@ describe('web_fetch tool execution', () => {
     })
 
     const tool = createWebFetchTool('zh-CN')
-    const result = await tool.execute('c9', { url: 'https://github.com/poluce/AI-Novel-Writer' })
+    const result = await tool.execute('c9', { url: 'https://github.com/poluce/ai-writer' })
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'https://raw.githubusercontent.com/poluce/AI-Novel-Writer/HEAD/README.md',
+      'https://raw.githubusercontent.com/poluce/ai-writer/HEAD/README.md',
       expect.any(Object),
     )
     const first = result.content[0]
     if (first.type === 'text') {
-      expect(first.text).toContain('AI Novel Writer')
+      expect(first.text).toContain('AI Writer')
     }
   })
 

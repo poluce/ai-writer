@@ -201,7 +201,7 @@ function recordProviderOutcome(
     })
   } catch (error) {
     // Statistics are diagnostic only and must never change generation outcome.
-    console.warn('[AI Novel Writer] LLM call statistics were not recorded.', error)
+    console.warn('[AI Writer] LLM call statistics were not recorded.', error)
   }
 }
 

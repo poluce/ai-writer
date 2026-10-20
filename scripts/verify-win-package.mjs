@@ -55,7 +55,7 @@ export function findWindowsSafeFileSystemHelper(unpackedDir) {
 
 export function verifyWindowsPackage(unpackedDir) {
   const asar = path.join(unpackedDir, 'resources', 'app.asar')
-  const executable = path.join(unpackedDir, 'AI小说作家.exe')
+  const executable = path.join(unpackedDir, 'AI Writer.exe')
   for (const required of [asar, executable]) {
     if (!existsSync(required)) throw new Error(`Missing required package file: ${required}`)
   }
@@ -71,7 +71,7 @@ export function verifyWindowsPackage(unpackedDir) {
 }
 
 export function verifyPackagedLanceLoad(unpackedDir, runner = spawnSync) {
-  const executable = path.join(unpackedDir, 'AI小说作家.exe')
+  const executable = path.join(unpackedDir, 'AI Writer.exe')
   const marker = 'PACKAGED_LANCEDB_LOAD_OK'
   const result = runner(
     executable,
@@ -97,7 +97,7 @@ export function verifyPackagedLanceLoad(unpackedDir, runner = spawnSync) {
 }
 
 export function verifyPackagedBetterSqliteLoad(unpackedDir, runner = spawnSync) {
-  const executable = path.join(unpackedDir, 'AI小说作家.exe')
+  const executable = path.join(unpackedDir, 'AI Writer.exe')
   const marker = 'PACKAGED_BETTER_SQLITE3_LOAD_OK'
   const result = runner(
     executable,

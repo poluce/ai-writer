@@ -1,7 +1,7 @@
 // @see - https://www.electron.build/configuration/configuration
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
-  "appId": "com.ai-novel-writer.app",
+  "appId": "com.poluce.aiwriter",
   "asar": true,
   "asarUnpack": [
     "node_modules/apache-arrow/**/*",
@@ -12,7 +12,7 @@
     "node_modules/@lancedb/lancedb-win32-*/**/*",
     "node_modules/@lancedb/lancedb-win32-x64-msvc/**/*"
   ],
-  "productName": "AI小说作家",
+  "productName": "AI Writer",
   "directories": {
     "output": "release/${version}"
   },
@@ -23,7 +23,7 @@
   ],
   "mac": {
     "target": ["dmg"],
-    "artifactName": "ai-novel-writer-mac-${arch}-${version}-installer.${ext}",
+    "artifactName": "ai-writer-mac-${arch}-${version}-installer.${ext}",
     "category": "public.app-category.productivity",
     "identity": "-",
     "hardenedRuntime": false,
@@ -45,7 +45,7 @@
       {
         "provider": "github",
         "owner": "poluce",
-        "repo": "AI-Novel-Writer",
+        "repo": "ai-writer",
         "channel": "latest",
         "releaseType": "release",
         "publishAutoUpdate": true,
@@ -60,7 +60,7 @@
     ]
   },
   "nsis": {
-    "artifactName": "ai-novel-writer-setup-${version}.${ext}",
+    "artifactName": "ai-writer-setup-${version}.${ext}",
     "oneClick": false,
     "perMachine": false,
     "allowToChangeInstallationDirectory": true,

@@ -275,8 +275,8 @@ function Get-E2eExpectedPendingInstallerPath {
 
   Assert-E2eCondition -Condition ($env:LOCALAPPDATA -match '^[A-Za-z]:\\') -Message 'The Windows in-app update E2E requires an absolute LOCALAPPDATA path.'
   $installerName = [string]$Plan.expected.assets.installer.name
-  Assert-E2eCondition -Condition ($installerName -match '^ai-novel-writer-setup-\d+\.\d+\.\d+\.exe$') -Message 'The expected pending installer name is unsafe.'
-  $pendingRoot = [System.IO.Path]::GetFullPath((Join-Path $env:LOCALAPPDATA 'ai-novel-writer-updater\pending'))
+  Assert-E2eCondition -Condition ($installerName -match '^ai-writer-setup-\d+\.\d+\.\d+\.exe$') -Message 'The expected pending installer name is unsafe.'
+  $pendingRoot = [System.IO.Path]::GetFullPath((Join-Path $env:LOCALAPPDATA 'ai-writer-updater\pending'))
   $pendingInstallerPath = [System.IO.Path]::GetFullPath((Join-Path $pendingRoot $installerName))
   Assert-E2eCondition -Condition ((Split-Path -Parent $pendingInstallerPath) -eq $pendingRoot) -Message 'The expected pending installer path escaped its canonical cache directory.'
   return $pendingInstallerPath
@@ -297,10 +297,10 @@ function Get-E2eLegacyBridgeContract {
   $installerName = [string]$installer.name
   $installerSha256 = [string]$installer.sha256
   $installerSize = [long]$installer.size
-  Assert-E2eCondition -Condition ($installerName -match '^ai-novel-writer-setup-\d+\.\d+\.\d+\.exe$') -Message 'The legacy bridge expected installer name is unsafe.'
+  Assert-E2eCondition -Condition ($installerName -match '^ai-writer-setup-\d+\.\d+\.\d+\.exe$') -Message 'The legacy bridge expected installer name is unsafe.'
   Assert-E2eCondition -Condition ($installerSize -gt 0) -Message 'The legacy bridge expected installer size is invalid.'
   Assert-E2eCondition -Condition ($installerSha256 -match '^[a-fA-F0-9]{64}$') -Message 'The legacy bridge expected installer SHA-256 is invalid.'
-  $pendingRoot = [System.IO.Path]::GetFullPath((Join-Path $env:LOCALAPPDATA 'ai-novel-writer-updater\pending'))
+  $pendingRoot = [System.IO.Path]::GetFullPath((Join-Path $env:LOCALAPPDATA 'ai-writer-updater\pending'))
   $pendingInstallerPath = [System.IO.Path]::GetFullPath((Join-Path $pendingRoot $installerName))
   Assert-E2eCondition -Condition ((Split-Path -Parent $pendingInstallerPath) -eq $pendingRoot) -Message 'The legacy bridge pending installer path escaped its canonical cache directory.'
   return [pscustomobject][ordered]@{
@@ -949,7 +949,7 @@ try {
   $transcriptStarted = $true
   $plan = Get-Content -LiteralPath $resolvedPlanPath -Raw | ConvertFrom-Json
   Assert-E2eCondition -Condition ($plan.schemaVersion -eq 1) -Message 'Release plan schema is unsupported.'
-  Assert-E2eCondition -Condition ($plan.officialRepository.owner -eq 'poluce' -and $plan.officialRepository.repo -eq 'AI-Novel-Writer') -Message 'Release plan is not pinned to the official repository.'
+  Assert-E2eCondition -Condition ($plan.officialRepository.owner -eq 'poluce' -and $plan.officialRepository.repo -eq 'ai-writer') -Message 'Release plan is not pinned to the official repository.'
   Assert-E2eCondition -Condition ($plan.from.tag -match '^v\d+\.\d+\.\d+$') -Message 'from_tag in release plan is not a final semantic version.'
   Assert-E2eCondition -Condition ($plan.expected.tag -match '^v\d+\.\d+\.\d+$') -Message 'expected_tag in release plan is not a final semantic version.'
   Assert-E2eCondition -Condition ($plan.expected.tag -eq $plan.latest.tag) -Message 'expected_tag is not the current latest formal Release.'
@@ -1023,7 +1023,7 @@ try {
     [System.IO.Path]::GetFileNameWithoutExtension($fromInstaller),
     $appExecutableName,
     $appDisplayName,
-    'ai-novel-writer'
+    'ai-writer'
   )) {
     if (-not [string]::IsNullOrWhiteSpace($name)) { [void]$script:roundTargetNames.Add($name) }
   }

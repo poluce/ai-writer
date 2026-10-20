@@ -26,9 +26,9 @@ function sha256(content: string | Buffer) {
 }
 
 function createArtifacts(root: string) {
-  const installer = write(root, 'ai-novel-writer-setup-0.2.6.exe', 'installer')
+  const installer = write(root, 'ai-writer-setup-0.2.6.exe', 'installer')
   const latestMetadata = write(root, 'latest.yml', 'version: 0.2.6\nsha512: verified\n')
-  const blockMap = write(root, 'ai-novel-writer-setup-0.2.6.exe.blockmap', 'blockmap')
+  const blockMap = write(root, 'ai-writer-setup-0.2.6.exe.blockmap', 'blockmap')
   return { installer, latestMetadata, blockMap, version: '0.2.6' }
 }
 
@@ -78,7 +78,7 @@ describe('GitHub Windows update release verification', () => {
       apiBaseUrl: 'https://api.example.test',
     })).resolves.toMatchObject({
       tag: 'v0.2.6',
-      installer: 'ai-novel-writer-setup-0.2.6.exe',
+      installer: 'ai-writer-setup-0.2.6.exe',
     })
   })
 
@@ -89,16 +89,16 @@ describe('GitHub Windows update release verification', () => {
       assets: [
         ...releaseFor(artifacts).assets,
         {
-          name: 'ai-novel-writer-0.2.6-arm64.dmg',
+          name: 'ai-writer-0.2.6-arm64.dmg',
           size: 7,
           digest: `sha256:${sha256('mac-dmg')}`,
-          browser_download_url: 'https://example.test/ai-novel-writer-0.2.6-arm64.dmg',
+          browser_download_url: 'https://example.test/ai-writer-0.2.6-arm64.dmg',
         },
         {
-          name: 'ai-novel-writer-0.2.6-arm64.dmg.sha256',
+          name: 'ai-writer-0.2.6-arm64.dmg.sha256',
           size: 64,
           digest: `sha256:${sha256('mac-checksum')}`,
-          browser_download_url: 'https://example.test/ai-novel-writer-0.2.6-arm64.dmg.sha256',
+          browser_download_url: 'https://example.test/ai-writer-0.2.6-arm64.dmg.sha256',
         },
       ],
     }
@@ -113,13 +113,13 @@ describe('GitHub Windows update release verification', () => {
       fetcher,
       apiBaseUrl: 'https://api.example.test',
     })).resolves.toMatchObject({
-      installer: 'ai-novel-writer-setup-0.2.6.exe',
+      installer: 'ai-writer-setup-0.2.6.exe',
       latestMetadata: 'latest.yml',
-      blockMap: 'ai-novel-writer-setup-0.2.6.exe.blockmap',
+      blockMap: 'ai-writer-setup-0.2.6.exe.blockmap',
     })
 
     expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
-      'https://api.example.test/repos/poluce/AI-Novel-Writer/releases/tags/v0.2.6',
+      'https://api.example.test/repos/poluce/ai-writer/releases/tags/v0.2.6',
       'https://example.test/latest.yml',
     ])
   })

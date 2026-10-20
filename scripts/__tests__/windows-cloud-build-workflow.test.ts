@@ -148,6 +148,8 @@ describe('Windows cloud build workflow contract', () => {
 
     const portableDownload = namedStep(workflow, 'Download verified v0.2.5 portable migration input')
     expect(portableDownload).toContain("$portableZip = Join-Path $env:RUNNER_TEMP 'AI-Novel-Writer-0.2.5-windows-x64.zip'")
+    // 升级夹具已迁到本仓库，发布门禁不再依赖上游 Release。
+    expect(portableDownload).toContain('https://github.com/poluce/ai-writer/releases/download/legacy-v0.2.5/')
     expect(portableDownload).toContain('"AI_NOVEL_PREVIOUS_PORTABLE_ZIP=$portableZip" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8')
 
     expect(evidenceScript).toContain("gateLevel: 'RUNTIME_VERIFIED'")
@@ -252,7 +254,7 @@ describe('Windows cloud build workflow contract', () => {
         'init',
         '--platform', 'windows',
         '--evidence-root', evidenceRoot,
-        '--repository', 'poluce/AI-Novel-Writer',
+        '--repository', 'poluce/ai-writer',
         '--commit', 'a'.repeat(40),
         '--run-id', '123',
         '--run-attempt', '1',

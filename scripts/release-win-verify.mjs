@@ -635,9 +635,9 @@ async function main() {
           'pnpm',
           'electron',
           'electron-builder',
-          'AI小说作家.exe',
-          'AI小说作家',
-          'ai-novel-writer',
+          'AI Writer.exe',
+          'AI Writer',
+          'ai-writer',
       ])
       await waitForMonitorState(['monitoring'], 10_000, step)
       await releaseArmedNodeProcess(step, launch)

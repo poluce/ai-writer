@@ -1245,7 +1245,7 @@ $event = [pscustomobject]@{ ProcessId = 42; ExitCodeCaptured = $true; ExitCode =
     const statusPath = join(root, 'status.json')
     const evidencePath = join(root, 'evidence')
     const sourcePath = join(root, 'ExactNsisProbeParent.cs')
-    const installerPath = join(root, 'ai-novel-writer-setup-0.4.0.exe')
+    const installerPath = join(root, 'ai-writer-setup-0.4.0.exe')
     const probeResultPath = join(root, 'probe-results.txt')
     const systemPowerShell = join(
       process.env.SystemRoot ?? 'C:\\Windows',
@@ -1352,9 +1352,9 @@ internal static class ExactNsisProbeParent {
   private static int RunCmdProcessCheck(string cmdPath) {
     string findPath = Path.Combine(Path.GetDirectoryName(cmdPath), "find.exe");
     string commandLine =
-      "\"" + cmdPath + "\" /C tasklist /FI \"USERNAME eq %USERNAME%\" /FI \"IMAGENAME eq AI\u5c0f\u8bf4\u4f5c\u5bb6.exe\" /FO CSV | \"" +
+      "\"" + cmdPath + "\" /C tasklist /FI \"USERNAME eq %USERNAME%\" /FI \"IMAGENAME eq AI Writer.exe\" /FO CSV | \"" +
       findPath +
-      "\" \"AI\u5c0f\u8bf4\u4f5c\u5bb6.exe\"";
+      "\" \"AI Writer.exe\"";
     return RunCommand(cmdPath, commandLine);
   }
 
@@ -1416,7 +1416,7 @@ internal static class ExactNsisProbeParent {
           step: 'smoke:win-installer',
           rootProcessId: gate.child.pid,
           rootProcessStartTimeTicks: windowsProcessStartTimeTicks(gate.child.pid),
-          relatedTargetNames: ['ai-novel-writer-setup-0.4.0', 'powershell'],
+          relatedTargetNames: ['ai-writer-setup-0.4.0', 'powershell'],
         })}\n`,
         'utf8',
       )
@@ -1501,7 +1501,7 @@ internal static class ExactNsisProbeParent {
     const helperDirectory = join(tempRoot, helperDirectoryName)
     const helperPath = join(helperDirectory, 'Un_A9.exe')
     const installRoot = join(root, 'installed-app')
-    const uninstallerPath = join(installRoot, 'Uninstall AI小说作家.exe')
+    const uninstallerPath = join(installRoot, 'Uninstall AI Writer.exe')
     const sourcePath = join(root, 'ExactNsisUninstallerHelper.cs')
     const probeResultPath = join(root, 'probe-results.txt')
     const systemPowerShell = join(
@@ -1625,9 +1625,9 @@ internal static class ExactNsisUninstallerHelper {
     string powerShellCommand = "\"" + powerShellPath + "\" -C \"" + probePayload + "\"";
     string findPath = Path.Combine(Path.GetDirectoryName(cmdPath), "find.exe");
     string cmdCommand =
-      "\"" + cmdPath + "\" /C tasklist /FI \"USERNAME eq %USERNAME%\" /FI \"IMAGENAME eq AI小说作家.exe\" /FO CSV | \"" +
+      "\"" + cmdPath + "\" /C tasklist /FI \"USERNAME eq %USERNAME%\" /FI \"IMAGENAME eq AI Writer.exe\" /FO CSV | \"" +
       findPath +
-      "\" \"AI小说作家.exe\"";
+      "\" \"AI Writer.exe\"";
     int powerShellExit = RunCommand(powerShellPath, powerShellCommand);
     int cmdExit = RunCommand(cmdPath, cmdCommand);
     File.WriteAllText(outputPath, powerShellExit + "," + cmdExit);
@@ -1713,7 +1713,7 @@ internal static class ExactNsisUninstallerHelper {
           step: 'smoke:win-installer',
           rootProcessId: gate.child.pid,
           rootProcessStartTimeTicks: windowsProcessStartTimeTicks(gate.child.pid),
-          relatedTargetNames: ['Uninstall AI小说作家', 'Un_A9', 'powershell'],
+          relatedTargetNames: ['Uninstall AI Writer', 'Un_A9', 'powershell'],
         })}\n`,
         'utf8',
       )
@@ -1742,7 +1742,7 @@ internal static class ExactNsisUninstallerHelper {
       })
       const uninstallerStart = events.find(event => {
         const identity = event.processIdentity as Record<string, unknown> | undefined
-        return event.kind === 'process-start' && identity?.processName === 'Uninstall AI小说作家'
+        return event.kind === 'process-start' && identity?.processName === 'Uninstall AI Writer'
       })
       const wrapperCmdStart = events.find(event => {
         const identity = event.processIdentity as Record<string, unknown> | undefined

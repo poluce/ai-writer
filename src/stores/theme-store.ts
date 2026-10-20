@@ -195,7 +195,7 @@ export const useThemeStore = create<ThemeState>()(
       },
     }),
     {
-      name: 'ai-novel-writer-theme',
+      name: 'ai-writer-theme',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         theme: state.theme,

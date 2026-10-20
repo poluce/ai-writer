@@ -58,11 +58,11 @@ vi.mock('electron', () => ({
 }))
 vi.mock('../ipc-handlers', () => ({ registerIPCHandlers: mocks.registerIPCHandlers }))
 vi.mock('../mcp/mcp-ipc-bridge', () => ({ registerMCPHandlers: mocks.registerMCPHandlers }))
-vi.mock('../i18n', () => ({ mainT: () => 'AI Novel Writer' }))
+vi.mock('../i18n', () => ({ mainT: () => 'AI Writer' }))
 vi.mock('../controllers/update-controller', () => ({ registerUpdateController: vi.fn() }))
 vi.mock('../services/electron-updater-adapter', () => ({ createElectronUpdaterBackend: vi.fn() }))
 vi.mock('../services/github-release-update-backend', () => ({
-  GITHUB_LATEST_RELEASE_PAGE: 'https://github.com/poluce/AI-Novel-Writer/releases/latest',
+  GITHUB_LATEST_RELEASE_PAGE: 'https://github.com/poluce/ai-writer/releases/latest',
   createGitHubReleaseUpdateBackend: mocks.createGitHubReleaseUpdateBackend,
 }))
 vi.mock('../services/update-preferences-store', () => ({

@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
-    <title>AI小说作家 — AI Novel Writer</title>
+    <title>AI Writer</title>
   </head>
   <body style="margin: 0;">
     <!-- 同步读取主题，避免加载页与主界面背景色闪跳 -->
@@ -13,7 +13,7 @@
         var bgMap = { light: '#F7F3E8', galaxy: '#0A1628', paper: '#F7F3E8', dark: '#1E1E1E' };
         var theme = 'paper';
         try {
-          var raw = localStorage.getItem('ai-novel-writer-theme');
+          var raw = localStorage.getItem('ai-writer-theme');
           if (raw) {
             var state = JSON.parse(raw).state || {};
             var candidate = state.resolvedTheme || state.theme;
@@ -128,7 +128,7 @@
           <div class="ai-writer-ring-inner"></div>
           <div class="ai-writer-core"></div>
         </div>
-        <div class="ai-writer-text">AI小说作家 初始化中</div>
+        <div class="ai-writer-text">AI Writer 初始化中</div>
       </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>

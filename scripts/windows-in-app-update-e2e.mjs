@@ -27,7 +27,7 @@ const apiBaseUrl = 'https://api.github.com'
 /** The release source is deliberately not configurable by workflow inputs or CLI flags. */
 export const OFFICIAL_UPDATE_REPOSITORY = Object.freeze({
   owner: 'poluce',
-  repo: 'AI-Novel-Writer',
+  repo: 'ai-writer',
 })
 
 // A cold GitHub Windows runner spends around 15 seconds compiling the monitor's
@@ -122,7 +122,7 @@ export function createLegacyUpdateBridgePlan(plan, { localAppData = process.env.
   return {
     mode: 'legacy-bridge',
     sourceTag,
-    expectedPendingInstallerPath: win32.join(localAppData, 'ai-novel-writer-updater', 'pending', installer.name),
+    expectedPendingInstallerPath: win32.join(localAppData, 'ai-writer-updater', 'pending', installer.name),
     expectedInstaller: {
       name: installer.name,
       size: installer.size,
@@ -135,7 +135,7 @@ function githubHeaders() {
   const token = process.env.GITHUB_TOKEN?.trim()
   return {
     Accept: 'application/vnd.github+json',
-    'User-Agent': 'AI-Novel-Writer-windows-in-app-update-e2e',
+    'User-Agent': 'ai-writer-windows-in-app-update-e2e',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   }
 }
@@ -578,9 +578,9 @@ async function runWindowsInAppUpdateE2e(plan, evidenceRoot) {
       relatedTargetNames: [
         plan.from.assets.installer.name,
         plan.expected.assets.installer.name,
-        'AI小说作家.exe',
-        'AI小说作家',
-        'ai-novel-writer',
+        'AI Writer.exe',
+        'AI Writer',
+        'ai-writer',
       ],
       legacyBridge,
     })

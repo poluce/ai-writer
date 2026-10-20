@@ -42,8 +42,8 @@ function validWindowsReceipt(name: string, releaseRoot: string) {
     sha256: sha256(path.join(releaseRoot, 'qualification', file)),
   })
   const receipts: Record<string, unknown> = {
-    install: { ...base, kind: 'windows-install', direct: { installerExitCode: 0, installedExecutable: 'C:/AI/AI小说作家.exe', installedExecutableExists: true } },
-    launch: { ...base, kind: 'windows-launch', expectedVersion: releaseVersion, direct: { executablePath: 'C:/AI/AI小说作家.exe', productVersion: `${releaseVersion}.0`, processId: 101, processStartTimeTicks: '12345', visibleMainWindowCount: 1 } },
+    install: { ...base, kind: 'windows-install', direct: { installerExitCode: 0, installedExecutable: 'C:/AI/AI Writer.exe', installedExecutableExists: true } },
+    launch: { ...base, kind: 'windows-launch', expectedVersion: releaseVersion, direct: { executablePath: 'C:/AI/AI Writer.exe', productVersion: `${releaseVersion}.0`, processId: 101, processStartTimeTicks: '12345', visibleMainWindowCount: 1 } },
     'quiet-window': { ...base, kind: 'windows-final-quiet-window', direct: { monitorState: 'step-completed', monitorStep: 'final:quiet', quietWindowSeconds: 5, completedAt: '2026-08-10T14:57:30.3051843Z' } },
     'error-dialogs': { ...base, kind: 'windows-error-dialogs', direct: { monitorState: 'step-completed', monitorStep: 'final:quiet', newProductErrorDialogCount: 0, observedThrough: '2026-08-10T14:57:30.3051843Z' } },
     uninstall: { ...base, kind: 'windows-uninstall', direct: { installedExecutableExists: false, installDirectoryState: 'absent', allowedSystemResiduals: [] } },
@@ -54,7 +54,7 @@ function validWindowsReceipt(name: string, releaseRoot: string) {
       reference('packaged-official-homepage-smoke', 'packaged-official-homepage-smoke.json'),
       reference('packaged-skin-smoke', 'packaged-skin-smoke.json'),
     ] },
-    signing: { ...base, kind: 'windows-signing', direct: { authenticodeStatus: 'NotSigned', installerSha256: sha256(path.join(releaseRoot, `ai-novel-writer-setup-${releaseVersion}.exe`)) }, status: 'unsigned', validationResult: 'NotSigned', unsignedDistributionImpact: 'Windows may display an unknown-publisher warning.' },
+    signing: { ...base, kind: 'windows-signing', direct: { authenticodeStatus: 'NotSigned', installerSha256: sha256(path.join(releaseRoot, `ai-writer-setup-${releaseVersion}.exe`)) }, status: 'unsigned', validationResult: 'NotSigned', unsignedDistributionImpact: 'Windows may display an unknown-publisher warning.' },
   }
   return receipts[name]
 }
@@ -73,7 +73,7 @@ describe('release evidence v2 CLI', () => {
       'init',
       '--platform', 'windows',
       '--evidence-root', evidenceRoot,
-      '--repository', 'poluce/AI-Novel-Writer',
+      '--repository', 'poluce/ai-writer',
       '--commit', commit,
       '--run-id', '101',
       '--run-attempt', '2',
@@ -102,7 +102,7 @@ describe('release evidence v2 CLI', () => {
     expect(contract).toMatchObject({
       schemaVersion: 2,
       stage: 'qualification',
-      repository: 'poluce/AI-Novel-Writer',
+      repository: 'poluce/ai-writer',
       frozen: {
         commit,
         tag: `v${releaseVersion}`,
@@ -173,7 +173,7 @@ describe('release evidence v2 CLI', () => {
       'init',
       '--platform', 'macos-arm64',
       '--evidence-root', evidenceRoot,
-      '--repository', 'poluce/AI-Novel-Writer',
+      '--repository', 'poluce/ai-writer',
       '--commit', 'b'.repeat(40),
       '--run-id', '202',
       '--run-attempt', '1',
@@ -227,7 +227,7 @@ describe('release evidence v2 CLI', () => {
       'init',
       '--platform', 'macos-arm64',
       '--evidence-root', evidenceRoot,
-      '--repository', 'poluce/AI-Novel-Writer',
+      '--repository', 'poluce/ai-writer',
       '--commit', 'c'.repeat(40),
       '--run-id', '204',
       '--run-attempt', '1',
@@ -271,7 +271,7 @@ describe('release evidence v2 CLI', () => {
       'init',
       '--platform', 'macos-x64',
       '--evidence-root', evidenceRoot,
-      '--repository', 'poluce/AI-Novel-Writer',
+      '--repository', 'poluce/ai-writer',
       '--commit', 'e'.repeat(40),
       '--run-id', '203',
       '--run-attempt', '1',
@@ -296,8 +296,8 @@ describe('release evidence v2 CLI', () => {
         name: 'macOS Intel x64 cloud package qualification',
       },
       artifactSet: [
-        { path: `release/${releaseVersion}/ai-novel-writer-mac-x64-${releaseVersion}-installer.dmg`, role: 'dmg' },
-        { path: `release/${releaseVersion}/ai-novel-writer-mac-x64-${releaseVersion}-installer.dmg.sha256`, role: 'dmg-checksum' },
+        { path: `release/${releaseVersion}/ai-writer-mac-x64-${releaseVersion}-installer.dmg`, role: 'dmg' },
+        { path: `release/${releaseVersion}/ai-writer-mac-x64-${releaseVersion}-installer.dmg.sha256`, role: 'dmg-checksum' },
       ],
     })
   })
@@ -311,7 +311,7 @@ describe('release evidence v2 CLI', () => {
       'init',
       '--platform', 'windows',
       '--evidence-root', evidenceRoot,
-      '--repository', 'poluce/AI-Novel-Writer',
+      '--repository', 'poluce/ai-writer',
       '--commit', 'c'.repeat(40),
       '--run-id', '303',
       '--run-attempt', '1',
@@ -328,7 +328,7 @@ describe('release evidence v2 CLI', () => {
     ], { cwd: repositoryRoot, encoding: 'utf8' })
     expect(init.status, init.stderr).toBe(0)
 
-    const installer = `ai-novel-writer-setup-${version}.exe`
+    const installer = `ai-writer-setup-${version}.exe`
     writeFileSync(path.join(releaseRoot, installer), 'installer', 'utf8')
     writeFileSync(path.join(releaseRoot, `${installer}.blockmap`), 'blockmap', 'utf8')
     writeFileSync(path.join(releaseRoot, 'latest.yml'), `version: ${version}\n`, 'utf8')
@@ -500,7 +500,7 @@ describe('release evidence v2 CLI', () => {
       'init',
       '--platform', 'windows',
       '--evidence-root', evidenceRoot,
-      '--repository', 'poluce/AI-Novel-Writer',
+      '--repository', 'poluce/ai-writer',
       '--commit', 'd'.repeat(40),
       '--run-id', '404',
       '--run-attempt', '1',

@@ -125,7 +125,7 @@ async function fetchGitHubWritingSkill(sourceUrl: string): Promise<{
     const repositoryResponse = await fetch(
       `https://api.github.com/repos/${encodeURIComponent(location.owner)}/${encodeURIComponent(location.repo)}`,
       {
-        headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'AI-Novel-Writer' },
+        headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'ai-writer' },
         redirect: 'error',
         signal: AbortSignal.timeout(10_000),
       },
@@ -140,7 +140,7 @@ async function fetchGitHubWritingSkill(sourceUrl: string): Promise<{
 
   const resolvedUrl = githubRawUrl(location.owner, location.repo, ref, location.path)
   const response = await fetch(resolvedUrl, {
-    headers: { Accept: 'text/plain', 'User-Agent': 'AI-Novel-Writer' },
+    headers: { Accept: 'text/plain', 'User-Agent': 'ai-writer' },
     redirect: 'error',
     signal: AbortSignal.timeout(10_000),
   })

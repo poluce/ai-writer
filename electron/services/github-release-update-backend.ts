@@ -1,8 +1,8 @@
 import type { UpdateBackend } from './update-service'
 import { logFailure } from '../../src/shared/fail-log'
 
-export const GITHUB_LATEST_RELEASE_API = 'https://api.github.com/repos/poluce/AI-Novel-Writer/releases/latest'
-export const GITHUB_LATEST_RELEASE_PAGE = 'https://github.com/poluce/AI-Novel-Writer/releases/latest'
+export const GITHUB_LATEST_RELEASE_API = 'https://api.github.com/repos/poluce/ai-writer/releases/latest'
+export const GITHUB_LATEST_RELEASE_PAGE = 'https://github.com/poluce/ai-writer/releases/latest'
 
 interface ReleaseResponse {
   ok: boolean
@@ -19,7 +19,7 @@ export function createGitHubReleaseUpdateBackend(fetcher: ReleaseFetcher = fetch
       const response = await fetcher(GITHUB_LATEST_RELEASE_API, {
         headers: {
           Accept: 'application/vnd.github+json',
-          'User-Agent': 'AI-Novel-Writer',
+          'User-Agent': 'ai-writer',
           'X-GitHub-Api-Version': '2022-11-28',
         },
       })

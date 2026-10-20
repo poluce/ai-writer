@@ -1,4 +1,4 @@
-# AGENTS.md — AI-Novel-Writer (Vela) 架构与工程规范指南
+# AGENTS.md — ai-writer (Vela) 架构与工程规范指南
 
 > 本文档是所有 AI Agent（以及维护者）在阅读、修改、扩展本项目代码时的权威上下文与行为准则。在进行任何代码修改或功能设计前，必须严格遵守本文档所规定的原则。
 
@@ -28,7 +28,7 @@
 
 ## 项目全景与技术架构
 
-AI-Novel-Writer（代号 Vela）是一个面向长篇小说严肃创作的**本地优先（Local-first）桌面 IDE**。
+ai-writer（代号 Vela）是一个面向长篇小说严肃创作的**本地优先（Local-first）桌面 IDE**。
 
 ### 1. 技术栈构成
 * **宿主环境**：Electron + Node.js (v20+)

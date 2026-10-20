@@ -3,9 +3,9 @@ window.README_HERO_CONFIG = {
   locales: {
     zh: {
       htmlLang: "zh-CN",
-      brand: "AI小说作家",
-      byline: "AI Novel Writer · EthanYoQ",
-      logo: "../assets/readme/ai-novel-writer-logo-transparent.png",
+      brand: "AI Writer",
+      byline: "AI Writer · poluce",
+      logo: "../assets/readme/ai-writer-logo-transparent.png",
       headline: ["本地优先的 AI 小说创作 IDE", "从灵感到章节，沉浸创作。"],
       proof: {
         title: "七阶段 AI 驱动创作流水线",
@@ -27,9 +27,9 @@ window.README_HERO_CONFIG = {
     },
     en: {
       htmlLang: "en",
-      brand: "AI Novel Writer",
-      byline: "AI Novel Writer · EthanYoQ",
-      logo: "../assets/readme/ai-novel-writer-logo-transparent.png",
+      brand: "AI Writer",
+      byline: "AI Writer · poluce",
+      logo: "../assets/readme/ai-writer-logo-transparent.png",
       headline: ["AI IDE for long-form fiction", "Plan, draft, and stay in flow."],
       proof: {
         title: "Seven-stage AI writing workflow",

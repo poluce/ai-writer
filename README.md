@@ -5,41 +5,39 @@
 </div>
 
 <p align="center">
-  <img src="docs/assets/readme/ai-novel-writer-logo-transparent.png" width="104" height="104" alt="AI 小说作家 Logo" />
+  <img src="docs/assets/readme/ai-writer-logo-transparent.png" width="104" height="104" alt="AI Writer Logo" />
 </p>
 
-<h1 align="center">AI 小说作家 / AI Novel Writer</h1>
+<h1 align="center">AI Writer</h1>
 
 <p align="center">
   面向长篇小说创作的本地优先桌面工作台。它把“前提 → 角色 → 世界观 → 章节蓝图 → 草稿 → 审稿 → 修稿 → 定稿”组织为一条可追溯的创作流程；模型由你自行配置，项目资料留在你的电脑上。
 </p>
 
 <p align="center">
-  <a href="https://github.com/poluce/AI-Novel-Writer/releases"><img src="https://badgen.net/github/tag/poluce/AI-Novel-Writer?label=release" alt="Release" /></a>
-  <a href="https://github.com/poluce/AI-Novel-Writer/blob/master/LICENSE"><img src="https://badgen.net/badge/license/GPL-3.0/blue" alt="GPL-3.0 License" /></a>
-  <a href="https://github.com/poluce/AI-Novel-Writer/stargazers"><img src="https://badgen.net/github/stars/poluce/AI-Novel-Writer" alt="GitHub stars" /></a>
+  <a href="https://github.com/poluce/ai-writer/releases"><img src="https://badgen.net/github/tag/poluce/ai-writer?label=release" alt="Release" /></a>
+  <a href="https://github.com/poluce/ai-writer/blob/main/LICENSE"><img src="https://badgen.net/badge/license/GPL-3.0/blue" alt="GPL-3.0 License" /></a>
+  <a href="https://github.com/poluce/ai-writer/stargazers"><img src="https://badgen.net/github/stars/poluce/ai-writer" alt="GitHub stars" /></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/poluce/AI-Novel-Writer/releases/latest">下载桌面版（Windows / macOS）</a>
+  <a href="https://github.com/poluce/ai-writer/releases/latest">下载桌面版（Windows / macOS）</a>
 </p>
 
 <p align="center">
-  <img src="docs/assets/readme/ui-zh-v085-project-config.png" alt="AI 小说作家 v0.8.5：在本地桌面工作台中配置长篇小说的故事前提、世界观、角色、蓝图与章节" width="100%" />
+  <img src="docs/assets/readme/ui-zh-v085-project-config.png" alt="AI Writer v0.8.5：在本地桌面工作台中配置长篇小说的故事前提、世界观、角色、蓝图与章节" width="100%" />
 </p>
 
-> ## v1.1.0
+> ## v0.1.0 · 独立发行线首版
 >
-> - **来源明确的连续性材料**：作者填写的角色资料、模型提炼的动态状态与旧项目未知来源信息不再混作同一种事实；后续写作优先使用带来源的定稿原文。
-> - **分层的章节材料**：本章任务、尚未发生的计划、定稿历史和候选稿会分别呈现；相关原文保留相邻段落，帮助承接伤因、否定和物品转交等跨句信息。
-> - **可靠的候选稿上下文**：连续草稿沿用本批次实际保存的草稿版本和正文，并明确标注尚未定稿。
-> - **逐项目标审稿**：本章关键事件会逐项显示“已完成、未完成、待核实”和对应正文证据，避免把准备或承诺直接当作完成。
-> - **由作者决定目标修稿**：待核实不算检查通过，目标类未完成或待核实均须作者明确选择后才交给修稿流程，减少模型误判带来的返工。
-> - **更新、导出与通知修复**：避免下载期间的重复更新检查，拆分 Markdown 导出使用独立目录，工作流完成通知保留完整标题。
+> 本仓库从上游 GPL-3.0 代码派生后已独立演进：应用身份（appId、安装目录、更新通道）与旧版互不覆盖，版本号自 0.1.0 重新起算。
 >
-> 这些改进减少错误摘要或过期状态影响后续章节的风险，但不能替代作者审阅，也不保证模型输出完全没有漂移或每章字数都达到目标。
+> - **助手委派与排队**：项目助手可把任务委派给架构助手、章节蓝图助手；目标助手会话优先复用并在忙碌时排队，不新建碎片会话。
+> - **工具确认即时反馈**：点击「批准执行」后卡片立即进入执行中，并按工具卡所属会话回传确认，不再出现长时间无反馈或发错会话。
+> - **情节大纲分卷活页**：分卷标签可拖拽调序，左侧目录宽度可拖动并记忆；第二、三、四卷不再被并入前一章的章节区间。
+> - **结构化设定卡片**：前提、环境、人物按分段卡片渲染并支持原地编辑；故事架构统一为 前提 → 环境 → 情节 → 人物。
 
-### 保留的 1.0.0 功能
+### 当前已具备的能力
 
 - 写作 Skill 可独立安装，并按规划、正文、审稿或润色阶段分别使用。
 - 故事线视图展示主线和支线进度，并可跳到对应章节依据。
@@ -48,13 +46,13 @@
 - 中文长篇工作流串联蓝图、草稿、审稿、修订和定稿。
 - Windows 和 macOS 均可查看并启动适合本机的更新。
 
-1.0.0 的多草稿保存、旧请求覆盖、来源恢复、导出与安装检查修复继续保留；逐项说明见 [1.1.0 双语更新内容](.release/notes/v1.1.0.md)。正式安装包以 [GitHub Release](https://github.com/poluce/AI-Novel-Writer/releases/latest) 为准。
+逐项变更见 [0.1.0 双语更新内容](.release/notes/v0.1.0.md)。正式安装包以本仓库 [GitHub Release](https://github.com/poluce/ai-writer/releases/latest) 为准。
 
 
 
 ## 产品定位
 
-AI 小说作家不是内置模型服务，也不是在线小说平台。它提供的是创作编排层：保存项目状态、组织提示词与上下文、管理章节蓝图和草稿版本，并把生成、审稿和修稿串起来。
+AI Writer不是内置模型服务，也不是在线小说平台。它提供的是创作编排层：保存项目状态、组织提示词与上下文、管理章节蓝图和草稿版本，并把生成、审稿和修稿串起来。
 
 你可以接入本地或云端模型；软件不会替你提供或托管模型额度。长篇创作时，系统会围绕当前章节蓝图、相关角色资料、世界观、历史摘要和可选参考文风组织上下文，而不是把整本小说塞进一次聊天记录。
 
@@ -70,7 +68,7 @@ flowchart LR
 
 ## 界面预览
 
-![AI 小说作家 v0.8.5 主界面，展示虚构项目、小说配置、项目结构、AI 写作助手和任务面板](docs/assets/readme/ui-zh-v085-project-config.png)
+![AI Writer v0.8.5 主界面，展示虚构项目、小说配置、项目结构、AI 写作助手和任务面板](docs/assets/readme/ui-zh-v085-project-config.png)
 
 ## 核心能力
 
@@ -137,10 +135,10 @@ Model:     你的 Ollama 模型名，例如 qwen3:14b
 正式版使用 Windows NSIS 安装程序：
 
 ```text
-ai-novel-writer-setup-<版本号>.exe
+ai-writer-setup-<版本号>.exe
 ```
 
-1. 只从 [GitHub Releases](https://github.com/poluce/AI-Novel-Writer/releases/latest) 下载正式安装包。
+1. 只从 [GitHub Releases](https://github.com/poluce/ai-writer/releases/latest) 下载正式安装包。
 2. 安装程序更新应用本身，不应删除小说项目、角色卡或已有设置；仍建议在升级前自行备份重要作品。
 3. 安装后可在欢迎页使用“检查更新”；应用启动后也会按每日一次的成功检查频率静默检查。发现正式更新时先提示，只有用户点击“下载更新”后才开始下载；下载完成后再提供“立即重启更新 / 稍后”的选择。
 4. 旧版便携 ZIP 不能自行获得首个更新器版本，需要手动安装一次正式安装包；后续不再维护新的便携 ZIP。
@@ -149,11 +147,11 @@ ai-novel-writer-setup-<版本号>.exe
 
 ### macOS（Apple Silicon 与 Intel）
 
-从 [GitHub Releases](https://github.com/poluce/AI-Novel-Writer/releases/latest) 下载与你的 Mac 架构对应的安装包：
+从 [GitHub Releases](https://github.com/poluce/ai-writer/releases/latest) 下载与你的 Mac 架构对应的安装包：
 
 ```text
-ai-novel-writer-mac-arm64-<版本号>-installer.dmg
-ai-novel-writer-mac-x64-<版本号>-installer.dmg
+ai-writer-mac-arm64-<版本号>-installer.dmg
+ai-writer-mac-x64-<版本号>-installer.dmg
 ```
 
 1. `arm64` 适用于 Apple Silicon Mac（M1、M2、M3、M4 等）；`x64` 适用于 Intel Mac。

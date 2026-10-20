@@ -43,8 +43,8 @@ describe('macOS DMG acceptance receipt contract', () => {
       detailsExitCode: 0,
       verificationExitCode: 0,
       detailsOutput: [
-        'Executable=/Volumes/AI/AI小说作家.app/Contents/MacOS/AI小说作家',
-        'Identifier=com.ethanyoq.ai-novel-writer',
+        'Executable=/Volumes/AI/AI Writer.app/Contents/MacOS/AI Writer',
+        'Identifier=com.ethanyoq.ai-writer',
         'Format=app bundle with Mach-O thin (arm64)',
         'Signature=adhoc',
         'TeamIdentifier=not set',
@@ -65,8 +65,8 @@ describe('macOS DMG acceptance receipt contract', () => {
       detailsExitCode: 0,
       verificationExitCode: 0,
       detailsOutput: [
-        'Executable=/Volumes/AI/AI小说作家.app/Contents/MacOS/AI小说作家',
-        'Identifier=com.ethanyoq.ai-novel-writer',
+        'Executable=/Volumes/AI/AI Writer.app/Contents/MacOS/AI Writer',
+        'Identifier=com.ethanyoq.ai-writer',
         'Format=app bundle with Mach-O thin (arm64)',
         'Signature size=8993',
         'Authority=Developer ID Application: Example Developer (ABCDE12345)',
@@ -92,7 +92,7 @@ describe('macOS DMG acceptance receipt contract', () => {
     expect(classifyMacosCodeSigning({
       detailsExitCode: 1,
       verificationExitCode: 1,
-      detailsOutput: '/Volumes/AI/AI小说作家.app: code object is not signed at all',
+      detailsOutput: '/Volumes/AI/AI Writer.app: code object is not signed at all',
     })).toEqual({
       observed: 'unsigned',
       signature: null,
@@ -173,7 +173,7 @@ describe('macOS DMG acceptance receipt contract', () => {
       'init',
       '--platform', 'macos-x64',
       '--evidence-root', evidenceRoot,
-      '--repository', 'poluce/AI-Novel-Writer',
+      '--repository', 'poluce/ai-writer',
       '--commit', 'e'.repeat(40),
       '--run-id', '405',
       '--run-attempt', '1',
@@ -255,7 +255,7 @@ describe('macOS DMG acceptance receipt contract', () => {
       'init',
       '--platform', platform,
       '--evidence-root', evidenceRoot,
-      '--repository', 'poluce/AI-Novel-Writer',
+      '--repository', 'poluce/ai-writer',
       '--commit', 'd'.repeat(40),
       '--run-id', '404',
       '--run-attempt', '1',
@@ -282,7 +282,7 @@ describe('macOS DMG acceptance receipt contract', () => {
       expect(recorded.status, recorded.stderr).toBe(0)
     }
 
-    const dmg = `ai-novel-writer-mac-${architecture}-${version}-installer.dmg`
+    const dmg = `ai-writer-mac-${architecture}-${version}-installer.dmg`
     writeFileSync(path.join(releaseRoot, dmg), 'macOS DMG', 'utf8')
     const dmgSha256 = createHash('sha256').update('macOS DMG').digest('hex')
     const commandOutputSha256 = 'b'.repeat(64)

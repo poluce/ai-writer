@@ -170,7 +170,7 @@ function applyPlatformAppIcon(window: BrowserWindow, appIcon: unknown): void {
 
 function configurePlatformTaskbar(): void {
   if (process.platform === 'win32') {
-    app.setAppUserModelId?.('com.ai-novel-writer.app')
+    app.setAppUserModelId?.('com.poluce.aiwriter')
   }
 }
 
@@ -204,7 +204,7 @@ function createWindow(): void {
   win.webContents.setWindowOpenHandler(createOfficialHomepageWindowOpenHandler({
     openExternal: url => shell.openExternal(url),
     onOpenExternalError: error => {
-      console.warn('[AI Novel Writer] Unable to open official homepage from a window request.', error)
+      console.warn('[AI Writer] Unable to open official homepage from a window request.', error)
     },
   }))
   // 渲染进程不能把现有主窗口导航到外部内容。

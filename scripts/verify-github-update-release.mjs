@@ -15,7 +15,7 @@ const scriptPath = fileURLToPath(import.meta.url)
 const repositoryRoot = path.resolve(path.dirname(scriptPath), '..')
 const defaultRepository = Object.freeze({
   owner: 'poluce',
-  repo: 'AI-Novel-Writer',
+  repo: 'ai-writer',
 })
 const defaultApiBaseUrl = 'https://api.github.com'
 
@@ -47,7 +47,7 @@ async function fetchJson(fetcher, url, label) {
   const response = await fetcher(url, {
     headers: {
       Accept: 'application/vnd.github+json',
-      'User-Agent': 'AI-Novel-Writer-release-verifier',
+      'User-Agent': 'ai-writer-release-verifier',
     },
   })
   assert(response?.ok, `${label} request failed${response ? ` (${response.status})` : ''}`)
@@ -58,7 +58,7 @@ async function fetchBytes(fetcher, url, label) {
   const response = await fetcher(url, {
     headers: {
       Accept: 'application/octet-stream',
-      'User-Agent': 'AI-Novel-Writer-release-verifier',
+      'User-Agent': 'ai-writer-release-verifier',
     },
   })
   assert(response?.ok, `${label} download failed${response ? ` (${response.status})` : ''}`)
