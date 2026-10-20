@@ -81,6 +81,7 @@ describe('buildAgentTools', () => {
     expect([...confirmationToolNames()].sort()).toEqual([
       // harness 自带的执行工具同样逐次确认。
       'bash',
+      'delegate_to_assistant',
       'edit',
       'manage_characters',
       'manage_drafts',
@@ -98,6 +99,7 @@ describe('buildAgentTools', () => {
   it('keeps sequentialToolNames explicitly defined and decoupled from confirmation', () => {
     expect([...sequentialToolNames()].sort()).toEqual([
       'bash',
+      'delegate_to_assistant',
       'edit',
       'manage_characters',
       'manage_drafts',
@@ -110,6 +112,14 @@ describe('buildAgentTools', () => {
       'story_architecture',
       'write',
     ])
+  })
+
+  it('attaches delegate_to_assistant to project assistant only when delegate handler is provided', () => {
+    const withoutDelegate = buildAgentTools('zh-CN', () => {})
+    expect(withoutDelegate.some(t => t.name === 'delegate_to_assistant')).toBe(false)
+
+    const withDelegate = buildAgentTools('zh-CN', () => {}, [], [], vi.fn())
+    expect(withDelegate.some(t => t.name === 'delegate_to_assistant')).toBe(true)
   })
 })
 
@@ -139,6 +149,7 @@ describe('buildArchitectAgentTools', () => {
     expect(names).not.toContain('bash')
     expect(names).not.toContain('manage_skills')
     expect(names).not.toContain('manage_mcp')
+    expect(names).not.toContain('delegate_to_assistant')
   })
 
   it('marks sequential tools appropriately for serial execution', () => {
@@ -176,6 +187,7 @@ describe('buildBlueprintAgentTools', () => {
     expect(names).not.toContain('bash')
     expect(names).not.toContain('manage_skills')
     expect(names).not.toContain('manage_mcp')
+    expect(names).not.toContain('delegate_to_assistant')
   })
 
   it('marks blueprint proposal sequential', () => {

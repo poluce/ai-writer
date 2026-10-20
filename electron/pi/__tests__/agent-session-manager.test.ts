@@ -17,6 +17,7 @@ const h = vi.hoisted(() => {
     transcriptLength: vi.fn(async () => h.transcriptLength),
     seedHistory: vi.fn(async () => {}),
     setExecutionMode: vi.fn(),
+    getFullText: vi.fn(() => 'mocked text'),
   })
   return {
     sessions: [] as Array<Record<string, ReturnType<typeof vi.fn>>>,
@@ -42,6 +43,8 @@ vi.mock('../pi-models', () => ({
 }))
 vi.mock('../tool-builder', () => ({
   buildAgentTools: vi.fn(() => []),
+  buildArchitectAgentTools: vi.fn(() => []),
+  buildBlueprintAgentTools: vi.fn(() => []),
   confirmationToolNames: vi.fn(() => new Set(['write'])),
 }))
 
@@ -306,5 +309,124 @@ describe('AgentSessionManager', () => {
     expect(result.success).toBe(false)
     expect(result.error).toContain('还在生成')
     expect(h.sessions).toHaveLength(1)
+  })
+
+  it('delegates task to target assistant and returns execution result', async () => {
+    const store = fakeStore({
+      listConversations: vi.fn(async () => [
+        { id: 'architect-existing', assistantType: 'architect', title: '已有架构', updatedAt: 1000 } as never,
+      ]),
+      open: vi.fn(async () => ({
+        metadata: { id: 'architect-existing' },
+        setName: vi.fn(),
+      })),
+    })
+    const { manager } = buildManager(store as never)
+
+    const result = await manager.delegateTask({
+      target: 'architect',
+      task: '完善千机阁设定',
+      context: '暗夜渊势力',
+    }, 'parent-conv-1')
+
+    expect(result.success).toBe(true)
+    expect(result.conversationId).toBe('architect-existing')
+    expect(result.result).toBe('mocked text')
+  })
+
+  it('queues delegated task when target assistant is busy and executes in same conversation once idle', async () => {
+    let finishFirstTurn: () => void
+    const firstTurnPromise = new Promise<void>((resolve) => {
+      finishFirstTurn = resolve
+    })
+
+    const openMock = vi.fn(async (id: string) => ({
+      metadata: { id },
+      setName: vi.fn(),
+    }))
+    const store = fakeStore({
+      listConversations: vi.fn(async () => [
+        { id: 'architect-existing', assistantType: 'architect', title: '已有架构', updatedAt: 1000 } as never,
+      ]),
+      open: openMock,
+    })
+    const { manager } = buildManager(store as never)
+
+    // 让首个回合在执行中等待
+    const originalMakeSession = h.makeSession
+    let firstExecuted = false
+    h.makeSession = () => ({
+      prompt: vi.fn(async () => {
+        if (!firstExecuted) {
+          firstExecuted = true
+          await firstTurnPromise
+        }
+      }),
+      setEditorSnapshot: vi.fn(),
+      setTools: vi.fn(async () => {}),
+      setSystemPrompt: vi.fn(),
+      confirm: vi.fn(),
+      abort: vi.fn(),
+      close: vi.fn(async () => true),
+      isBusy: vi.fn(() => false),
+      transcriptLength: vi.fn(async () => 0),
+      seedHistory: vi.fn(async () => {}),
+      setExecutionMode: vi.fn(),
+      getFullText: vi.fn(() => 'queued task result'),
+    })
+
+    const p1 = manager.prompt(
+      'architect-existing',
+      '正在由用户发言生成中...',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      'architect',
+    )
+
+    // 在第一个回合进行中，项目助手发起委派
+    const pDelegated = manager.delegateTask({
+      target: 'architect',
+      task: '再加个新设定',
+    }, 'parent-conv-1')
+
+    // 严格禁止新建临时会话，必定复用已有会话
+    expect(openMock).not.toHaveBeenCalledWith(expect.stringMatching(/^architect-[a-f0-9]+$/), expect.anything())
+
+    // 释放第一个回合
+    finishFirstTurn!()
+    await p1
+
+    // 委派任务在排队后自动执行并成功返回
+    const result = await pDelegated
+    expect(result.success).toBe(true)
+    expect(result.conversationId).toBe('architect-existing')
+    expect(result.result).toBe('queued task result')
+
+    h.makeSession = originalMakeSession
+  })
+
+  it('creates a new conversation only when no conversation exists for the target assistant', async () => {
+    const openMock = vi.fn(async (id: string) => ({
+      metadata: { id },
+      setName: vi.fn(),
+    }))
+    const store = fakeStore({
+      listConversations: vi.fn(async () => []),
+      open: openMock,
+    })
+    const { manager } = buildManager(store as never)
+
+    const result = await manager.delegateTask({
+      target: 'blueprint',
+      task: '规划第一章细纲',
+    }, 'parent-conv-1')
+
+    expect(result.success).toBe(true)
+    expect(result.conversationId).toMatch(/^blueprint-/)
+    expect(openMock).toHaveBeenCalledWith(expect.stringMatching(/^blueprint-/), { create: true })
   })
 })

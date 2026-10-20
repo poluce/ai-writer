@@ -139,6 +139,14 @@ describe('AgentSession', () => {
     expect(types).toContain('tool_call_confirm')
     expect(types).toContain('tool_call_complete')
     expect(types).toContain('done')
+    // 确认一落定就把卡片翻到执行态，渲染层不必等工具跑完才看到变化。
+    expect(types).toContain('tool_call_status')
+    const status = events.find((e) => e.type === 'tool_call_status')
+    if (status?.type === 'tool_call_status') {
+      expect(status.call.status).toBe('running')
+      expect(status.call.toolName).toBe('add_numbers')
+      expect(types.indexOf('tool_call_status')).toBeLessThan(types.indexOf('tool_call_complete'))
+    }
 
     const complete = events.find((e) => e.type === 'tool_call_complete')
     expect(complete).toBeDefined()
@@ -158,6 +166,14 @@ describe('AgentSession', () => {
 
     await session.prompt('What is 12 + 7?')
     await session.close()
+
+    const status = events.find((e) => e.type === 'tool_call_status')
+    if (status?.type === 'tool_call_status') {
+      expect(status.call.status).toBe('failed')
+      expect(status.call.error).toContain('用户拒绝执行')
+    } else {
+      throw new Error('declined tool should emit an immediate failed status')
+    }
 
     const complete = events.find((e) => e.type === 'tool_call_complete')
     expect(complete).toBeDefined()

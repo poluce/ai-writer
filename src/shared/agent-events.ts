@@ -17,6 +17,11 @@ export type PiAgentEvent =
   | { type: 'text_delta'; delta: string }
   | { type: 'tool_call_start'; call: PiToolCallInfo }
   | { type: 'tool_call_confirm'; call: PiToolCallInfo }
+  /**
+   * 确认落定后的状态翻转（待确认 → 执行中 / 已拒绝）。
+   * 真实 `tool_start` 事件被确认卡补发逻辑抑制，缺了它卡片只能等工具跑完才变。
+   */
+  | { type: 'tool_call_status'; call: PiToolCallInfo }
   | { type: 'tool_call_complete'; call: PiToolCallInfo }
   | { type: 'done'; fullText: string }
   | { type: 'error'; message: string }

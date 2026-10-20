@@ -1245,6 +1245,7 @@ export interface AgentChannels {
 export interface AgentStreamEvents {
   'agent:event': { conversationId: string; event: PiAgentEvent }
   'agent:renderer-action': { action: RendererAction; requestId?: string }
+  'agent:conversations-updated': { conversationId?: string }
 }
 
 export interface MCPStreamEvents {

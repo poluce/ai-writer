@@ -175,6 +175,9 @@ export function registerAgentController(): void {
     resolveLanguage: () => resolveLanguage(),
     emit: (conversationId, event) => {
       mainWindow()?.webContents.send('agent:event', { conversationId, event })
+      if (event.type === 'done') {
+        mainWindow()?.webContents.send('agent:conversations-updated', { conversationId })
+      }
     },
     rendererAction: (action) => dispatcher.rendererAction(action),
     resolveConversationStore: () => resolveConversationStore(),

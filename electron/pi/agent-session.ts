@@ -270,7 +270,7 @@ export class AgentSession {
       if (!needsConfirm) return undefined
       const confirmed = await this.requestConfirmation(event.toolCallId, event.toolName, event.args)
       if (confirmed) return undefined
-      return { block: { reason: '用户拒绝执行' } }
+      return { block: { reason: this.confirmationRejectedReason() } }
     }))
 
     // 工具结果统一截断；「写入了但提交态未知」时终止本轮，避免自动重写。
@@ -561,21 +561,46 @@ export class AgentSession {
     }
   }
 
+  /** 获取当前轮累积生成的完整正文 */
+  getFullText(): string {
+    return this.fullText
+  }
+
   /** 是否有一轮生成正在进行；换模型/思考等级要重建会话时用它判断能不能安全关掉。 */
   isBusy(): boolean {
     return this.busy
   }
 
-  /** Resolve a pending tool confirmation from the renderer. */
+  /** 拒绝执行的统一措辞（界面与工具结果保持同一句话）。 */
+  private confirmationRejectedReason(): string {
+    return this.language === 'en-US' ? 'Rejected by the user' : '用户拒绝执行'
+  }
+
+  /**
+   * Resolve a pending tool confirmation from the renderer.
+   *
+   * 确认一落定就先把卡片翻到执行态：需要确认的工具，其真实 `tool_start`
+   * 事件被 `announcedToolCalls` 抑制（卡片是钩子里补发的），少了这次状态推送，
+   * 渲染层只能等工具真正跑完的 `tool_call_complete` 才看得到变化——联网检索、
+   * 写入大段正文这类慢工具会让用户以为点击没生效。
+   */
   confirm(toolCallId: string, confirmed: boolean): void {
     const pending = this.pendingConfirmations.get(toolCallId)
     if (!pending) return
     this.pendingConfirmations.delete(toolCallId)
+    pending.call.status = confirmed ? 'running' : 'failed'
+    if (!confirmed) pending.call.error = this.confirmationRejectedReason()
+    this.emit({ type: 'tool_call_status', call: pending.call })
     pending.resolve(confirmed)
   }
 
   abort(): void {
-    for (const pending of this.pendingConfirmations.values()) pending.resolve(false)
+    for (const pending of this.pendingConfirmations.values()) {
+      pending.call.status = 'failed'
+      pending.call.error = this.language === 'en-US' ? 'Cancelled' : '已取消'
+      this.emit({ type: 'tool_call_status', call: pending.call })
+      pending.resolve(false)
+    }
     this.pendingConfirmations.clear()
     void this.lane.abort(BACKGROUND_CONTEXT).catch((error) => {
       logFailure('Agent', 'failed to abort agent run', error, {

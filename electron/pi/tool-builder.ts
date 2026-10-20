@@ -18,8 +18,11 @@ import { createManageCharactersTool } from './tools/manage-characters.tool'
 import { createManageMcpTool } from './tools/manage-mcp.tool'
 import { createWebFetchTool } from './tools/web-fetch.tool'
 import { buildMcpAgentTools } from './tools/mcp.tool'
+import { createDelegateToAssistantTool, type AssistantDelegateHandler } from './tools/delegate-to-assistant.tool'
 import type { AnyAgentTool } from './tool-types'
 import type { AgentSkillCatalogEntry } from '../../src/shared/agent-skills'
+
+export type { AssistantDelegateHandler }
 
 /**
  * 需要串行执行的工具名单（写操作、环境变动与命令执行）。
@@ -39,6 +42,7 @@ export function sequentialToolNames(): ReadonlySet<string> {
     'manage_mcp',
     'manage_skills',
     'manage_knowledge_base',
+    'delegate_to_assistant',
   ])
 }
 
@@ -63,8 +67,9 @@ export function buildAgentTools(
   rendererAction: RendererActionSink,
   skills: readonly AgentSkillCatalogEntry[] = [],
   skillRoots: readonly string[] = [],
+  delegateHandler?: AssistantDelegateHandler,
 ): AnyAgentTool[] {
-  return [
+  const tools: AnyAgentTool[] = [
     createNovelConfigTool(language, rendererAction),
     createStoryArchitectureTool(language, rendererAction),
     createReadArchitectureTool(language),
@@ -75,13 +80,19 @@ export function buildAgentTools(
     createManageKnowledgeBaseTool(language),
     createReadFileTool(language),
     createOpenEditorTool(language, rendererAction),
-    createProposeChapterBlueprintTool(language),
+    createProposeChapterBlueprintTool(language, rendererAction),
     createManageCharactersTool(language, rendererAction),
     createManageMcpTool(language),
     createWebFetchTool(language),
     createManageSkillsTool(language, skills, skillRoots),
     ...buildMcpAgentTools(language),
-  ].map(withExecutionMode)
+  ]
+
+  if (delegateHandler) {
+    tools.push(createDelegateToAssistantTool(language, delegateHandler))
+  }
+
+  return tools.map(withExecutionMode)
 }
 
 /**
@@ -104,7 +115,7 @@ export function buildArchitectAgentTools(
     createManageKnowledgeBaseTool(language),
     createReadFileTool(language),
     createOpenEditorTool(language, rendererAction),
-    createProposeChapterBlueprintTool(language),
+    createProposeChapterBlueprintTool(language, rendererAction),
     createManageCharactersTool(language, rendererAction),
     createWebFetchTool(language),
   ].map(withExecutionMode)
@@ -153,5 +164,6 @@ export function confirmationToolNames(): ReadonlySet<string> {
     'manage_mcp',
     'manage_skills',
     'manage_knowledge_base',
+    'delegate_to_assistant',
   ])
 }

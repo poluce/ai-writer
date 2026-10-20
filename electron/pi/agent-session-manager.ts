@@ -1,13 +1,16 @@
+import { randomUUID } from 'node:crypto'
 import {
+  BACKGROUND_CONTEXT,
   type ExecutionEnv,
 } from '@earendil-works/pi-agent-core'
 
 import { AgentSession } from './agent-session'
 import { abortAllPiInFlight, registerPiInFlight } from './in-flight'
+import { ConversationQueue } from './conversation-queue'
 import { createPiModels } from './pi-models'
 import { toPiModelSamplingParams } from './pi-stream-options'
 import { resolveGenerationParameters } from '../llm/generation-parameter-policy'
-import { buildAgentTools, buildArchitectAgentTools, buildBlueprintAgentTools, confirmationToolNames } from './tool-builder'
+import { buildAgentTools, buildArchitectAgentTools, buildBlueprintAgentTools, confirmationToolNames, type AssistantDelegateHandler } from './tool-builder'
 import type { AgentConversationStore } from './agent-conversation-store'
 
 import type { CreativeStrategy } from '../../src/shared/reasoning-types'
@@ -17,7 +20,7 @@ import type { AssistantThinkingLevel } from '../../src/shared/agent-runtime'
 import type { AgentTurnRefusalCode } from '../../src/shared/agent-turn-refusal'
 import type { AgentPromptHistoryTurn, PersistedAgentConversation } from '../../src/shared/agent-conversation-archive'
 import type { ModelProfile } from '../../src/shared/ipc-channels'
-import type { WritingLanguage } from '../../src/shared/writing-language'
+import { writingLanguageText, type WritingLanguage } from '../../src/shared/writing-language'
 import { logFailure, logInfo } from '../../src/shared/fail-log'
 
 /** 会话的运行时身份：换模型、凭据、端点或思考等级都算换运行时，会话要重建。 */
@@ -82,8 +85,21 @@ export class AgentSessionManager {
   private readonly stores = new Map<string, AgentConversationStore | null>()
   /** 会话当前的运行时身份（模型 + 思考等级），用来判断要不要重建。 */
   private readonly runtimeKeys = new Map<string, string>()
+  /** 父会话到正在执行的委派子会话的映射（用于联动终止） */
+  private readonly delegatedChildren = new Map<string, string>()
+  /** 每个会话专属的消息与任务接收队列（FIFO 保证顺序执行与忙碌排队缓冲） */
+  private readonly queues = new Map<string, ConversationQueue>()
 
   constructor(private readonly options: AgentSessionManagerOptions) {}
+
+  private getQueue(conversationId: string): ConversationQueue {
+    let queue = this.queues.get(conversationId)
+    if (!queue) {
+      queue = new ConversationQueue()
+      this.queues.set(conversationId, queue)
+    }
+    return queue
+  }
 
   async prompt(
     conversationId: string,
@@ -100,46 +116,51 @@ export class AgentSessionManager {
         ? 'architect'
         : 'general',
   ): Promise<{ success: boolean; error?: string; code?: AgentTurnRefusalCode }> {
-    try {
-      const profile = this.options.resolveModel(modelId)
-      logInfo('Agent', 'prompt start', {
-        conversationId,
-        modelId,
-        modelName: profile?.modelName,
-        protocol: profile?.protocol,
-        provider: profile?.provider,
-        thinkingLevel: thinkingLevel ?? 'off',
-        executionMode: executionMode ?? 'plan',
-        assistantType,
-        chars: input.length,
-      })
-      const session = await this.getOrCreate(conversationId, modelId, history, skills, thinkingLevel, assistantType)
-      const language = this.options.resolveLanguage(conversationId)
-      session.setEditorSnapshot(editorSnapshot)
-      session.setExecutionMode(executionMode)
-      session.setSystemPrompt(this.options.resolveSystemPrompt(conversationId, skills, assistantType))
-      const tools = assistantType === 'blueprint'
-        ? buildBlueprintAgentTools(language, this.options.rendererAction)
-        : assistantType === 'architect'
-          ? buildArchitectAgentTools(language, this.options.rendererAction)
-          : buildAgentTools(
-              language,
-              this.options.rendererAction,
-              skills,
-              this.options.resolveSkillRoots?.() ?? [],
-            )
-      await session.setTools(tools)
-      await session.prompt(input)
-      logInfo('Agent', 'prompt finished', { conversationId, modelId, assistantType })
-      return { success: true }
-    } catch (error) {
-      logFailure('Agent', 'prompt failed', error, { conversationId, modelId })
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-        ...(error instanceof AgentTurnRefusal ? { code: error.code } : {}),
+    const queue = this.getQueue(conversationId)
+    return queue.enqueue(async () => {
+      try {
+        const profile = this.options.resolveModel(modelId)
+        logInfo('Agent', 'prompt start', {
+          conversationId,
+          modelId,
+          modelName: profile?.modelName,
+          protocol: profile?.protocol,
+          provider: profile?.provider,
+          thinkingLevel: thinkingLevel ?? 'off',
+          executionMode: executionMode ?? 'plan',
+          assistantType,
+          chars: input.length,
+          pendingQueued: queue.pendingCount,
+        })
+        const session = await this.getOrCreate(conversationId, modelId, history, skills, thinkingLevel, assistantType)
+        const language = this.options.resolveLanguage(conversationId)
+        session.setEditorSnapshot(editorSnapshot)
+        session.setExecutionMode(executionMode)
+        session.setSystemPrompt(this.options.resolveSystemPrompt(conversationId, skills, assistantType))
+        const tools = assistantType === 'blueprint'
+          ? buildBlueprintAgentTools(language, this.options.rendererAction)
+          : assistantType === 'architect'
+            ? buildArchitectAgentTools(language, this.options.rendererAction)
+            : buildAgentTools(
+                language,
+                this.options.rendererAction,
+                skills,
+                this.options.resolveSkillRoots?.() ?? [],
+                this.createDelegateHandler(conversationId),
+              )
+        await session.setTools(tools)
+        await session.prompt(input)
+        logInfo('Agent', 'prompt finished', { conversationId, modelId, assistantType })
+        return { success: true }
+      } catch (error) {
+        logFailure('Agent', 'prompt failed', error, { conversationId, modelId })
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : String(error),
+          ...(error instanceof AgentTurnRefusal ? { code: error.code } : {}),
+        }
       }
-    }
+    }, `prompt:${conversationId}`)
   }
 
   confirm(conversationId: string, toolCallId: string, confirmed: boolean): { success: boolean } {
@@ -150,10 +171,130 @@ export class AgentSessionManager {
   }
 
   abort(conversationId: string): { success: boolean } {
+    const childId = this.delegatedChildren.get(conversationId)
+    if (childId) {
+      this.sessions.get(childId)?.abort()
+      this.queues.get(childId)?.abortPending('父会话已终止委派任务')
+    }
+    this.queues.get(conversationId)?.abortPending('会话已终止生成')
     const session = this.sessions.get(conversationId)
     if (!session) return { success: false }
     session.abort()
     return { success: true }
+  }
+
+  private createDelegateHandler(parentConversationId: string): AssistantDelegateHandler {
+    return (params) => this.delegateTask(params, parentConversationId)
+  }
+
+  /**
+   * 向架构助手或章节蓝图助手委派专门任务。
+   * 目标助手在自身独立会话中执行，完成后返回生成文本，并把设定/蓝图更新写入项目。
+   * 引入消息排队机制（Mailbox Queue）：
+   * - 优先复用目标助手的已有会话；
+   * - 若目标助手已有会话处于忙碌状态，任务平滑压入其消息队列排队等待，严禁并发新建碎片会话；
+   * - 仅在完全不存在任何历史会话时，才创建初始会话。
+   */
+  async delegateTask(
+    params: {
+      target: 'architect' | 'blueprint'
+      task: string
+      context?: string
+    },
+    parentConversationId?: string,
+  ): Promise<{
+    success: boolean
+    result?: string
+    conversationId?: string
+    error?: string
+  }> {
+    const store = this.options.resolveConversationStore?.() ?? null
+    if (!store) {
+      return { success: false, error: '打开项目后助手才可用' }
+    }
+
+    try {
+      // 1. 查找或创建目标助手的会话
+      const convs = await store.listConversations()
+      const targetConvs = convs.filter(c => c.assistantType === params.target)
+      let targetConvId: string
+
+      if (targetConvs.length > 0) {
+        // 优先复用目标助手的已有会话（取最近活跃会话）
+        targetConvId = targetConvs[0].id
+      } else {
+        // 仅在目标助手完全不存在任何已有会话时，才创建初始新会话
+        const uid = randomUUID().slice(0, 8)
+        targetConvId = `${params.target}-${uid}`
+        const session = await store.open(targetConvId, { create: true })
+        if (session) {
+          const shortTitle = params.task.trim().slice(0, 18)
+          await session.setName(`[委派] ${shortTitle}`, BACKGROUND_CONTEXT)
+        }
+      }
+
+      if (parentConversationId) {
+        this.delegatedChildren.set(parentConversationId, targetConvId)
+      }
+
+      const queue = this.getQueue(targetConvId)
+      const isQueued = queue.isBusy()
+      if (isQueued) {
+        logInfo('Agent', 'target assistant is busy, queuing delegated message in mailbox', {
+          target: params.target,
+          conversationId: targetConvId,
+          pendingTasks: queue.pendingCount,
+        })
+      }
+
+      // 2. 将委派任务推入消息接收队列（FIFO 保证顺序与排队执行，杜绝并发冲突与多开会话）
+      return await queue.enqueue(async () => {
+        const language = this.options.resolveLanguage(targetConvId)
+        const input = writingLanguageText(
+          language,
+          `【来自项目助手的任务委派】\n\n任务内容：\n${params.task}${params.context ? `\n\n补充背景：\n${params.context}` : ''}\n\n请以你的专业角色全力完成此项推演。如有需要固化到项目的设定或蓝图，请直接调用相关工具写入项目，并给出清晰详尽的回复。`,
+          `[Task Delegated from Project Assistant]\n\nTask:\n${params.task}${params.context ? `\n\nAdditional Context:\n${params.context}` : ''}\n\nPlease complete this task thoroughly within your professional role. If settings or blueprints need to be persisted to the project, invoke your tools directly and provide a comprehensive response.`,
+        )
+
+        // 获取或创建目标助手会话
+        const session = await this.getOrCreate(
+          targetConvId,
+          undefined, // 自动解析规划模型
+          undefined,
+          undefined,
+          undefined,
+          params.target,
+        )
+
+        // 委派执行强制使用 writing 模式（自动执行领域工具落盘，避免弹窗阻断委派流）
+        session.setExecutionMode('writing')
+        session.setSystemPrompt(this.options.resolveSystemPrompt(targetConvId, undefined, params.target))
+        const tools = params.target === 'blueprint'
+          ? buildBlueprintAgentTools(language, this.options.rendererAction)
+          : buildArchitectAgentTools(language, this.options.rendererAction)
+        await session.setTools(tools)
+
+        // 执行提示词生成并获取结果
+        await session.prompt(input)
+        const resultText = session.getFullText()
+
+        return {
+          success: true,
+          result: resultText,
+          conversationId: targetConvId,
+        }
+      }, `delegate:${params.target}`)
+    } catch (error) {
+      logFailure('Agent', 'delegated task failed', error, { target: params.target })
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      }
+    } finally {
+      if (parentConversationId) {
+        this.delegatedChildren.delete(parentConversationId)
+      }
+    }
   }
 
   /**
@@ -212,6 +353,8 @@ export class AgentSessionManager {
 
   /** 关掉内存里的 harness，并让 store 忘掉这个已关闭的会话。 */
   private async closeSession(conversationId: string): Promise<boolean> {
+    this.queues.get(conversationId)?.clear()
+    this.queues.delete(conversationId)
     const session = this.sessions.get(conversationId)
     const store = this.stores.get(conversationId) ?? null
     this.sessions.delete(conversationId)
@@ -283,6 +426,7 @@ export class AgentSessionManager {
             this.options.rendererAction,
             skills,
             this.options.resolveSkillRoots?.() ?? [],
+            this.createDelegateHandler(conversationId),
           )
 
     const session = await AgentSession.create({

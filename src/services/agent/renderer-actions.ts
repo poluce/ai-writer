@@ -81,8 +81,15 @@ export async function handleRendererAction(action: RendererAction): Promise<Rend
     case 'refresh_blueprint': {
       const project = useProjectStore.getState().currentProject
       if (!project) return
+      const projectSession = projectSessionContextFromProject(project)
+      if (!projectSession) return
       void useProjectStore.getState().refreshFileTree(project.path).catch((error) => {
         logFailure('Agent', `${action.type} refresh failed`, error)
+      })
+      globalEventBus.emit('REFRESH_RESOURCE', {
+        resources: ['blueprints', 'fileTree'],
+        projectPath: project.path,
+        projectSession,
       })
       return
     }

@@ -559,23 +559,29 @@ export const useAgentStore = create<AgentState>()((set, get) => ({
     const architectConvs = conversations.filter(c => c.assistantType === 'architect')
     const blueprintConvs = conversations.filter(c => c.assistantType === 'blueprint')
 
-    const activeConversationId = archive.activeConversationId
-      && generalConvs.some(conversation => conversation.id === archive.activeConversationId)
-      ? archive.activeConversationId
-      : generalConvs[0]?.id ?? null
+    const currentGeneralId = get().activeConversationId
+    const activeConversationId = currentGeneralId && generalConvs.some(c => c.id === currentGeneralId)
+      ? currentGeneralId
+      : (archive.activeConversationId && generalConvs.some(conversation => conversation.id === archive.activeConversationId)
+          ? archive.activeConversationId
+          : generalConvs[0]?.id ?? null)
 
-    const activeArchitectConversationId = architectConvs[0]?.id ?? null
-    const activeBlueprintConversationId = blueprintConvs[0]?.id ?? null
+    const currentArchitectId = get().activeArchitectConversationId
+    const activeArchitectConversationId = currentArchitectId && architectConvs.some(c => c.id === currentArchitectId)
+      ? currentArchitectId
+      : architectConvs[0]?.id ?? null
+
+    const currentBlueprintId = get().activeBlueprintConversationId
+    const activeBlueprintConversationId = currentBlueprintId && blueprintConvs.some(c => c.id === currentBlueprintId)
+      ? currentBlueprintId
+      : blueprintConvs[0]?.id ?? null
 
     set({
       conversations,
       activeConversationId,
       activeArchitectConversationId,
       activeBlueprintConversationId,
-      showHistory: false,
-      showArchitectHistory: false,
-      showBlueprintHistory: false,
-      activeRequestId: null,
+      activeRequestId: get().activeRequestId,
       dataProjectSession: projectSession,
     })
   },
@@ -884,14 +890,72 @@ export const useAgentStore = create<AgentState>()((set, get) => ({
   },
 
   resolveToolConfirmation: (toolCallId, confirmed) => {
-    const convId = get().activeConversationId
-    if (convId) {
-      void ipc.invoke('agent:confirm', convId, toolCallId, confirmed)
-    }
+    // 工具卡属于哪段会话就回哪段：架构/蓝图助手各自持有活跃会话，
+    // 只用通用助手的会话 ID 会把确认发错会话，工具永远等不到批准。
+    const conversationId = findConversationIdForToolCall(toolCallId) ?? get().activeConversationId
+    // 点击立刻落到界面上：卡片不该在慢工具（联网检索等）跑完前一直停在「待确认」。
+    patchToolCall(toolCallId, confirmed
+      ? { status: 'running' }
+      : {
+          status: 'failed',
+          error: useLocaleStore.getState().text('用户拒绝执行', 'Rejected by the user'),
+        })
+    if (!conversationId) return
+    void ipc.invoke('agent:confirm', conversationId, toolCallId, confirmed)
+      .then(result => {
+        if (result?.success !== false) return
+        patchToolCall(toolCallId, {
+          status: 'failed',
+          error: useLocaleStore.getState().text(
+            '会话已失效，无法确认；请重新提问。',
+            'The session is gone, so the confirmation was dropped. Please ask again.',
+          ),
+        })
+      })
+      .catch(() => {
+        patchToolCall(toolCallId, {
+          status: 'failed',
+          error: useLocaleStore.getState().text('确认失败，请重试。', 'Confirmation failed; please retry.'),
+        })
+      })
   },
 }))
 
 // ===== 主进程 Agent 事件订阅 =====
+
+/** 找到承载这张工具卡的会话；没有时返回 null。 */
+function findConversationIdForToolCall(toolCallId: string): string | null {
+  for (const conversation of useAgentStore.getState().conversations) {
+    for (const message of conversation.messages) {
+      if ((message.toolCalls ?? []).some(toolCall => toolCall.id === toolCallId)) {
+        return conversation.id
+      }
+    }
+  }
+  return null
+}
+
+/** 就地更新一张工具卡：确认点击要先给出结果，再等主进程的权威事件收敛。 */
+function patchToolCall(toolCallId: string, patch: Partial<ToolCallInfo>): void {
+  useAgentStore.setState(state => ({
+    conversations: state.conversations.map(conversation => {
+      const ownsToolCall = conversation.messages.some(message =>
+        (message.toolCalls ?? []).some(toolCall => toolCall.id === toolCallId))
+      if (!ownsToolCall) return conversation
+      return {
+        ...conversation,
+        messages: conversation.messages.map(message => {
+          if (!(message.toolCalls ?? []).some(toolCall => toolCall.id === toolCallId)) return message
+          return {
+            ...message,
+            toolCalls: (message.toolCalls ?? []).map(toolCall =>
+              toolCall.id === toolCallId ? { ...toolCall, ...patch } : toolCall),
+          }
+        }),
+      }
+    }),
+  }))
+}
 
 /** 按会话更新在途回合的助手消息（不依赖"当前可见的是哪一个"）。 */
 function updateInflightAssistantMsg(
@@ -937,6 +1001,20 @@ export function handleAgentEvent({ conversationId, event }: {
           ...m,
           toolCalls: (m.toolCalls ?? []).map(tc =>
             tc.id === event.call.id ? { ...tc, status: 'waiting_confirm' as const } : tc
+          ),
+        }))
+        break
+      case 'tool_call_status':
+        updateInflightAssistantMsg(conversationId, m => ({
+          ...m,
+          toolCalls: (m.toolCalls ?? []).map(tc =>
+            tc.id === event.call.id
+              ? {
+                  ...tc,
+                  status: event.call.status,
+                  ...(event.call.error ? { error: event.call.error } : {}),
+                }
+              : tc
           ),
         }))
         break
@@ -1006,5 +1084,17 @@ if (typeof window !== 'undefined') {
         error: error instanceof Error ? error.message : String(error),
       })
     })
+  })
+
+  ipc.on('agent:conversations-updated', async () => {
+    const currentSession = useAgentStore.getState().dataProjectSession
+    if (!currentSession) return
+    try {
+      const { loadProjectAgentConversations } = await import('../services/agent/conversation-archive')
+      const archive = await loadProjectAgentConversations(currentSession)
+      useAgentStore.getState().hydrateFromArchive(currentSession, archive)
+    } catch {
+      // ignore
+    }
   })
 }

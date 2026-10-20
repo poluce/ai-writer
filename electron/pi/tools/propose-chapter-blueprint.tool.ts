@@ -2,6 +2,7 @@ import type { AgentTool } from '@earendil-works/pi-agent-core'
 import { Type, StringEnum } from '@earendil-works/pi-ai'
 
 import { BlueprintRepository } from '../../repositories/blueprint-repository'
+import type { RendererActionSink } from '../renderer-action'
 import {
   buildChapterBlueprintProposal,
   defaultEmptyBlueprint,
@@ -66,6 +67,7 @@ export function isProposeChapterBlueprintWrite(params: Record<string, unknown>):
 
 export function createProposeChapterBlueprintTool(
   language: WritingLanguage,
+  rendererAction?: RendererActionSink,
 ): AgentTool<typeof Schema, { chapterNumber?: number; fields?: number; totalCount?: number; isNew?: boolean; status?: string }> {
   const text = (zhCN: string, enUS: string) => writingLanguageText(language, zhCN, enUS)
   const description = language === 'en-US'
@@ -93,6 +95,7 @@ export function createProposeChapterBlueprintTool(
           }
         }
         BlueprintRepository.delete(chapterNumber)
+        rendererAction?.({ type: 'refresh_blueprint' })
         return {
           content: [{ type: 'text', text: text(`第 ${chapterNumber} 章蓝图已成功删除。`, `Chapter ${chapterNumber} blueprint deleted successfully.`) }],
           details: { chapterNumber, status: 'deleted' },
@@ -204,6 +207,10 @@ export function createProposeChapterBlueprintTool(
           results.push(`第 ${chNum} 章 [${merged.title || '无标题'}] ${isNew ? '新建成功' : '更新成功'}`)
         }
 
+        if (successCount > 0) {
+          rendererAction?.({ type: 'refresh_blueprint' })
+        }
+
         return {
           content: [{ type: 'text', text: text(
             `批量蓝图操作完成（成功 ${successCount}/${params.blueprints.length} 章）：\n\n${results.join('\n')}`,
@@ -254,6 +261,7 @@ export function createProposeChapterBlueprintTool(
       }
 
       BlueprintRepository.upsert(updated)
+      rendererAction?.({ type: 'refresh_blueprint' })
 
       const fieldList = Object.keys(changes).join(', ')
       const summaryText = text(

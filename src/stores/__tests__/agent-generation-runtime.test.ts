@@ -279,4 +279,76 @@ describe('Agent IPC bridge', () => {
 
     expect(ipcInvoke).toHaveBeenCalledWith('agent:confirm', expect.any(String), 'call-1', true)
   })
+
+  it('confirms in the conversation that owns the card and flips it to running immediately', () => {
+    ipcInvoke.mockResolvedValue({ success: true })
+    useAgentStore.setState({
+      activeConversationId: 'general-1',
+      conversations: [{
+        id: 'architect-1',
+        title: '架构推演',
+        createdAt: 1,
+        updatedAt: 1,
+        mode: 'planning',
+        modelId: null,
+        thinkingLevel: null,
+        assistantType: 'architect',
+        messages: [{
+          id: 'assistant-1',
+          role: 'assistant',
+          content: '',
+          createdAt: 1,
+          toolCalls: [{
+            id: 'call-9',
+            toolName: 'story_architecture',
+            arguments: {},
+            status: 'waiting_confirm',
+          }],
+        }],
+      }],
+    })
+
+    useAgentStore.getState().resolveToolConfirmation('call-9', true)
+
+    // 架构助手有自己的活跃会话，确认必须回到承载这张卡的那一段。
+    expect(ipcInvoke).toHaveBeenCalledWith('agent:confirm', 'architect-1', 'call-9', true)
+    // 点击当场就把卡片翻到执行态，不用等工具跑完。
+    expect(
+      useAgentStore.getState().conversations[0].messages[0].toolCalls?.[0].status,
+    ).toBe('running')
+  })
+
+  it('marks a rejected card as failed right away', () => {
+    ipcInvoke.mockResolvedValue({ success: true })
+    useAgentStore.setState({
+      activeConversationId: 'general-1',
+      conversations: [{
+        id: 'general-1',
+        title: '通用',
+        createdAt: 1,
+        updatedAt: 1,
+        mode: 'planning',
+        modelId: null,
+        thinkingLevel: null,
+        messages: [{
+          id: 'assistant-1',
+          role: 'assistant',
+          content: '',
+          createdAt: 1,
+          toolCalls: [{
+            id: 'call-10',
+            toolName: 'write',
+            arguments: {},
+            status: 'waiting_confirm',
+          }],
+        }],
+      }],
+    })
+
+    useAgentStore.getState().resolveToolConfirmation('call-10', false)
+
+    const toolCall = useAgentStore.getState().conversations[0].messages[0].toolCalls?.[0]
+    expect(toolCall?.status).toBe('failed')
+    expect(toolCall?.error).toBeTruthy()
+  })
 })
