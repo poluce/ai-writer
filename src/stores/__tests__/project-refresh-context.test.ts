@@ -179,7 +179,9 @@ describe('project refresh context', () => {
     )
   })
 
-  it('does not let a delayed file-tree response overwrite a same-path reopen with a new lease', async () => {
+  // 渲染层项目租约层已移除；同路径重开的权威保证由主进程 ProjectAccess 覆盖
+  // （electron/services/__tests__/project-access.test.ts）。
+  it.skip('does not let a delayed file-tree response overwrite a same-path reopen with a new lease', async () => {
     const responseA = deferred<Array<{ name: string; path: string; isDir: boolean }>>()
     invoke.mockImplementation((channel: string, path: string) => {
       if (channel === 'fs:list-dir' && path === project('A').path) return responseA.promise
@@ -202,7 +204,9 @@ describe('project refresh context', () => {
     ])
   })
 
-  it('does not settle a save after a same-path reopen has issued a new lease', async () => {
+  // 渲染层项目租约层已移除；同路径重开的权威保证由主进程 ProjectAccess 覆盖
+  // （electron/services/__tests__/project-access.test.ts）。
+  it.skip('does not settle a save after a same-path reopen has issued a new lease', async () => {
     const saveA = deferred<{ success: boolean }>()
     invoke.mockImplementation((channel: string) => {
       if (channel === 'project:save') return saveA.promise

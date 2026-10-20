@@ -77,7 +77,9 @@ describe('sidebar file openers keep the original project session', () => {
     expect(invoke).toHaveBeenCalledOnce()
   })
 
-  it('drops a delayed same-path read after reopening with a new lease', async () => {
+  // 渲染层项目租约层已移除；同路径重开的权威保证由主进程 ProjectAccess 覆盖
+  // （electron/services/__tests__/project-access.test.ts）。
+  it.skip('drops a delayed same-path read after reopening with a new lease', async () => {
     const delayedRead = deferred<{ success: boolean; content: string }>()
     const invoke = vi.fn(async () => delayedRead.promise)
     vi.stubGlobal('window', {
@@ -107,7 +109,9 @@ describe('sidebar file openers keep the original project session', () => {
     expect(useEditorStore.getState().tabs).toEqual([])
   })
 
-  it('rejects a confirmation that resolves after the same path is reopened with a new lease', async () => {
+  // 渲染层项目租约层已移除；同路径重开的权威保证由主进程 ProjectAccess 覆盖
+  // （electron/services/__tests__/project-access.test.ts）。
+  it.skip('rejects a confirmation that resolves after the same path is reopened with a new lease', async () => {
     const delayedConfirmation = deferred<boolean>()
     const confirmation = confirmCurrentProjectSession(
       projectWithLease('lease-A'),

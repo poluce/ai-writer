@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest'
 import { LLMDataRequestGate } from '../llm-data-request-gate'
 
 describe('LLMDataRequestGate', () => {
-  it('rejects a late stats response after the same logical path reopens with a new lease', () => {
+  // 渲染层项目租约层已移除；同路径重开的权威保证由主进程 ProjectAccess 覆盖
+  // （electron/services/__tests__/project-access.test.ts）。
+  it.skip('rejects a late stats response after the same logical path reopens with a new lease', () => {
     const gate = new LLMDataRequestGate()
     const oldSession = {
       projectId: 'novel-A',

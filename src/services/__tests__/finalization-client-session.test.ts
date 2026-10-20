@@ -32,7 +32,9 @@ describe('retryFinalizationPublication', () => {
     )
   })
 
-  it('rejects a retry after the same path is reopened under a new lease', async () => {
+  // 渲染层项目租约层已移除；同路径重开的权威保证由主进程 ProjectAccess 覆盖
+  // （electron/services/__tests__/project-access.test.ts）。
+  it.skip('rejects a retry after the same path is reopened under a new lease', async () => {
     setActiveProjectSessionContext({
       ...frozenSession,
       projectPath: 'c:/NovelA/.',

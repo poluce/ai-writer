@@ -86,7 +86,9 @@ describe('agent artifact open session ownership', () => {
     expect(mocks.alertError).toHaveBeenCalledOnce()
   })
 
-  it('fails closed for an artifact from an older lease of the same project path', async () => {
+  // 渲染层项目租约层已移除；同路径重开的权威保证由主进程 ProjectAccess 覆盖
+  // （electron/services/__tests__/project-access.test.ts）。
+  it.skip('fails closed for an artifact from an older lease of the same project path', async () => {
     const invoke = vi.fn(async () => ({ success: true, content: 'stale artifact' }))
     vi.stubGlobal('window', {
       velaAPI: {

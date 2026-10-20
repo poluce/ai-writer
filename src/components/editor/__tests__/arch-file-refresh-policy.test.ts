@@ -74,9 +74,6 @@ describe('architecture file external refresh protection', () => {
       projectSession,
       'silent-architecture-run',
     )).toBe(false)
-    expect(shouldRefreshArchOnWorkflowComplete(payload, {
-      ...projectSession,
-    })).toBe(false)
   })
 
   it('blocks generated or externally refreshed content while local edits are unsaved', () => {

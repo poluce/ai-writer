@@ -44,7 +44,7 @@
 - Planning material can be imported so blueprints and later writing share the same settings.
 - The character roster adds explicitly confirmed blueprint characters and tracks their state.
 - The Chinese long-form workflow connects blueprints, drafts, reviews, revisions, and final chapters.
-- Windows and macOS users can view and start the update intended for their computer.
+- Windows users can view and start the update intended for their computer inside the app.
 
 See the [bilingual 0.1.0 notes](.release/notes/v0.1.0.md) for each change. Official installers are published through this repository's [GitHub Releases](https://github.com/poluce/ai-writer/releases/latest).
 

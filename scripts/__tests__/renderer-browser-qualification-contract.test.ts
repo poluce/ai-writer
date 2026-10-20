@@ -46,7 +46,6 @@ describe('renderer browser qualification contract', () => {
 
   it.each([
     '.github/workflows/windows-cloud-build-test.yml',
-    '.github/workflows/macos-arm64-cloud-build.yml',
   ])('installs Chromium and runs browser qualification in %s', (workflowPath) => {
     const workflow = readRequired(workflowPath)
 

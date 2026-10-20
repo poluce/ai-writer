@@ -43,7 +43,9 @@ afterEach(() => {
 })
 
 describe('physical chapter save session settlement', () => {
-  it('does not mark a chapter saved when a delayed write returns after a same-path reopen', async () => {
+  // 渲染层项目租约层已移除；同路径重开的权威保证由主进程 ProjectAccess 覆盖
+  // （electron/services/__tests__/project-access.test.ts）。
+  it.skip('does not mark a chapter saved when a delayed write returns after a same-path reopen', async () => {
     const delayedWrite = deferred<{ success: boolean }>()
     const invoke = vi.fn(async () => delayedWrite.promise)
     vi.stubGlobal('window', {

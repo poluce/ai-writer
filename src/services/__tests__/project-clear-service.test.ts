@@ -155,7 +155,9 @@ describe('clearProjectData', () => {
     expect(openProject).not.toHaveBeenCalled()
   })
 
-  it('fails closed before mutation if the confirmation lease is no longer active', async () => {
+  // 渲染层项目租约层已移除；同路径重开的权威保证由主进程 ProjectAccess 覆盖
+  // （electron/services/__tests__/project-access.test.ts）。
+  it.skip('fails closed before mutation if the confirmation lease is no longer active', async () => {
     setActiveProjectSessionContext({ ...projectSession })
 
     await expect(clearProjectData({ generatedText: true }, projectSession)).rejects.toThrow('项目会话')
@@ -274,7 +276,9 @@ describe('clearProjectData', () => {
     expect(closeTab).not.toHaveBeenCalledWith('project-b-dirty-draft')
   })
 
-  it('does not reset or refresh the new same-path lease when clear completes late', async () => {
+  // 渲染层项目租约层已移除；同路径重开的权威保证由主进程 ProjectAccess 覆盖
+  // （electron/services/__tests__/project-access.test.ts）。
+  it.skip('does not reset or refresh the new same-path lease when clear completes late', async () => {
     let resolveClear: ((value: { success: boolean; cleared: string[] }) => void) | undefined
     vi.mocked(ipc.invokeWithProjectSession).mockImplementationOnce(() =>
       new Promise((resolve) => { resolveClear = resolve as typeof resolveClear }),

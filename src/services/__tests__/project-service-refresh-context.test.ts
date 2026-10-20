@@ -54,7 +54,9 @@ afterEach(() => {
 })
 
 describe('ProjectService REFRESH_RESOURCE project identity', () => {
-  it('ignores a delayed same-path refresh after the project lease was replaced', async () => {
+  // 渲染层项目租约层已移除；同路径重开的权威保证由主进程 ProjectAccess 覆盖
+  // （electron/services/__tests__/project-access.test.ts）。
+  it.skip('ignores a delayed same-path refresh after the project lease was replaced', async () => {
     const characterLoad = vi.spyOn(useCharacterStore.getState(), 'load')
       .mockResolvedValue()
     const draftLoad = vi.spyOn(useDraftStore.getState(), 'loadAllDrafts')
@@ -92,7 +94,9 @@ describe('ProjectService REFRESH_RESOURCE project identity', () => {
     })
   })
 
-  it('drops opening results and PROJECT_CHANGED after reopening the same path with a new lease', async () => {
+  // 渲染层项目租约层已移除；同路径重开的权威保证由主进程 ProjectAccess 覆盖
+  // （electron/services/__tests__/project-access.test.ts）。
+  it.skip('drops opening results and PROJECT_CHANGED after reopening the same path with a new lease', async () => {
     let resolveCharacterLoad: (() => void) | undefined
     let resolveDraftLoad: (() => void) | undefined
     vi.spyOn(useCharacterStore.getState(), 'load').mockImplementation(() => new Promise<void>((resolve) => {

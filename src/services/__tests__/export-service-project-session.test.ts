@@ -305,7 +305,9 @@ describe('exportNovel project session ownership', () => {
     },
   )
 
-  it('stops after the directory-selection export becomes stale on a same-path reopen', async () => {
+  // 渲染层项目租约层已移除；同路径重开的权威保证由主进程 ProjectAccess 覆盖
+  // （electron/services/__tests__/project-access.test.ts）。
+  it.skip('stops after the directory-selection export becomes stale on a same-path reopen', async () => {
     let resolveSnapshot: ((value: unknown[]) => void) | undefined
     vi.mocked(ipc.invokeWithProjectSession).mockImplementationOnce(() =>
       new Promise((resolve) => { resolveSnapshot = resolve }),
@@ -519,7 +521,9 @@ describe('exportNovel project session ownership', () => {
       ])
   })
 
-  it('reports the committed split file when the project session expires after its write receipt', async () => {
+  // 渲染层项目租约层已移除；同路径重开的权威保证由主进程 ProjectAccess 覆盖
+  // （electron/services/__tests__/project-access.test.ts）。
+  it.skip('reports the committed split file when the project session expires after its write receipt', async () => {
     vi.mocked(ipc.invokeWithProjectSession).mockResolvedValueOnce([
       { draftId: 1, chapterNumber: 1, version: 1, title: '', content: 'one', ...authority(1) },
       { draftId: 2, chapterNumber: 2, version: 1, title: '', content: 'two', ...authority(2) },
@@ -544,7 +548,9 @@ describe('exportNovel project session ownership', () => {
       .filter(([channel]) => channel === 'fs:grant-write-file')).toHaveLength(1)
   })
 
-  it('keeps the partial-write list when a later split write fails as the session expires', async () => {
+  // 渲染层项目租约层已移除；同路径重开的权威保证由主进程 ProjectAccess 覆盖
+  // （electron/services/__tests__/project-access.test.ts）。
+  it.skip('keeps the partial-write list when a later split write fails as the session expires', async () => {
     vi.mocked(ipc.invokeWithProjectSession).mockResolvedValueOnce([
       { draftId: 1, chapterNumber: 1, version: 1, title: '', content: 'one', ...authority(1) },
       { draftId: 2, chapterNumber: 2, version: 1, title: '', content: 'two', ...authority(2) },

@@ -44,7 +44,7 @@
 - 规划资料可导入项目，让蓝图和后续写作使用同一套设定。
 - 角色表接收蓝图中明确确认的新角色，并持续记录角色状态。
 - 中文长篇工作流串联蓝图、草稿、审稿、修订和定稿。
-- Windows 和 macOS 均可查看并启动适合本机的更新。
+- Windows 用户可在应用内查看并启动适合本机的更新。
 
 逐项变更见 [0.1.0 双语更新内容](.release/notes/v0.1.0.md)。正式安装包以本仓库 [GitHub Release](https://github.com/poluce/ai-writer/releases/latest) 为准。
 

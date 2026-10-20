@@ -17,8 +17,6 @@ describe('release dependency contract', () => {
     expect(pkg.packageManager).toBe('pnpm@11.21.0')
     expect(pkg.dependencies?.['@lancedb/lancedb']).toBe('0.22.3')
     expect(pkg.optionalDependencies).toMatchObject({
-      '@lancedb/lancedb-darwin-arm64': '0.22.3',
-      '@lancedb/lancedb-darwin-x64': '0.22.3',
       '@lancedb/lancedb-win32-x64-msvc': '0.22.3',
     })
     expect(existsSync('package-lock.json')).toBe(false)
@@ -35,19 +33,9 @@ describe('release dependency contract', () => {
     expect(pkg.scripts?.['smoke:win-app']).toContain('scripts/smoke-win-app.ps1')
 
     const builder = readFileSync('electron-builder.json5', 'utf8')
-    const macConfig = builder.slice(builder.indexOf('"mac":'), builder.indexOf('"win":'))
-    expect(macConfig).toContain('"identity": "-"')
-    expect(macConfig).toContain('"hardenedRuntime": false')
-    const macArtifactTemplate = 'ai-writer-mac-${arch}-${version}-installer.${ext}'
-    expect(builder).toContain(macArtifactTemplate)
-    const resolveMacArtifactName = (architecture: 'arm64' | 'x64') => macArtifactTemplate
-      .replace('${arch}', architecture)
-      .replace('${version}', '0.0.0')
-      .replace('${ext}', 'dmg')
-    expect(resolveMacArtifactName('arm64')).toBe('ai-writer-mac-arm64-0.0.0-installer.dmg')
-    expect(resolveMacArtifactName('x64')).toBe('ai-writer-mac-x64-0.0.0-installer.dmg')
+    // Windows-only 发行线：builder 配置不再声明 macOS 目标。
+    expect(builder).not.toContain('"mac":')
     expect(builder).toContain('node_modules/@lancedb/lancedb/**/*')
-    expect(builder).toContain('node_modules/@lancedb/lancedb-darwin-*/**/*')
     expect(builder).toContain('node_modules/@lancedb/lancedb-win32-x64-msvc/**/*')
     expect(builder).toContain('electron/security/windows-safe-file-system.ps1')
     expect(builder).toContain('security/windows-safe-file-system.ps1')

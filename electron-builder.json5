@@ -7,8 +7,6 @@
     "node_modules/apache-arrow/**/*",
     "node_modules/better-sqlite3/**/*",
     "node_modules/@lancedb/lancedb/**/*",
-    "node_modules/@lancedb/lancedb-darwin-*/**/*",
-    "node_modules/@lancedb/lancedb-linux-*/**/*",
     "node_modules/@lancedb/lancedb-win32-*/**/*",
     "node_modules/@lancedb/lancedb-win32-x64-msvc/**/*"
   ],
@@ -21,19 +19,6 @@
     "dist-electron",
     "build"
   ],
-  "mac": {
-    "target": ["dmg"],
-    "artifactName": "ai-writer-mac-${arch}-${version}-installer.${ext}",
-    "category": "public.app-category.productivity",
-    "identity": "-",
-    "hardenedRuntime": false,
-    "extraResources": [
-      {
-        "from": "electron/security/darwin-safe-file-system",
-        "to": "security/darwin-safe-file-system"
-      }
-    ]
-  },
   "win": {
     "target": [
       {
@@ -65,10 +50,5 @@
     "perMachine": false,
     "allowToChangeInstallationDirectory": true,
     "deleteAppDataOnUninstall": false
-  },
-  "linux": {
-    "target": ["AppImage"],
-    "artifactName": "${productName}-Linux-${version}.${ext}",
-    "category": "Office"
   }
 }

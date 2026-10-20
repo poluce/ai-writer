@@ -22,9 +22,6 @@
   "scripts": {
     "build": "tsc && vite build",
     "build-storybook": "storybook build",
-    "build:mac:arm64:artifacts": "pnpm run clean:build && pnpm run typecheck && pnpm run rebuild:electron && clang -fobjc-arc -framework Foundation electron/security/darwin-safe-file-system.m -o electron/security/darwin-safe-file-system && chmod +x electron/security/darwin-safe-file-system && vite build && node scripts/build-release-vector-smoke-runner.mjs && electron-builder --mac --arm64 --publish never",
-    "build:mac:artifacts": "pnpm run build:mac:arm64:artifacts",
-    "build:mac:x64:artifacts": "pnpm run clean:build && pnpm run typecheck && pnpm run rebuild:electron && clang -fobjc-arc -framework Foundation electron/security/darwin-safe-file-system.m -o electron/security/darwin-safe-file-system && chmod +x electron/security/darwin-safe-file-system && vite build && node scripts/build-release-vector-smoke-runner.mjs && electron-builder --mac --x64 --publish never",
     "build:win": "pnpm run release:win:verify",
     "build:win-dir": "pnpm run clean:build && pnpm run typecheck && pnpm run rebuild:electron && vite build && electron-builder --win dir --x64 && pnpm run verify:win-package",
     "build:win:artifacts": "node scripts/require-release-gate.mjs && pnpm run rebuild:electron && tsc && vite build && electron-builder --win --x64 --publish never",
@@ -42,7 +39,6 @@
     "rebuild": "pnpm run rebuild:electron",
     "rebuild:electron": "node scripts/prepare-native-for-electron.mjs",
     "release:win:verify": "node scripts/release-win-verify.mjs",
-    "smoke:mac-dmg": "bash scripts/smoke-macos-dmg.sh",
     "smoke:win-app": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/smoke-win-app.ps1",
     "smoke:win-installer": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/smoke-win-installer.ps1",
     "smoke:win-v025-upgrade": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/smoke-win-v025-upgrade.ps1",

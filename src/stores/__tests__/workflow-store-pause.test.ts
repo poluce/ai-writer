@@ -616,7 +616,9 @@ describe('workflow pause at a safe step boundary', () => {
     })
   })
 
-  it('fails closed for an older lease when the same path has been reopened', async () => {
+  // 渲染层项目租约层已移除；同路径重开的权威保证由主进程 ProjectAccess 覆盖
+  // （electron/services/__tests__/project-access.test.ts）。
+  it.skip('fails closed for an older lease when the same path has been reopened', async () => {
     const executor = vi.fn(async () => undefined)
     useProjectStore.setState({
       currentProject: {
@@ -688,7 +690,9 @@ describe('workflow pause at a safe step boundary', () => {
     unsubscribe()
   })
 
-  it('rejects a same-path reopen with a new lease after an in-flight step returns', async () => {
+  // 渲染层项目租约层已移除；同路径重开的权威保证由主进程 ProjectAccess 覆盖
+  // （electron/services/__tests__/project-access.test.ts）。
+  it.skip('rejects a same-path reopen with a new lease after an in-flight step returns', async () => {
     let finishExecutor: (() => void) | undefined
     const seenLeases: string[] = []
     const openResult = vi.fn()
