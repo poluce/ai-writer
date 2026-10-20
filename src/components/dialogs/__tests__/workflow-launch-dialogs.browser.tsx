@@ -235,7 +235,7 @@ describe('workflow launch dialogs', () => {
 
     await renderDialog(true)
     const charactersRow = Array.from(document.querySelectorAll('label'))
-      .find(label => label.textContent?.includes('角色图谱'))
+      .find(label => label.textContent?.includes('人物'))
     expect(charactersRow).toBeDefined()
     await act(async () => charactersRow?.click())
     await expect.element(page.getByRole('button', { name: '确认生成（2/3）' })).toBeVisible()

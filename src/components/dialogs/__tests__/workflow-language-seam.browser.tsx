@@ -25,6 +25,27 @@ const originalLocaleState = useLocaleStore.getState()
 const originalProjectState = useProjectStore.getState()
 const originalWorkflowState = useWorkflowStore.getState()
 
+/** 生成运行时按模型档案解析默认模型；只给 defaultModelId 会被判为未配置。 */
+const LANGUAGE_SEAM_MODEL = {
+  id: 'browser-language-model',
+  name: 'Browser language model',
+  provider: 'custom',
+  protocol: 'openai',
+  modelName: 'browser-language-model',
+  apiKey: '',
+  baseUrl: 'https://example.invalid/v1',
+  temperature: 0,
+  maxTokens: 8192,
+  purposes: ['generation'],
+  capabilities: {
+    contextWindowTokens: 32000,
+    maxOutputTokens: 8192,
+    reasoning: false,
+    structuredOutput: true,
+    usage: false,
+  },
+} as ReturnType<typeof useLLMStore.getState>['models'][number]
+
 let root: Root | undefined
 let container: HTMLDivElement | undefined
 
@@ -181,7 +202,7 @@ describe('workflow launch language seams', () => {
 
       useLocaleStore.setState({ locale: uiLocale, initialized: true })
       useProjectStore.setState({ currentProject })
-      useLLMStore.setState({ defaultModelId: modelId, generateStream })
+      useLLMStore.setState({ models: [LANGUAGE_SEAM_MODEL], defaultModelId: modelId, generateStream })
       useWorkflowStore.setState({
         activeRuns: [],
         history: [],

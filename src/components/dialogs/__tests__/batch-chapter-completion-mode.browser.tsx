@@ -232,17 +232,25 @@ function installIpc() {
     if (channel === 'llm:close-execution-lease') return { success: true }
     if (channel === 'llm:generate-stream') {
       const requestId = String(args[0])
-      const request = args[1] as { purpose?: string; responseFormat?: { type?: string } }
-      const completion = request.purpose === 'post-process'
-        ? request.responseFormat?.type === 'json_object'
-          ? '{"updates":[],"newCharacters":[]}'
-          : '本章收到匿名信并开始调查。'
-        : draftCompletions[draftCompletionIndex++] ?? DRAFT_TEXT
+      const request = args[1] as { purpose?: string; responseFormat?: { type?: string }; submitTool?: string }
+      // submit_json 是结构化出口：主进程会用提交的 artifact 生成 JSON 正文，这里按同一契约回包。
+      const structuredJson = request.submitTool === 'submit_json' || request.responseFormat?.type === 'json_object'
+      const completion = structuredJson
+        ? '{"updates":[],"newCharacters":[]}'
+        : request.purpose === 'post-process'
+          ? '本章收到匿名信并开始调查。'
+          : draftCompletions[draftCompletionIndex++] ?? DRAFT_TEXT
+      const artifact = request.submitTool === 'submit_json' ? { updates: [], newCharacters: [] } : undefined
       if (changeDefaultAfterFirstDraft && request.purpose === 'chapter-draft' && draftCompletionIndex === 1) {
         useLLMStore.setState({ defaultModelId: 'changed-default-model' })
       }
       const complete = () => {
-        emit('llm:stream-done', { requestId, fullText: completion, finishReason: 'stop' })
+        emit('llm:stream-done', {
+          requestId,
+          fullText: completion,
+          finishReason: 'stop',
+          ...(artifact ? { artifact } : {}),
+        })
       }
       if (deferDraftCompletion && request.purpose === 'chapter-draft') {
         pendingDraftCompletions.push(complete)
