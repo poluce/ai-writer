@@ -28,6 +28,10 @@
   <img src="docs/assets/readme/hero-en-v2.png" alt="AI Writer — a local-first desktop workspace for long-form fiction" width="100%" />
 </p>
 
+> ## v0.1.1 — global update reminder with one-click download and restart
+>
+> A persistent in-app reminder directly offers "Download update" and "Remind me later" when a new stable release is found; the same reminder switches to "Restart and update" once the download finishes, after checking active creative tasks and unsaved edits. The reminder returns if the guard is cancelled, failed downloads offer a retry, and a 7-day deferral restores the reminder automatically. Installs on v0.1.0 receive this reminder.
+>
 > ## v0.1.0 — first release of the independent line
 >
 > This repository derives from upstream GPL-3.0 code and now ships independently: the app identity (appId, install directory, update channel) no longer collides with older builds, and versioning restarts at 0.1.0.
@@ -44,9 +48,9 @@
 - Planning material can be imported so blueprints and later writing share the same settings.
 - The character roster adds explicitly confirmed blueprint characters and tracks their state.
 - The Chinese long-form workflow connects blueprints, drafts, reviews, revisions, and final chapters.
-- Windows users can view and start the update intended for their computer inside the app.
+- Windows users receive an in-app reminder for new releases and can download, restart, and finish the update in one flow.
 
-See the [bilingual 0.1.0 notes](.release/notes/v0.1.0.md) for each change. Official installers are published through this repository's [GitHub Releases](https://github.com/poluce/ai-writer/releases/latest).
+See the [bilingual 0.1.1 notes](.release/notes/v0.1.1.md) for each change. Official installers are published through this repository's [GitHub Releases](https://github.com/poluce/ai-writer/releases/latest).
 
 > ## Feature baseline inherited from upstream (historical)
 >
@@ -161,7 +165,7 @@ The installer is not code-signed at present. Windows may show publisher or reput
 
 ### macOS
 
-0.1.0 does not ship a macOS installer yet: this release line qualifies and publishes Windows x64 first. macOS installers return in a later version, still as separate ARM64 and Intel builds.
+0.1.1 does not ship a macOS installer yet: this release line qualifies and publishes Windows x64 first. macOS installers return in a later version, still as separate ARM64 and Intel builds.
 
 ## Current limits
 
