@@ -102,8 +102,9 @@ export function useUpdateState() {
     if (!ipc.isElectron) return undefined
 
     let mounted = true
-    const applyState = (nextState: UpdateState) => {
-      if (mounted) setState(nextState)
+    const applyState = (nextState?: UpdateState) => {
+      // 通道未实现或返回空值时按“更新不可用”处理，保证消费方总能拿到稳定状态。
+      if (mounted) setState(nextState ?? disabledState)
     }
     const unsubscribe = ipc.on('update:state', applyState)
     void ipc.invoke('update:get-state').then(applyState).catch(() => applyState(disabledState))

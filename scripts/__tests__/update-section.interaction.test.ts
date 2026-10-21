@@ -119,7 +119,7 @@ describeWithChrome('UpdateSection browser interactions', () => {
       isReminderDeferred: false,
     }))
 
-    await page.getByRole('button', { name: '下载更新', exact: true }).click()
+    await page.locator('#vela-action-toast-root').getByRole('button', { name: '下载更新', exact: true }).click()
     await page.waitForFunction(() => window.__updateHarness.downloadCalls === 1)
 
     expect(await page.evaluate(() => window.__updateHarness.downloadCalls)).toBe(1)
@@ -137,7 +137,7 @@ describeWithChrome('UpdateSection browser interactions', () => {
       isReminderDeferred: false,
     }))
 
-    await page.getByRole('button', { name: '打开下载页', exact: true }).click()
+    await page.locator('#vela-action-toast-root').getByRole('button', { name: '打开下载页', exact: true }).click()
     await page.waitForFunction(() => window.__updateHarness.openReleaseCalls === 1)
 
     expect(await page.evaluate(() => window.__updateHarness.openReleaseCalls)).toBe(1)
@@ -145,30 +145,66 @@ describeWithChrome('UpdateSection browser interactions', () => {
     await page.close()
   }, 15_000)
 
-  it('shows one persistent global reminder per version and opens the existing Home update section', async () => {
+  it('shows one persistent global reminder per version and updates its action as the state moves', async () => {
     const page = await openHarness()
+    const toast = page.locator('#vela-action-toast-root')
 
-    await page.getByRole('button', { name: '查看更新', exact: true }).waitFor()
-    expect(await page.getByRole('button', { name: '查看更新', exact: true }).count()).toBe(1)
+    await toast.getByRole('button', { name: '重启更新', exact: true }).waitFor()
+    expect(await toast.getByRole('button', { name: '重启更新', exact: true }).count()).toBe(1)
     await page.evaluate(() => window.__updateHarness.setUpdateState({
-      status: 'downloaded',
+      status: 'available',
       currentVersion: '0.2.5',
       availableVersion: '0.2.6',
       updateAction: 'download',
       isReminderDeferred: false,
     }))
-    expect(await page.getByRole('button', { name: '查看更新', exact: true }).count()).toBe(1)
+    await toast.getByRole('button', { name: '下载更新', exact: true }).waitFor()
+    expect(await toast.getByRole('button', { name: '下载更新', exact: true }).count()).toBe(1)
+    await page.waitForFunction(() => {
+      const buttons = Array.from(document.querySelectorAll('#vela-action-toast-root button'))
+      return buttons.filter(button => button.textContent?.trim() === '重启更新').length === 0
+    })
+    await page.close()
+  }, 15_000)
 
-    await page.getByRole('button', { name: '查看更新', exact: true }).click()
-    await page.waitForFunction(() => window.__updateHarness.getSidebarView() === 'home')
-    expect(await page.evaluate(() => window.__updateHarness.getSidebarView())).toBe('home')
+  it('downloads from the global reminder and offers a guarded restart once ready', async () => {
+    const page = await openHarness()
+    const toast = page.locator('#vela-action-toast-root')
+
+    await page.evaluate(() => window.__updateHarness.setUpdateState({
+      status: 'available',
+      currentVersion: '0.2.5',
+      availableVersion: '0.2.6',
+      updateAction: 'download',
+      isReminderDeferred: false,
+    }))
+    await toast.getByRole('button', { name: '下载更新', exact: true }).click()
+    await page.waitForFunction(() => window.__updateHarness.downloadCalls === 1)
+
+    // 下载完成后同一条提醒切换为「重启更新」；夹具默认存在未保存编辑，必须先过门禁。
+    await toast.getByRole('button', { name: '重启更新', exact: true }).waitFor()
+    await toast.getByRole('button', { name: '重启更新', exact: true }).click()
+    expect(await page.getByText('请先处理未保存的修改').isVisible()).toBe(true)
+    expect(await page.evaluate(() => window.__updateHarness.installCalls)).toBe(0)
+
+    // 取消门禁对话框后，全局提醒必须恢复，而不是随按钮点击一起消失。
+    // 旧提示的退场动画有约 250ms 过渡，先等数量收敛再继续操作。
+    await page.getByRole('button', { name: '返回保存' }).click()
+    await page.waitForFunction(() => {
+      const buttons = Array.from(document.querySelectorAll('#vela-action-toast-root button'))
+      return buttons.filter(button => button.textContent?.trim() === '重启更新').length === 1
+    })
+
+    await toast.getByRole('button', { name: '重启更新', exact: true }).click()
+    await page.getByRole('button', { name: '放弃修改并重启更新' }).click()
+    await page.waitForFunction(() => window.__updateHarness.installCalls === 1)
     await page.close()
   }, 15_000)
 
   it('dismisses the global reminder while deferred and can remind the same version after expiry', async () => {
     const page = await openHarness()
-    const reminder = page.getByRole('button', { name: '查看更新', exact: true })
-    await reminder.waitFor()
+    const toast = page.locator('#vela-action-toast-root')
+    await toast.getByRole('button', { name: '重启更新', exact: true }).waitFor()
 
     await page.evaluate(() => window.__updateHarness.setUpdateState({
       status: 'downloaded',
@@ -187,8 +223,8 @@ describeWithChrome('UpdateSection browser interactions', () => {
       updateAction: 'download',
       isReminderDeferred: false,
     }))
-    await reminder.waitFor()
-    expect(await reminder.count()).toBe(1)
+    await toast.getByRole('button', { name: '重启更新', exact: true }).waitFor()
+    expect(await toast.getByRole('button', { name: '重启更新', exact: true }).count()).toBe(1)
     await page.close()
   }, 15_000)
 
