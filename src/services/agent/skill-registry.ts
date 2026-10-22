@@ -12,7 +12,7 @@
 
 import { ipc } from '../ipc-client'
 import { logFailure } from '../../shared/fail-log'
-import { useProjectStore } from '../../stores/project-store'
+import { readActiveProject } from '../active-project'
 import type { ProjectSessionContext } from '../../shared/ipc-channels'
 import { projectSessionContextFromProject } from '../../shared/project-session-context'
 import type { WritingLanguage } from '../../shared/writing-language'
@@ -115,7 +115,7 @@ class SkillRegistryImpl {
    * 渲染层只负责把它映射成注册表条目并记住诊断。
    */
   private async loadCatalog(target: Map<string, LoadedSkill>): Promise<number> {
-    const projectSession = projectSessionContextFromProject(useProjectStore.getState().currentProject)
+    const projectSession = projectSessionContextFromProject(readActiveProject())
     try {
       const catalog = projectSession
         ? await ipc.invokeWithProjectSession(

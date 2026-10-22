@@ -18,9 +18,13 @@ vi.mock('../../ipc-client', () => ({
   },
 }))
 
-vi.mock('../../../stores/project-store', () => ({
-  useProjectStore: { getState: () => ({ currentProject }) },
-}))
+import type { ProjectData } from '../../../shared/ipc-channels'
+import { setActiveProjectSnapshot } from '../../../shared/project-session-context'
+
+/** 当前项目身份通过共享快照登记处提供（skill-registry 只读镜像，不读 Store）。 */
+function registerCurrentProject(): void {
+  setActiveProjectSnapshot({ ...currentProject } as ProjectData)
+}
 
 /** 主进程目录接口的返回形状。 */
 function catalog(overrides: Partial<{ skills: unknown[]; diagnostics: unknown[] }> = {}) {
@@ -29,6 +33,7 @@ function catalog(overrides: Partial<{ skills: unknown[]; diagnostics: unknown[] 
 
 describe('project skill catalog loading', () => {
   beforeEach(() => {
+    registerCurrentProject()
     mocks.invoke.mockReset()
     mocks.invoke.mockResolvedValue(catalog())
     mocks.invokeWithProjectSession.mockReset()

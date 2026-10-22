@@ -33,15 +33,9 @@ import {
 /** 工作流步骤状态 */
 export type StepStatus = 'pending' | 'running' | 'completed' | 'failed' | 'skipped'
 
-/** 工作流运行状态 */
-export type WorkflowStatus =
-  | 'idle'
-  | 'running'
-  | 'cancelling'
-  | 'completed'
-  | 'failed'
-  | 'paused'
-  | 'waiting'
+/** 工作流运行状态 — 定义在 shared/workflow-status.ts，此处转发保持既有导入路径。 */
+import type { WorkflowStatus } from '../shared/workflow-status'
+export type { WorkflowStatus } from '../shared/workflow-status'
 
 /** Stable non-success terminal state supplied by a bounded model completion. */
 export type WorkflowFailureCode = BoundedCompletionFailureCode | PromptBudgetFailureCode

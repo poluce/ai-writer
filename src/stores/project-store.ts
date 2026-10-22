@@ -7,7 +7,7 @@ import type {
   ProjectSessionContext,
   NovelConfig,
   FileNode} from '../shared/ipc-channels'
-import { alertError } from '../components/ui/AlertDialog'
+import { alertError } from '../shared/dialog-port'
 import { appErrorMessage } from '../i18n/app-errors'
 import {
   cancelProjectWorkflowsAndWait,
@@ -20,7 +20,8 @@ import {
   projectSessionContextFromProject,
   sameProjectPathKey,
   sameProjectSessionContext,
-  setActiveProjectSessionContext} from '../shared/project-session-context'
+  setActiveProjectSessionContext,
+  setActiveProjectSnapshot} from '../shared/project-session-context'
 import {
   CONFIG_DRAFT_TAB,
   composeEditorDraftTabWriter,
@@ -130,39 +131,38 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
     )
   })
 }
-// 延迟导入 ProjectService，避免循环依赖
-let _onProjectOpened: ((projectSession: ProjectSessionContext) => Promise<{ warnings: string[] }>) | null = null
-let _onProjectOpening: ((projectSession: ProjectSessionContext) => void | Promise<void>) | null = null
-let _onProjectClosed: ((projectPath: string | null) => Promise<void>) | null = null
-let _disableProjectBindingsPreservingDrafts: ((projectPath: string | null) => void) | null = null
+// 项目生命周期钩子 Seam：project-service 在 initProjectService（组合根装配）
+// 时注册实现；project-store 不再动态导入 project-service，保持 stores 单向。
+export interface ProjectLifecycleHooks {
+  onProjectOpening(projectSession: ProjectSessionContext): Promise<void>
+  /** 分层加载结果；实现方返回 undefined 表示没有分层告警。 */
+  onProjectOpened(projectSession: ProjectSessionContext): Promise<{ warnings: string[] } | undefined>
+  onProjectClosed(projectPath: string | null): Promise<void>
+  disableProjectBindingsPreservingDrafts(projectPath: string | null): void
+}
+
+let projectLifecycleHooks: ProjectLifecycleHooks | null = null
+
+/** 由 project-service 的 initProjectService 调用；测试可直接注册 mock。 */
+export function registerProjectLifecycleHooks(hooks: ProjectLifecycleHooks): void {
+  projectLifecycleHooks = hooks
+}
+
 async function callProjectOpening(projectSession: ProjectSessionContext) {
-  if (!_onProjectOpening) {
-    const { onProjectOpening } = await import('../services/project-service')
-    _onProjectOpening = onProjectOpening
-  }
-  await _onProjectOpening(projectSession)
+  if (!projectLifecycleHooks) return
+  await projectLifecycleHooks.onProjectOpening(projectSession)
 }
 async function callProjectOpened(projectSession: ProjectSessionContext) {
-  if (!_onProjectOpened) {
-    const { onProjectOpened } = await import('../services/project-service')
-    _onProjectOpened = onProjectOpened
-  }
-  return _onProjectOpened(projectSession)
+  if (!projectLifecycleHooks) return { warnings: [] }
+  return projectLifecycleHooks.onProjectOpened(projectSession)
 }
 async function callProjectClosed(projectPath: string | null) {
-  if (!_onProjectClosed) {
-    const { onProjectClosed } = await import('../services/project-service')
-    _onProjectClosed = onProjectClosed
-  }
-  await _onProjectClosed(projectPath)
+  if (!projectLifecycleHooks) return
+  await projectLifecycleHooks.onProjectClosed(projectPath)
 }
 
 async function callDisableProjectBindingsPreservingDrafts(projectPath: string | null) {
-  if (!_disableProjectBindingsPreservingDrafts) {
-    const { disableProjectBindingsPreservingDrafts } = await import('../services/project-service')
-    _disableProjectBindingsPreservingDrafts = disableProjectBindingsPreservingDrafts
-  }
-  _disableProjectBindingsPreservingDrafts(projectPath)
+  projectLifecycleHooks?.disableProjectBindingsPreservingDrafts(projectPath)
 }
 
 async function detachProjectBindings(options: {
@@ -1027,7 +1027,9 @@ export const useProjectStore = create<ProjectState>()((set, get) => ({
     // } catch { /* SQLite 可能未初始化 */ }
   }}))
 
-// 任何 currentProject 提交都会同步刷新 IPC 的默认会话；工作流另行持有自己的冻结副本。
+// 任何 currentProject 提交都会同步刷新 IPC 的默认会话与只读项目快照登记处；
+// 工作流另行持有自己的冻结副本。
 useProjectStore.subscribe((state) => {
   setActiveProjectSessionContext(projectSessionContextFromProject(state.currentProject))
+  setActiveProjectSnapshot(state.currentProject)
 })

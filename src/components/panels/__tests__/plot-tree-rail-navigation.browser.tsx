@@ -9,7 +9,7 @@ import { useLayoutStore } from '../../../stores/layout-store'
 import { useLLMStore } from '../../../stores/llm-store'
 import { useProjectStore } from '../../../stores/project-store'
 import LeftToolWindowBar from '../../layout/LeftToolWindowBar'
-import { openBuiltinEditor } from '../sidebar/sidebar-file-openers'
+import { openBuiltinEditor } from '../../../services/editor-file-openers'
 import EditorArea from '../EditorArea'
 
 const PROJECT_PATH = 'C:\\novels\\plot-tree-rail'

@@ -3,6 +3,7 @@ import { ipc } from '../services/ipc-client'
 import { localize, resolveLocale, translate, type MessageKey, type MessageParams } from '../i18n/core'
 import type { Locale } from '../i18n/types'
 import type { GlobalConfig } from '../shared/ipc-channels'
+import { alertError } from '../shared/dialog-port'
 
 export interface LocaleDependencies {
   loadConfig: () => Promise<Partial<GlobalConfig>>
@@ -82,7 +83,6 @@ const browserDependencies: LocaleDependencies = {
     if (globalThis.document) globalThis.document.documentElement.lang = locale
   },
   async reportError(message, title) {
-    const { alertError } = await import('../components/ui/AlertDialog')
     await alertError(message, { title })
   },
 }

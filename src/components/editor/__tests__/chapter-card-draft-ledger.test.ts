@@ -17,7 +17,7 @@ import {
   reconcileSavedBlueprintSnapshots,
   updateEditableChapterBlueprintField,
   updateChapterCardProjectDraft,
-} from '../chapter-card-draft-ledger'
+} from '../../../stores/chapter-card-draft-ledger'
 
 function blueprint(chapterNumber: number, title: string): ChapterBlueprint {
   return {
@@ -38,6 +38,14 @@ function deferred<T>() {
   let resolve!: (value: T) => void
   const promise = new Promise<T>(accept => { resolve = accept })
   return { promise, resolve }
+}
+
+function chapterCardSurface(): string {
+  return [
+    'src/components/editor/ChapterCardEditor.tsx',
+    'src/components/editor/ChapterCardForm.tsx',
+    'src/components/editor/chapter-card-shared.ts',
+  ].map(file => normalizeSourceEol(readFileSync(file, 'utf8'))).join('\n')
 }
 
 describe('chapter-card draft ledger', () => {
@@ -258,14 +266,12 @@ describe('chapter-card draft ledger', () => {
   })
 
   it('renders the chapter number as a readonly field with no ordinary renumber action', () => {
-    const source = normalizeSourceEol(
-      readFileSync('src/components/editor/ChapterCardEditor.tsx', 'utf8'),
-    )
+    const source = chapterCardSurface()
     const chapterNumberInput = source.match(
       /<Input\s+type="number"\s+value=\{selected\.chapterNumber\}[\s\S]*?\/>/,
     )?.[0]
 
-    expect(source).toContain('K extends EditableChapterBlueprintField')
+    expect(source).toContain('EditableChapterBlueprintField')
     expect(chapterNumberInput).toContain('readOnly')
     expect(chapterNumberInput).not.toContain('onChange')
     expect(chapterNumberInput).not.toContain('onBlur')
@@ -273,9 +279,7 @@ describe('chapter-card draft ledger', () => {
   })
 
   it('binds chapter-card IPC reads and writes to the loaded project identity', () => {
-    const componentSource = normalizeSourceEol(
-      readFileSync('src/components/editor/ChapterCardEditor.tsx', 'utf8'),
-    )
+    const componentSource = chapterCardSurface()
     const workflowSource = normalizeSourceEol(
       readFileSync('src/services/workflows/directory-workflow.ts', 'utf8'),
     )
@@ -326,9 +330,7 @@ describe('chapter-card draft ledger', () => {
   })
 
   it('offers a confirmed recovery path when legacy imported text creates a writing gap', () => {
-    const source = normalizeSourceEol(
-      readFileSync('src/components/editor/ChapterCardEditor.tsx', 'utf8'),
-    )
+    const source = chapterCardSurface()
     const handlerStart = source.indexOf('async function handleClearLegacyImportedText(): Promise<void> {')
     const handlerEnd = source.indexOf('\n  if (loading)', handlerStart)
     const recoveryHandler = source.slice(handlerStart, handlerEnd)

@@ -2,6 +2,7 @@ import type { RendererAction, RendererActionResult } from '../../shared/agent-ev
 import { globalEventBus } from '../../shared/event-bus'
 import { logFailure } from '../../shared/fail-log'
 import { projectSessionContextFromProject } from '../../shared/project-session-context'
+import { openBuiltinEditor } from '../editor-file-openers'
 import { useEditorStore } from '../../stores/editor-store'
 import { useLocaleStore } from '../../stores/locale-store'
 import { useProjectStore } from '../../stores/project-store'
@@ -14,7 +15,6 @@ export async function handleRendererAction(action: RendererAction): Promise<Rend
   switch (action.type) {
     case 'open_editor': {
       if (action.target === 'builtin') {
-        const { openBuiltinEditor } = await import('../../components/panels/sidebar/sidebar-file-openers')
         const uiText = useLocaleStore.getState().text
         const builtin = {
           config: null,

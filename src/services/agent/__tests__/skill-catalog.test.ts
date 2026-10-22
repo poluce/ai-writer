@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../ipc-client', () => ({ ipc: { invoke: vi.fn() } }))
-vi.mock('../../../stores/project-store', () => ({
-  useProjectStore: { getState: () => ({ currentProject: null }) },
-}))
 
+import { setActiveProjectSnapshot } from '../../../shared/project-session-context'
 import { parseSkillMd, skillRegistry } from '../skill-registry'
+
+// 未打开项目：skill-registry 通过共享快照读到 null，走用户级目录。
+setActiveProjectSnapshot(null)
 import {
   buildAgentSkillCatalog,
   skillDescription,

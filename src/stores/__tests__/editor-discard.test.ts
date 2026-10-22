@@ -7,7 +7,7 @@ import {
   getChapterCardProjectDraft,
   parseChapterCardDraftLedger,
   updateChapterCardProjectDraft,
-} from '../../components/editor/chapter-card-draft-ledger'
+} from '../../stores/chapter-card-draft-ledger'
 import type { ChapterBlueprint } from '../../services/workflows/directory-workflow'
 import {
   discardAndCloseEditorTab,

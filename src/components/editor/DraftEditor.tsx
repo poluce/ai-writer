@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 
-import { Sparkles, Search, BadgeCheck, Save, FileStack, FileText, Wrench, Check, Pencil, X } from 'lucide-react'
+import { Sparkles, Search, BadgeCheck, Save, FileStack, FileText, Wrench, Pencil } from 'lucide-react'
 
 import { useProjectStore } from '../../stores/project-store'
 import { registerEditorExitSaveHandler, useEditorStore } from '../../stores/editor-store'
@@ -9,12 +9,12 @@ import { useLayoutStore } from '../../stores/layout-store'
 import { useWorkflowStore } from '../../stores/workflow-store'
 import { useLocaleStore } from '../../stores/locale-store'
 import CodeMirrorEditor from './CodeMirrorEditor'
-import ThreeWayMerge from './ThreeWayMerge'
 import { Button } from '../ui/Button'
 import { toast } from '../ui/Toast'
 import { confirm } from '../ui/Confirm'
-import {
-  Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription} from '../ui/Dialog'
+import { DraftAnnotationBanner } from './DraftAnnotationBanner'
+import { DraftActionConfirmDialog } from './DraftActionConfirmDialog'
+import { DraftMergeDialog } from './DraftMergeDialog'
 import {
   parseDraftMeta,
   type DraftMeta,
@@ -918,29 +918,11 @@ function DraftEditorSession({ tabId, filePath, content, projectKey }: Props) {
         </div>
       )}
 
-      {annotationListOpen && annotations.length > 0 && (
-        <div
-          className="px-3 py-2 text-xs space-y-1.5"
-          style={{ borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg-elevated, var(--color-panel))' }}
-        >
-          {annotations.map(item => (
-            <div key={item.id} className="flex items-start gap-2">
-              <div className="flex-1 min-w-0">
-                <div className="truncate" style={{ color: 'var(--color-text-muted)' }}>「{item.quote}」</div>
-                <div style={{ color: 'var(--color-text)' }}>{item.note}</div>
-              </div>
-              <button
-                type="button"
-                className="p-0.5 rounded"
-                title={text('删除标注', 'Remove note')}
-                onClick={() => setAnnotations(current => current.filter(entry => entry.id !== item.id))}
-              >
-                <X size={12} />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+      <DraftAnnotationBanner
+        open={annotationListOpen}
+        annotations={annotations}
+        onRemove={(id) => setAnnotations(current => current.filter(entry => entry.id !== id))}
+      />
 
       {/* 正文区 */}
       <div className="flex-1 overflow-hidden relative">
@@ -979,161 +961,33 @@ function DraftEditorSession({ tabId, filePath, content, projectKey }: Props) {
       </div>
 
       {/* AI 操作确认弹窗（修稿含自定义提示词输入框） */}
-      <Dialog open={confirmAction !== null} onOpenChange={(v) => !v && setConfirmAction(null)}>
-        <DialogContent className="max-w-[440px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Sparkles size={15} className="text-[var(--color-accent)]" />
-              {confirmAction === 'refine'
-                ? text('AI 修稿确认', 'Confirm AI revision')
-                : text('AI 审稿确认', 'Confirm AI review')}
-            </DialogTitle>
-            <DialogDescription>
-              {text('对象：', 'Target: ')}{meta
-                ? `${meta.chapterTitle || text('未知标题', 'Untitled')} v${meta.version}`
-                : text('当前草稿', 'Current draft')}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="px-5 py-2 text-sm space-y-1.5" style={{ color: 'var(--color-text-secondary)' }}>
-            {confirmAction === 'refine' ? (
-              <>
-                <div className="font-medium text-[var(--color-text)]">{text('本次【直接修稿】范围：', 'This direct revision will:')}</div>
-                <div>{text('1. 全文基础润色、词汇优化，增强画面与表现力。', '1. Polish the full chapter, improve wording, and strengthen imagery and expression.')}</div>
-                <div>{text('2. 可在下方指定的额外修稿要求。', '2. Follow any additional revision instructions below.')}</div>
-                {annotations.length > 0 && (
-                  <div className="pt-2 space-y-1">
-                    <div className="font-medium text-[var(--color-text)]">
-                      {text(`将提交 ${annotations.length} 条选区标注：`, `Will send ${annotations.length} passage notes:`)}
-                    </div>
-                    {annotations.map(item => (
-                      <div key={item.id} className="text-xs leading-relaxed">
-                        「{item.quote.length > 36 ? `${item.quote.slice(0, 36)}…` : item.quote}」— {item.note}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                <div>{text('将调用 AI 对本章草稿进行一致性检查，并生成审稿报告。', 'AI will check this chapter for consistency and generate a review report.')}</div>
-                <div className="mt-3">
-                  <div className="text-xs font-medium mb-2" style={{ color: 'var(--color-text)' }}>{text('重点检查维度：', 'Review focus:')}</div>
-                  <div className="flex flex-wrap gap-2">
-                    {REVIEW_DIMS.map(d => (
-                      <label
-                        key={d.key}
-                        className="flex items-center gap-1.5 cursor-pointer select-none px-2 py-1 rounded-md text-xs"
-                        style={{
-                          border: `1px solid ${reviewDims[d.key] ? 'var(--color-accent)' : 'var(--color-border)'}`,
-                          backgroundColor: reviewDims[d.key] ? 'rgba(var(--color-accent-rgb),0.1)' : 'transparent',
-                          color: reviewDims[d.key] ? 'var(--color-accent)' : 'var(--color-text-muted)'}}
-                        onClick={() => setReviewDims(prev => ({ ...prev, [d.key]: !prev[d.key] }))}
-                      >
-                        <div
-                          className="w-3 h-3 rounded flex items-center justify-center flex-shrink-0"
-                          style={{
-                            backgroundColor: reviewDims[d.key] ? 'var(--color-accent)' : 'transparent',
-                            border: `1.5px solid ${reviewDims[d.key] ? 'var(--color-accent)' : 'var(--color-border)'}`}}
-                        >
-                          {reviewDims[d.key] && (
-                            <Check size={9} strokeWidth={3} color="white" aria-hidden="true" />
-                          )}
-                        </div>
-                        {d.label}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* 修稿时显示自定义提示词输入框 */}
-          {confirmAction === 'refine' && (
-            <div className="px-5 pb-2">
-              <label className="text-xs font-medium block mb-1.5" style={{ color: 'var(--color-text-secondary)' }}>
-                {text('附加修稿要求（可选）：', 'Additional revision guidance (optional):')}
-              </label>
-              <textarea
-                className="w-full px-3 py-2 rounded-md text-sm"
-                style={{
-                  background: 'var(--color-bg-elevated)',
-                  border: '1px solid var(--color-border)',
-                  color: 'var(--color-text)',
-                  minHeight: 72,
-                  resize: 'vertical',
-                  outline: 'none'}}
-                placeholder={text(
-                  '例如：加强打斗场面的画面感；把结尾的伏笔改为更隐晦的暗示；对白太书面化，改为口语化风格...',
-                  'For example: make action scenes more vivid; make the final foreshadowing subtler; make dialogue less formal...',
-                )}
-                value={userRefinePrompt}
-                onChange={e => setUserRefinePrompt(e.target.value)}
-              />
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmAction(null)}>{text('取消', 'Cancel')}</Button>
-            <Button
-              variant="ai"
-              onClick={() => {
-                const act = confirmAction
-                setConfirmAction(null)
-                if (act === 'refine') doRefine()
-                else if (act === 'review') doReview()
-              }}
-            >
-              {text('确认执行', 'Run')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DraftActionConfirmDialog
+        open={confirmAction !== null}
+        action={confirmAction}
+        meta={meta}
+        annotations={annotations}
+        reviewDims={reviewDims}
+        reviewDimensions={REVIEW_DIMS}
+        userRefinePrompt={userRefinePrompt}
+        onClose={() => setConfirmAction(null)}
+        onToggleReviewDim={(key) => setReviewDims(prev => ({ ...prev, [key]: !prev[key] }))}
+        onChangeUserRefinePrompt={setUserRefinePrompt}
+        onConfirm={() => {
+          const act = confirmAction
+          setConfirmAction(null)
+          if (act === 'refine') doRefine()
+          else if (act === 'review') doReview()
+        }}
+      />
 
       {/* 弹出式三栏合并视图 —— 使用统一 Dialog 组件 */}
-      <Dialog open={mergeData !== null} onOpenChange={(v) => !v && setMergeData(null)}>
-        <DialogContent
-          className="p-0"
-          style={{
-            width: '90vw',
-            maxWidth: '90vw',
-            height: '85vh',
-            maxHeight: '85vh',
-            overflow: 'hidden'}}
-          /* 阻止点击遮罩关闭，防止误触丢失合并进度 */
-          onPointerDownOutside={(e) => e.preventDefault()}
-          onEscapeKeyDown={(e) => e.preventDefault()}
-        >
-          <DialogHeader className="px-4 py-0" style={{ height: 38, display: 'flex', alignItems: 'center' }}>
-            <DialogTitle className="flex items-center gap-2 text-[0.8rem]">
-              {text(
-                `修稿合并 — 第${meta?.chapterNumber ?? ''}章 ${meta?.chapterTitle || '未知标题'}`,
-                `Revision merge — Chapter ${meta?.chapterNumber ?? ''} ${meta?.chapterTitle || 'Untitled'}`,
-              )}
-            </DialogTitle>
-          </DialogHeader>
-          {/* 合并视图主体 */}
-          <div className="flex-1 overflow-hidden" style={{ height: 'calc(85vh - 38px - 1px)' }}>
-            {mergeData && (
-              <div className="flex h-full flex-col">
-                {mergeData.staleReason && (
-                  <div role="alert" className="border-b border-[var(--color-border)] px-4 py-2 text-sm text-[var(--color-warning-text)]">
-                    {mergeData.staleReason}
-                  </div>
-                )}
-                <div className="min-h-0 flex-1">
-                  <ThreeWayMerge
-                    originalContent={mergeData.originalContent}
-                    modifiedContent={mergeData.modifiedContent}
-                    onComplete={handleMergeComplete}
-                    onCancel={() => setMergeData(null)}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      <DraftMergeDialog
+        open={mergeData !== null}
+        meta={meta}
+        mergeData={mergeData}
+        onComplete={handleMergeComplete}
+        onClose={() => setMergeData(null)}
+      />
     </div>
   )
 }

@@ -13,11 +13,13 @@ import {
   type StructuredBatchContract,
 } from '../structured-batch-executor'
 import {
-  DirectoryWorkflowParams,
-  ChapterBlueprint,
   commitDirectoryBlueprintRange,
   parseTextBlueprintsStrict,
-  type DirectoryWorkflowProjectSnapshot,
+} from '../blueprint-persistence'
+import type {
+  DirectoryWorkflowParams,
+  ChapterBlueprint,
+  DirectoryWorkflowProjectSnapshot,
 } from '../directory-workflow'
 import {
   BLUEPRINT_SEMANTIC_CONTRACT_MANIFEST,

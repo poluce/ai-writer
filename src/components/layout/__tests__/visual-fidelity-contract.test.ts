@@ -33,9 +33,18 @@ const files = [
 
 const editorFiles = [
   'src/components/editor/DraftEditor.tsx',
+  'src/components/editor/DraftActionConfirmDialog.tsx',
+  'src/components/editor/DraftMergeDialog.tsx',
+  'src/components/editor/DraftAnnotationBanner.tsx',
+  'src/components/editor/SynopsisEditor.tsx',
+  'src/components/editor/SynopsisToc.tsx',
+  'src/components/editor/AutoGrowTextarea.tsx',
   'src/components/editor/ChapterCardEditor.tsx',
+  'src/components/editor/ChapterCardForm.tsx',
   'src/components/editor/CharacterEditor.tsx',
   'src/components/editor/ReviewReport.tsx',
+  'src/components/editor/ReviewSeverityBadge.tsx',
+  'src/components/editor/ConfirmedRevisionDialog.tsx',
   'src/components/panels/sidebar/CharactersView.tsx',
   'src/components/editor/CodeMirrorEditor.tsx',
   'src/components/editor/ThreeWayMerge.tsx',

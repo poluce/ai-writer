@@ -14,7 +14,8 @@
 
 import { globalEventBus, type EventPayloadMap } from '../shared/event-bus'
 import type { ProjectSessionContext } from '../shared/ipc-channels'
-import { useProjectStore } from '../stores/project-store'
+import { registerProjectLifecycleHooks, useProjectStore } from '../stores/project-store'
+import { readActiveProject } from './active-project'
 import { useCharacterStore } from '../stores/character-store'
 import { useDraftStore } from '../stores/draft-store'
 import { useEditorStore } from '../stores/editor-store'
@@ -61,7 +62,7 @@ function runProjectEventTask(label: () => string, task: () => Promise<void>): vo
 function isProjectSessionCurrent(projectSession: ProjectSessionContext): boolean {
   return sameProjectSessionContext(
     projectSession,
-    projectSessionContextFromProject(useProjectStore.getState().currentProject),
+    projectSessionContextFromProject(readActiveProject()),
   )
 }
 
@@ -76,13 +77,21 @@ function isActiveWorkflowForProjectSession(
 }
 
 /**
- * 初始化 ProjectService — 注册所有事件监听
+ * 初始化 ProjectService — 注册所有事件监听与项目生命周期钩子
  * 应在 App 挂载时调用一次
  */
 export function initProjectService(): void {
   const text = useLocaleStore.getState().text
   // 防止重复初始化
   if (disposers.length > 0) return
+
+  // 项目生命周期钩子：project-store 通过 Seam 回调，不再反向动态导入本模块。
+  registerProjectLifecycleHooks({
+    onProjectOpening,
+    onProjectOpened,
+    onProjectClosed,
+    disableProjectBindingsPreservingDrafts,
+  })
 
   // === 监听 EventBus 事件 ===
 

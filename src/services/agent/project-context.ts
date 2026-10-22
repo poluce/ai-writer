@@ -1,4 +1,4 @@
-import { useProjectStore } from '../../stores/project-store'
+import { readActiveProject } from '../active-project'
 import type { ProjectSessionContext } from '../../shared/ipc-channels'
 import type { Locale } from '../../i18n/types'
 import { projectSessionContextFromProject } from '../../shared/project-session-context'
@@ -35,7 +35,7 @@ export function createAgentExecutionContext(
   uiLocale: Locale = DEFAULT_WRITING_LANGUAGE,
 ): AgentExecutionContext {
   const frozenModelId = selectedModelId?.trim() || null
-  const project = useProjectStore.getState().currentProject
+  const project = readActiveProject()
   return Object.freeze({
     projectSession: projectSessionContextFromProject(project),
     selectedModelId: frozenModelId,

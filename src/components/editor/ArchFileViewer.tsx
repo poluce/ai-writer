@@ -39,7 +39,7 @@ import {
   canExplicitlyRepairCharacterRoster,
   getCharacterRosterRepairPresentation} from './character-roster-repair-state'
 import { useCharacterRosterRepair } from './use-character-roster-repair'
-import { openBuiltinEditor } from '../panels/sidebar/sidebar-file-openers'
+import { openBuiltinEditor } from '../../services/editor-file-openers'
 import {
   captureProjectSession,
   isProjectSessionCurrent,

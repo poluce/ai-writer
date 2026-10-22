@@ -3,13 +3,6 @@ import { useProjectStore } from '../../stores/project-store'
 import { useLocaleStore } from '../../stores/locale-store'
 import type { Locale } from '../../i18n/types'
 import type { ProjectSessionContext } from '../../shared/ipc-channels'
-import { globalEventBus } from '../../shared/event-bus'
-import {
-  decodeBlueprintSemanticPayload,
-  parseBlueprintSemanticResponseText,
-  type BlueprintSemanticItem,
-} from '../../shared/blueprint-semantic-contract'
-import { structuredContractDiagnostic } from '../../shared/structured-contract-diagnostic'
 import {
   projectSessionContextFromProject,
   sameProjectPathKey,
@@ -18,10 +11,6 @@ import {
 import { ipc } from '../ipc-client'
 import { PromptBudgetExceededError } from '../generation/generation-harness'
 import type { BlueprintData } from '../../shared/blueprint'
-import type {
-  BlueprintRangeCommitMode,
-  BlueprintRangeCommitReceipt,
-} from '../../shared/contracts/blueprint-commit'
 import { requireWorkflowProjectSession } from './workflow-project-session'
 
 // ==========================================
@@ -48,76 +37,16 @@ export interface DirectoryWorkflowProjectSnapshot {
   }>
 }
 
+// 解析与提交已拆至 blueprint-persistence；此处转发保持既有导入路径。
+export {
+  parseTextBlueprints,
+  parseTextBlueprintsStrict,
+  commitDirectoryBlueprintRange,
+} from './blueprint-persistence'
+
 // ==========================================
-// 2. 蓝图文件访问与工具函数
+// 2. 蓝图数据库访问与校验
 // ==========================================
-
-function extractJsonPayload(content: string): string | null {
-  const trimmed = content.trim()
-  const fenced = /^```(?:json)?\s*([\s\S]*?)\s*```$/iu.exec(trimmed)
-  const candidate = fenced ? fenced[1].trim() : trimmed
-  try {
-    JSON.parse(candidate)
-    return candidate
-  } catch {
-    return null
-  }
-}
-
-function persistedBlueprint(item: BlueprintSemanticItem): ChapterBlueprint {
-  return {
-    ...item,
-    userGuidance: '',
-    notes: '',
-    notesUpdatedAt: '',
-  }
-}
-
-function chapterRange(startNum: number, endNum: number): number[] {
-  return Array.from({ length: endNum - startNum + 1 }, (_, index) => startNum + index)
-}
-
-export function parseTextBlueprints(content: string, startNum: number, endNum: number): ChapterBlueprint[] {
-  try {
-    const payload = extractJsonPayload(content)
-    if (!payload) return []
-    const parsed: unknown = JSON.parse(payload)
-    const candidates = parsed && typeof parsed === 'object' && !Array.isArray(parsed) && 'blueprints' in parsed
-      ? (parsed as { blueprints: unknown }).blueprints
-      : parsed
-    if (!Array.isArray(candidates)) return []
-    const expected = candidates.flatMap((candidate) => {
-      if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return []
-      const raw = candidate as Record<string, unknown>
-      const chapter = Number(raw.chapterNumber ?? raw.chapter_number)
-      return Number.isSafeInteger(chapter) && chapter >= startNum && chapter <= endNum ? [chapter] : []
-    })
-    if (expected.length === 0 || new Set(expected).size !== expected.length) return []
-    const filtered = candidates.filter((candidate) => {
-      if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return false
-      const raw = candidate as Record<string, unknown>
-      return expected.includes(Number(raw.chapterNumber ?? raw.chapter_number))
-    })
-    return decodeBlueprintSemanticPayload(filtered, expected).map(persistedBlueprint)
-  } catch {
-    console.error('Failed to parse blueprint JSON', content)
-  }
-
-  return []
-}
-
-export function parseTextBlueprintsStrict(content: string, startNum: number, endNum: number): ChapterBlueprint[] {
-  try {
-    return parseBlueprintSemanticResponseText(
-      content,
-      chapterRange(startNum, endNum),
-    ).map(persistedBlueprint)
-  } catch (error) {
-    if (structuredContractDiagnostic(error)) throw error
-    const detail = error instanceof Error ? error.message : String(error)
-    throw new Error(`蓝图 JSON 解析失败：${detail}`)
-  }
-}
 
 export function assertBlueprintCoverage(
   blueprints: ChapterBlueprint[],
@@ -165,36 +94,6 @@ export async function saveAllBlueprints(
 ): Promise<void> {
   const result = await ipc.invokeWithProjectSession(projectSession, 'db:blueprint-upsert-many', blueprints, expectedProjectPath)
   assertIpcSuccess(result, '保存章节蓝图')
-}
-
-export async function commitDirectoryBlueprintRange(
-  blueprints: ChapterBlueprint[],
-  expectedProjectPath: string,
-  range: { mode: BlueprintRangeCommitMode; startChapter: number; endChapter: number },
-  operationId: string,
-  projectSession: ProjectSessionContext,
-): Promise<BlueprintRangeCommitReceipt> {
-  const result = await ipc.invokeWithProjectSession(
-    projectSession,
-    'db:blueprint-commit-range',
-    {
-      mode: range.mode,
-      operationId,
-      startChapter: range.startChapter,
-      endChapter: range.endChapter,
-      blueprints,
-    },
-    expectedProjectPath,
-  )
-  if (!result.success || !result.receipt) {
-    throw new Error(result.error || '提交章节蓝图失败')
-  }
-  globalEventBus.emit('REFRESH_RESOURCE', {
-    resources: ['blueprints'],
-    projectPath: expectedProjectPath,
-    projectSession,
-  })
-  return result.receipt
 }
 
 export async function verifyBlueprintsPersisted(

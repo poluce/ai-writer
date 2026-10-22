@@ -75,6 +75,19 @@ flowchart TD
   Runtime --> MainProcess
 ```
 
+### 分层硬性规则（由 test/layering-contract.test.ts 守护，违规即测试红灯）
+
+1. **Store/Service/Shared 严禁依赖 components 视图层**（静态与动态 `import()` 均算违规）；
+2. **src/shared 契约层是叶子**：不得依赖 stores/services/components（含 `import type`）；
+3. **主进程运行时闭包纯净**：`electron/` 的运行时（值）依赖闭包不得进入渲染层 `src/services/ipc-client.ts`、`src/stores/`、`src/components/`；主进程需要共享逻辑时，只允许引入环境无关模块（如 `src/shared/`、`src/services/prompt-templates-core.ts`、`src/services/agent/assistant-identity.ts`）；
+4. **根级辅助层**（hooks/utils/lib/tokens/i18n）不得依赖业务层；
+5. **运行时依赖图无环**：src 与 electron 的全部运行时（值）依赖（含动态 `import()`）构成严格 DAG；项目生命周期跨层编排通过 Seam 注入（project-store 的 `registerProjectLifecycleHooks` 由 project-service 的 `initProjectService` 在组合根注册），「读当前项目」统一走 `src/services/active-project.ts` 的共享快照镜像，禁止直接跨层互导；
+
+### UI 反馈 Seam（dialog-port）
+
+* Store/Service 需要弹窗反馈（错误告警、破坏性确认）时，统一通过 `src/shared/dialog-port.ts` 的 `alertError` / `confirm` 转发，严禁直接（或动态）import `components/ui`；
+* `src/main.tsx` 作为组合根在启动时通过 `setDialogPort` 注入 `AlertDialog`/`Confirm` 的真实实现；测试用 `setDialogPort` 注入 mock，未注入时降级为 console，任何环境不崩溃。
+
 ---
 
 ## 核心领域系统详解
@@ -181,3 +194,4 @@ flowchart TD
 4. [ ] **渠道与模型解耦**：没有把通道层字段写进模型层，也没有把业务预设塞进模型基础设施层。
 5. [ ] **即时生效**：所有的设置项保存均通过 IPC 自动持久化，无冗余的手动保存阻断。
 6. [ ] **原生复用**：优先复用 Pi Agent 与现有领域 Seam，严禁私自编写自研循环或绕过 Seam 直写文件。
+7. [ ] **分层守护**：`test/layering-contract.test.ts` 全绿；Store/Service 未新增对 components 的反向依赖（含动态 import），弹窗反馈统一走 `dialog-port`，未引入新的运行时依赖环。

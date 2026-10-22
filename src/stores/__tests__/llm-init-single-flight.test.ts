@@ -11,11 +11,10 @@ vi.mock('../../services/ipc-client', () => ({
   },
 }))
 
-vi.mock('../../components/ui/AlertDialog', () => ({
-  alertError: vi.fn(),
-}))
-
 import { useLLMStore } from '../llm-store'
+import { setDialogPort } from '../../shared/dialog-port'
+
+setDialogPort({ alertError: vi.fn() })
 
 function deferred<T>() {
   let resolve!: (value: T) => void

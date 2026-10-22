@@ -25,8 +25,8 @@ import { ARCH_FILES } from './sidebar-arch-files'
 import {
   confirmCurrentProjectSession,
   openArchFile,
-  openBuiltinEditor,
 } from './sidebar-file-openers'
+import { openBuiltinEditor } from '../../../services/editor-file-openers'
 import { renderIcon } from './sidebar-icons'
 import { showSidebarMenu } from './sidebar-menu'
 import { createProjectArchTabId } from '../../editor/arch-file-refresh-policy'

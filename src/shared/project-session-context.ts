@@ -102,6 +102,22 @@ export function getActiveProjectSessionContext(): ProjectSessionContext | null {
   return activeProjectSessionContext
 }
 
+/**
+ * 当前打开项目的只读快照登记处。project-store 订阅自身提交并在此登记，
+ * 使 Store 之间的「读当前项目」依赖不再落到 project-store 本体（消除
+ * services/active-project ↔ stores/project-store 的运行时环）。读取方拿到
+ * 的是冻结快照；需要触发 UI 更新时仍应订阅 useProjectStore。
+ */
+let activeProjectSnapshot: ProjectData | null = null
+
+export function setActiveProjectSnapshot(project: ProjectData | null): void {
+  activeProjectSnapshot = project ? Object.freeze({ ...project }) : null
+}
+
+export function getActiveProjectSnapshot(): ProjectData | null {
+  return activeProjectSnapshot
+}
+
 export function sameProjectSessionContext(
   left: ProjectSessionContext | null | undefined,
   right: ProjectSessionContext | null | undefined,

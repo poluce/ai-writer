@@ -3,9 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const invoke = vi.fn()
 
 vi.mock('../../ipc-client', () => ({ ipc: { invoke } }))
-vi.mock('../../../stores/project-store', () => ({
-  useProjectStore: { getState: () => ({ currentProject: null }) },
-}))
+
+import { setActiveProjectSnapshot } from '../../../shared/project-session-context'
+
+// 未打开项目：skill-registry 通过共享快照读到 null，走用户级目录。
+setActiveProjectSnapshot(null)
 
 describe('writing skill registry identity and command exposure', () => {
   beforeEach(() => invoke.mockReset())

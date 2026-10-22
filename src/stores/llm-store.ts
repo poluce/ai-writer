@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { ipc } from '../services/ipc-client'
 import { requireIpcSuccess } from '../services/ipc-result'
-import { alertError } from '../components/ui/AlertDialog'
+import { alertError } from '../shared/dialog-port'
 import type {
   CreationTaskKey,
   GlobalConfig,

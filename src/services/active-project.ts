@@ -1,14 +1,21 @@
 import type { ProjectData, ProjectSessionContext } from '../shared/ipc-channels'
 import {
+  getActiveProjectSnapshot,
   projectSessionContextFromProject,
   sameProjectPathKey,
   sameProjectSessionContext,
 } from '../shared/project-session-context'
-import { useProjectStore } from '../stores/project-store'
 
-/** 其它 Store 读当前项目时走这里，不要直接 useProjectStore.getState()。 */
+/**
+ * 「读当前项目」的统一入口 — 只读共享镜像，不依赖任何 Store。
+ *
+ * project-store 订阅自身提交并在 shared/project-session-context 登记冻结
+ * 快照；Store 与 Service 读取当前项目身份时走这里，保持 services 层不
+ * 反向依赖 stores 层（单向：project-store → shared ← 其它 Store/Service）。
+ * 需要响应式 UI 或可变操作时仍直接使用 useProjectStore。
+ */
 export function readActiveProject(): ProjectData | null {
-  return useProjectStore.getState().currentProject
+  return getActiveProjectSnapshot()
 }
 
 export function readActiveProjectSession(): ProjectSessionContext | null {

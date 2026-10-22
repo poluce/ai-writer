@@ -127,7 +127,7 @@ export class GeneratePlotArchitectureCommand extends BaseWorkflowCommand<string>
       'The plot-outline template is missing.',
     ))
 
-    const { getPlotStructureGuide, getNarrativePOVLabel } = await import('../architecture-workflow')
+    const { getPlotStructureGuide, getNarrativePOVLabel } = await import('../architecture-prompt-guides')
     const guide = getPlotStructureGuide(
       config.plotStructure || 'three_act',
       totalChapters,
