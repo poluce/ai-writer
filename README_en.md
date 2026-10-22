@@ -28,6 +28,10 @@
   <img src="docs/assets/readme/hero-en-v2.png" alt="AI Writer — a local-first desktop workspace for long-form fiction" width="100%" />
 </p>
 
+> ## v0.1.2 — fix missing app icons in installed builds
+>
+> Fixed the title-bar and status-bar app icons in installed builds: the packaged renderer loads pages from file://, so icon URLs now resolve through Vite's BASE_URL and stay correct in both development and packaged runs. A regression guard now forbids absolute public-asset URLs in the renderer.
+>
 > ## v0.1.1 — global update reminder with one-click download and restart
 >
 > A persistent in-app reminder directly offers "Download update" and "Remind me later" when a new stable release is found; the same reminder switches to "Restart and update" once the download finishes, after checking active creative tasks and unsaved edits. The reminder returns if the guard is cancelled, failed downloads offer a retry, and a 7-day deferral restores the reminder automatically. Installs on v0.1.0 receive this reminder.
@@ -50,7 +54,7 @@
 - The Chinese long-form workflow connects blueprints, drafts, reviews, revisions, and final chapters.
 - Windows users receive an in-app reminder for new releases and can download, restart, and finish the update in one flow.
 
-See the [bilingual 0.1.1 notes](.release/notes/v0.1.1.md) for each change. Official installers are published through this repository's [GitHub Releases](https://github.com/poluce/ai-writer/releases/latest).
+See the [bilingual 0.1.2 notes](.release/notes/v0.1.2.md) for each change. Official installers are published through this repository's [GitHub Releases](https://github.com/poluce/ai-writer/releases/latest).
 
 > ## Feature baseline inherited from upstream (historical)
 >
@@ -165,7 +169,7 @@ The installer is not code-signed at present. Windows may show publisher or reput
 
 ### macOS
 
-0.1.1 does not ship a macOS installer yet: this release line qualifies and publishes Windows x64 first. macOS installers return in a later version, still as separate ARM64 and Intel builds.
+0.1.2 does not ship a macOS installer yet: this release line qualifies and publishes Windows x64 first. macOS installers return in a later version, still as separate ARM64 and Intel builds.
 
 ## Current limits
 
