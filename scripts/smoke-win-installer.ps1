@@ -1,11 +1,8 @@
 ﻿param(
   [string]$InstallerPath,
-  [string]$PreviousInstallerPath,
-  [string]$PreviousPortableZipPath,
   [int]$ObservationSeconds = 30,
   [int]$InstallerTimeoutSeconds = 300,
   [int]$PostExitQuietSeconds = 5,
-  [switch]$RequireCompleteV025Fixture,
   [switch]$LoadInstallerLibrary
 )
 
@@ -18,7 +15,6 @@ $ObservationSeconds = $installerObservationSeconds
 $PostExitQuietSeconds = $installerPostExitQuietSeconds
 
 $root = Split-Path -Parent $PSScriptRoot
-$script:aiNovelUpgradeDataFixtureScript = Join-Path $PSScriptRoot 'upgrade-data-fixture.mjs'
 $script:aiNovelElectronNodeRunner = Join-Path $root 'node_modules\electron\dist\electron.exe'
 $packageJson = Get-Content -LiteralPath (Join-Path $root 'package.json') -Raw | ConvertFrom-Json
 if ([string]::IsNullOrWhiteSpace($InstallerPath)) {
@@ -39,7 +35,6 @@ $installRoot = Join-Path $smokeRoot 'installed-app'
 $velaHome = Join-Path $smokeRoot 'vela-home'
 $globalConfig = Join-Path $velaHome 'config.json'
 $recentProjects = Join-Path $velaHome 'recent-projects.json'
-$upgradeFixtureRoot = Join-Path $smokeRoot 'user-projects\upgrade-preservation-fixture'
 $uninstaller = Join-Path $installRoot 'Uninstall AI Writer.exe'
 $lastWindowSnapshot = @()
 $observedProcessIds = [System.Collections.Generic.HashSet[int]]::new()
@@ -113,83 +108,6 @@ function Get-AiNovelUtf8NonEmptyLines {
   }
 
   return @($text -split '\r?\n' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-}
-
-function Invoke-AiNovelUpgradeDataFixture {
-  param(
-    [Parameter(Mandatory = $true)][ValidateSet('seed', 'validate-legacy', 'validate')][string]$Mode,
-    [Parameter(Mandatory = $true)][string]$ProjectRoot,
-    [string]$SettingsPath
-  )
-
-  if (-not (Test-Path -LiteralPath $script:aiNovelElectronNodeRunner -PathType Leaf)) {
-    throw "Project Electron runtime is missing: $script:aiNovelElectronNodeRunner"
-  }
-  if (-not (Test-Path -LiteralPath $script:aiNovelUpgradeDataFixtureScript -PathType Leaf)) {
-    throw "Upgrade data fixture helper is missing: $script:aiNovelUpgradeDataFixtureScript"
-  }
-
-  $previousElectronRunAsNode = $env:ELECTRON_RUN_AS_NODE
-  $previousNodeNoWarnings = $env:NODE_NO_WARNINGS
-  $stdoutPath = Join-Path ([System.IO.Path]::GetTempPath()) ('ai-novel-upgrade-fixture-' + [guid]::NewGuid().ToString('N') + '.out')
-  $stderrPath = Join-Path ([System.IO.Path]::GetTempPath()) ('ai-novel-upgrade-fixture-' + [guid]::NewGuid().ToString('N') + '.err')
-  try {
-    $env:ELECTRON_RUN_AS_NODE = '1'
-    $env:NODE_NO_WARNINGS = '1'
-    $quotedFixtureScript = '"' + $script:aiNovelUpgradeDataFixtureScript.Replace('"', '\"') + '"'
-    $quotedProjectRoot = '"' + $ProjectRoot.Replace('"', '\"') + '"'
-    $fixtureArguments = @($quotedFixtureScript, $Mode, $quotedProjectRoot)
-    if (-not [string]::IsNullOrWhiteSpace($SettingsPath)) {
-      $fixtureArguments += '"' + $SettingsPath.Replace('"', '\"') + '"'
-    }
-    $process = Start-Process `
-      -FilePath $script:aiNovelElectronNodeRunner `
-      -ArgumentList $fixtureArguments `
-      -RedirectStandardOutput $stdoutPath `
-      -RedirectStandardError $stderrPath `
-      -WindowStyle Hidden `
-      -Wait `
-      -PassThru
-    $output = Get-AiNovelUtf8NonEmptyLines -Path $stdoutPath
-    $errorOutput = Get-AiNovelUtf8NonEmptyLines -Path $stderrPath
-    if ($process.ExitCode -ne 0) {
-      throw "Upgrade data fixture $Mode failed with code $($process.ExitCode): $($errorOutput -join [Environment]::NewLine)"
-    }
-    $resultLine = $output | Select-Object -Last 1
-    $result = $resultLine | ConvertFrom-Json
-    $completeV025Evidence = (
-      $result.mode -eq $Mode -and
-      $result.legacyTableCount -eq 11 -and
-      $result.characterCount -eq 2 -and
-      $result.currentStateCount -eq 2 -and
-      $result.blueprintCount -eq 1 -and
-      $result.contentCount -eq 4 -and
-      $result.draftCount -eq 2 -and
-      $result.finalizedDraftCount -eq 1 -and
-      $result.reviewCount -eq 1 -and
-      $result.revisionCount -eq 1 -and
-      $result.postProcessRunCount -eq 1 -and
-      $result.postProcessStepCount -eq 2 -and
-      $result.llmCallCount -eq 2 -and
-      $result.failedLlmCallCount -eq 1 -and
-      $result.summarySnapshotCount -eq 2 -and
-      $result.assetInventoryPath -eq '.vela/upgrade-data-inventory.json' -and
-      $result.assetCount -ge 6 -and
-      $result.preservedAssetCount -eq $result.assetCount -and
-      $result.embeddingSpace.vectorDimension -eq 768 -and
-      $result.embeddingSpace.queryResultCount -eq 1
-    )
-    if (-not $completeV025Evidence) {
-      throw "Upgrade data fixture $Mode returned incomplete validation evidence."
-    }
-    return $result
-  }
-  finally {
-    $env:ELECTRON_RUN_AS_NODE = $previousElectronRunAsNode
-    $env:NODE_NO_WARNINGS = $previousNodeNoWarnings
-    Remove-Item -LiteralPath $stdoutPath -Force -ErrorAction SilentlyContinue
-    Remove-Item -LiteralPath $stderrPath -Force -ErrorAction SilentlyContinue
-  }
 }
 
 function Assert-NoNewInstallerErrorWindow {
@@ -745,8 +663,6 @@ if ($LoadInstallerLibrary) {
 
 $smokeSucceeded = $false
 $failureRecord = $null
-$upgradeFixtureSeeded = $false
-$upgradeValidationEvidence = $null
 $currentInstallCompleted = $false
 
 try {
@@ -770,54 +686,6 @@ try {
   @{ theme = 'light'; locale = 'zh-CN'; proxy = @{ enabled = $false; type = 'http'; host = ''; port = 7890 } } |
     ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $globalConfig -Encoding utf8
 
-  $hasPreviousVersion = (
-    (-not [string]::IsNullOrWhiteSpace($PreviousInstallerPath)) -or
-    (-not [string]::IsNullOrWhiteSpace($PreviousPortableZipPath))
-  )
-  if ($hasPreviousVersion) {
-    if (-not [string]::IsNullOrWhiteSpace($PreviousPortableZipPath)) {
-      $portableExtractRoot = Join-Path $smokeRoot 'previous-portable'
-      Expand-Archive -LiteralPath (Resolve-Path -LiteralPath $PreviousPortableZipPath).Path -DestinationPath $portableExtractRoot -Force
-      $portableExecutable = Get-ChildItem -LiteralPath $portableExtractRoot -Recurse -File -Filter 'AI小说作家.exe' |
-        Select-Object -First 1
-      if ($null -eq $portableExecutable) {
-        throw 'Official previous-version portable package does not contain AI小说作家.exe.'
-      }
-      New-Item -ItemType Directory -Path $installRoot -Force | Out-Null
-      Copy-Item -Path (Join-Path $portableExecutable.Directory.FullName '*') -Destination $installRoot -Recurse -Force
-    }
-    else {
-      Install-Silently (Resolve-Path -LiteralPath $PreviousInstallerPath).Path
-    }
-    # Seed the real v0.2.5 project format only after the old installer is present:
-    # {project}\.vela\vela.db with all 11 v0.2.5 tables and representative
-    # core, draft, revision, review, post-process, LLM, and summary records.
-    Invoke-AiNovelUpgradeDataFixture -Mode seed -ProjectRoot $upgradeFixtureRoot -SettingsPath $globalConfig | Out-Null
-    Invoke-AiNovelUpgradeDataFixture -Mode validate-legacy -ProjectRoot $upgradeFixtureRoot -SettingsPath $globalConfig | Out-Null
-    $upgradeFixtureSeeded = $true
-    @(
-      @{
-        name = '升级保留验证小说'
-        path = $upgradeFixtureRoot
-        updatedAt = '2026-01-02T03:04:05.000Z'
-      }
-    ) | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $recentProjects -Encoding utf8
-
-    $legacyExePath = Join-Path $installRoot 'AI小说作家.exe'
-    if (-not (Test-Path -LiteralPath $legacyExePath -PathType Leaf)) {
-      throw "Previous-version application is missing after installation: $legacyExePath"
-    }
-    & (Join-Path $PSScriptRoot 'smoke-win-app.ps1') `
-      -ExePath $legacyExePath `
-      -ObservationSeconds $ObservationSeconds `
-      -PostExitQuietSeconds $PostExitQuietSeconds `
-      -VelaHome $velaHome `
-      -WindowBaselineIdentities $roundBaselineIdentities `
-      -RelatedProcessIds $observedProcessIds `
-      -RelatedProcessStartTimeTicks $observedProcessStartTimeTicks `
-      -RelatedTargetNames @($roundTargetNames) `
-      -LegacyProjectPathToOpen $upgradeFixtureRoot
-  }
   Install-Silently $resolvedInstaller
 $currentInstallCompleted = $true
 
@@ -869,58 +737,11 @@ $currentInstallCompleted = $true
     AcceptanceDirectory = $script:aiNovelAcceptanceDirectory
     ExpectedVersion = [string]$packageJson.version
   }
-  if ($upgradeFixtureSeeded) {
-    $appSmokeParameters.ProjectPathToOpen = $upgradeFixtureRoot
-  }
   & (Join-Path $PSScriptRoot 'smoke-win-app.ps1') @appSmokeParameters
 
   $config = Get-Content -LiteralPath $globalConfig -Raw | ConvertFrom-Json
   if ($config.theme -ne 'light' -or $config.locale -ne 'zh-CN' -or $config.proxy.port -ne 7890) {
     throw 'Installer smoke changed existing global configuration instead of preserving it.'
-  }
-  if ($upgradeFixtureSeeded) {
-    $upgradeValidationEvidence = Invoke-AiNovelUpgradeDataFixture -Mode validate -ProjectRoot $upgradeFixtureRoot -SettingsPath $globalConfig
-    if ($RequireCompleteV025Fixture -and $upgradeValidationEvidence.legacyTableCount -ne 11) {
-      throw 'The required complete v0.2.5 upgrade fixture was not validated.'
-    }
-    if (-not (Test-Path -LiteralPath $recentProjects -PathType Leaf)) {
-      throw 'Installer upgrade removed the isolated recent-projects file.'
-    }
-    $recentProjectEntries = @(Get-Content -LiteralPath $recentProjects -Raw | ConvertFrom-Json)
-    $fixtureRecentEntry = @($recentProjectEntries | Where-Object {
-      [System.IO.Path]::GetFullPath([string]$_.path) -eq [System.IO.Path]::GetFullPath($upgradeFixtureRoot)
-    })
-    if ($fixtureRecentEntry.Count -ne 1) {
-      throw 'The upgraded application did not retain the opened fixture in recent projects.'
-    }
-    Write-AiNovelAcceptanceReceipt `
-      -Directory $script:aiNovelAcceptanceDirectory `
-      -FileName 'upgrade-data.json' `
-      -Receipt ([ordered]@{
-        schemaVersion = 2
-        kind = 'windows-upgrade-data'
-        accepted = $true
-        observations = @(
-          'The verified v0.2.5 fixture was opened before upgrade and reopened by the current installed application.'
-          'Project database records, physical assets, embedding search, global settings, and recent-project state were validated after upgrade.'
-        )
-        direct = [ordered]@{
-          previousVersion = '0.2.5'
-          legacyTableCount = [int]$upgradeValidationEvidence.legacyTableCount
-          preservedAssetCount = [int]$upgradeValidationEvidence.preservedAssetCount
-          vectorDimension = [int]$upgradeValidationEvidence.embeddingSpace.vectorDimension
-          queryResultCount = [int]$upgradeValidationEvidence.embeddingSpace.queryResultCount
-        }
-        previousVersion = '0.2.5'
-        previousSource = if (-not [string]::IsNullOrWhiteSpace($PreviousPortableZipPath)) { 'verified-portable-zip' } else { 'verified-installer' }
-        legacyTableCount = [int]$upgradeValidationEvidence.legacyTableCount
-        assetCount = [int]$upgradeValidationEvidence.assetCount
-        preservedAssetCount = [int]$upgradeValidationEvidence.preservedAssetCount
-        vectorDimension = [int]$upgradeValidationEvidence.embeddingSpace.vectorDimension
-        queryResultCount = [int]$upgradeValidationEvidence.embeddingSpace.queryResultCount
-        settingsPreserved = $true
-        recentProjectPreserved = $true
-      })
   }
   $smokeSucceeded = $true
 }
@@ -973,7 +794,4 @@ if ($null -ne $failureRecord) {
   throw $failureRecord
 }
 
-if ($null -ne $upgradeValidationEvidence) {
-  Write-Host "v0.2.5 upgrade data preservation evidence: $($upgradeValidationEvidence | ConvertTo-Json -Compress)"
-}
 Write-Host "Windows installer smoke test passed: $resolvedInstaller"

@@ -107,7 +107,6 @@ describe('release dependency contract', () => {
       'verify:win-package',
       'smoke:win-app',
       'smoke:win-installer',
-      'smoke:win-v025-upgrade',
       'restore:native-node',
       'verify:native-node',
       'final:quiet',
@@ -191,7 +190,7 @@ describe('release dependency contract', () => {
 
     expect(
       createHash('sha256').update(releaseMonitor).digest('hex'),
-    ).toBe('430c623298923ceebab5d11df94e8e5b6fb2bb0e3c6c00f4de9d64625c6bf7b1')
+    ).toBe('0f848947786ef7f695f4f972b7c0b579d080e4d25ce3339c2167f166565a8996')
   })
 
   it('blocks direct Windows artifact builds outside the release gate', () => {

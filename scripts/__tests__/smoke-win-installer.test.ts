@@ -1,16 +1,13 @@
-import { execFileSync, spawnSync } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { closeConnection, getEmbeddingSpaces, search } from '../../electron/vector-store'
 
 const windowsIt = process.platform === 'win32' ? it : it.skip
 const probeScript = resolve('scripts/smoke-win-app.ps1')
 const installerScript = resolve('scripts/smoke-win-installer.ps1')
 const releaseMonitorScript = resolve('scripts/monitor-win-release-gate.ps1')
-const upgradeFixtureScript = resolve('scripts/upgrade-data-fixture.mjs')
-const electronNodeRunner = resolve('node_modules/electron/dist/electron.exe')
 const WINDOWS_POWERSHELL_INTEGRATION_TIMEOUT_MS = 30_000
 /**
  * Windows PowerShell 5.1 默认按控制台代码页输出（中文机器上是 CP936），
@@ -100,13 +97,12 @@ describe('Windows PowerShell smoke script encoding', () => {
 })
 
 describe('Windows v2 acceptance receipts', () => {
-  it('wires install, real launch identity, packaged smoke, upgrade, signing, and strict uninstall postconditions', () => {
+  it('wires install, real launch identity, packaged smoke, signing, and strict uninstall postconditions', () => {
     const installer = readFileSync(installerScript, 'utf8')
     const app = readFileSync(probeScript, 'utf8')
 
     expect(installer).toContain("'install.json'")
     expect(installer).toContain("'packaged-smoke.json'")
-    expect(installer).toContain("'upgrade-data.json'")
     expect(installer).toContain("'uninstall.json'")
     expect(installer).toContain("'signing.json'")
     expect(installer).toContain('Get-AuthenticodeSignature')
@@ -319,89 +315,10 @@ try {
   return parseLastJsonLine(output)
 }
 
-type UpgradeFixtureMode = 'seed' | 'validate-legacy' | 'validate'
-
-function runUpgradeFixture(mode: UpgradeFixtureMode, projectRoot: string): Record<string, unknown> {
-  const output = execFileSync(
-    electronNodeRunner,
-    [upgradeFixtureScript, mode, projectRoot],
-    {
-      encoding: 'utf8',
-      env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', NODE_NO_WARNINGS: '1' },
-    },
-  )
-  return parseLastJsonLine(output)
-}
-
-function runUpgradeFixtureWithNode(
-  mode: UpgradeFixtureMode,
-  projectRoot: string,
-  settingsPath?: string,
-): Record<string, unknown> {
-  const output = execFileSync(
-    process.execPath,
-    [upgradeFixtureScript, mode, projectRoot, ...(settingsPath ? [settingsPath] : [])],
-    { encoding: 'utf8' },
-  )
-  return parseLastJsonLine(output)
-}
-
-function validateUpgradeFixtureWithNode(projectRoot: string, settingsPath?: string) {
-  return spawnSync(
-    process.execPath,
-    [upgradeFixtureScript, 'validate', projectRoot, ...(settingsPath ? [settingsPath] : [])],
-    { encoding: 'utf8' },
-  )
-}
-
-function applyExpectedSchemaMigration(projectRoot: string) {
-  execFileSync(
-    process.execPath,
-    [
-      '-e',
-      "const {DatabaseSync}=require('node:sqlite');const db=new DatabaseSync(process.env.AI_NOVEL_FIXTURE_DB);const add=(table,column,sql)=>{if(!db.prepare(`PRAGMA table_info(${table})`).all().some(row=>row.name===column))db.exec(sql)};add('characters','cs_provenance',`ALTER TABLE characters ADD COLUMN cs_provenance TEXT NOT NULL DEFAULT '{}'`);add('drafts','source_dependencies',`ALTER TABLE drafts ADD COLUMN source_dependencies TEXT NOT NULL DEFAULT '[]'`);add('summary_snapshots','source_finalization_id',`ALTER TABLE summary_snapshots ADD COLUMN source_finalization_id TEXT NOT NULL DEFAULT ''`);add('summary_snapshots','source_content_hash',`ALTER TABLE summary_snapshots ADD COLUMN source_content_hash TEXT NOT NULL DEFAULT ''`);add('summary_snapshots','projection_generation',`ALTER TABLE summary_snapshots ADD COLUMN projection_generation INTEGER NOT NULL DEFAULT 0`);db.exec(`CREATE TABLE IF NOT EXISTS continuity_projection_meta (id TEXT PRIMARY KEY CHECK (id = 'main'), generation INTEGER NOT NULL DEFAULT 0 CHECK (generation >= 0), stale_from_chapter INTEGER DEFAULT NULL CHECK (stale_from_chapter IS NULL OR stale_from_chapter > 0)); INSERT OR IGNORE INTO continuity_projection_meta (id) VALUES ('main');`);db.close()",
-    ],
-    {
-      env: {
-        ...process.env,
-        AI_NOVEL_FIXTURE_DB: join(projectRoot, '.vela', 'vela.db'),
-      },
-    },
-  )
-}
-
-function applyExpectedDraftUnitMigration(projectRoot: string) {
-  applyExpectedSchemaMigration(projectRoot)
-  execFileSync(
-    process.execPath,
-    [
-      '-e',
-      "const {DatabaseSync}=require('node:sqlite');const db=new DatabaseSync(process.env.AI_NOVEL_FIXTURE_DB);db.exec(`UPDATE drafts SET word_count = CASE id WHEN 71 THEN 32 WHEN 72 THEN 31 ELSE word_count END; UPDATE revisions SET word_count = CASE id WHEN 91 THEN 22 ELSE word_count END;`);db.close()",
-    ],
-    {
-      env: {
-        ...process.env,
-        AI_NOVEL_FIXTURE_DB: join(projectRoot, '.vela', 'vela.db'),
-      },
-    },
-  )
-}
-
-function writeUpgradeFixtureSettings(settingsPath: string) {
-  writeFileSync(settingsPath, JSON.stringify({
-    theme: 'light',
-    locale: 'zh-CN',
-    proxy: { enabled: false, type: 'http', host: '', port: 7890 },
-  }), 'utf8')
-}
-
 describe('Windows installer smoke contract', () => {
-  it('runs the installed executable with isolated Vela data and supports an old-installer upgrade path', () => {
+  it('runs the installed executable with isolated Vela data and monitors the full installer process tree', () => {
     const script = readFileSync('scripts/smoke-win-installer.ps1', 'utf8')
 
-    expect(script).toContain('$PreviousInstallerPath')
-    expect(script).toContain('$PreviousPortableZipPath')
-    expect(script).toContain('Expand-Archive')
     expect(script).toContain('Install-Silently')
     expect(script).toContain('$InstallerTimeoutSeconds')
     expect(script).toContain('$PostExitQuietSeconds = 5')
@@ -413,48 +330,10 @@ describe('Windows installer smoke contract', () => {
     expect(script).toContain('Add-AiNovelTrackedProcessTree')
     expect(script).toContain('-RequireSuccessfulTerminalRefresh')
     expect(script).toContain('Take one final desktop snapshot')
-    expect(script).toContain('Invoke-AiNovelUpgradeDataFixture')
-    expect(script).toContain('upgrade-data-fixture.mjs')
-    expect(script).toContain("[ValidateSet('seed', 'validate-legacy', 'validate')]")
-    expect(script).toContain('ELECTRON_RUN_AS_NODE')
-    expect(script).toContain('[string]$SettingsPath')
-    expect(script).toContain('-SettingsPath $globalConfig')
-    expect(script).toContain('.vela\\vela.db')
-    expect(script).toContain('recent-projects.json')
-    expect(script).toContain('$upgradeFixtureRoot')
-    expect(script).toContain('$result.legacyTableCount -eq 11')
-    expect(script).toContain('$result.revisionCount -eq 1')
-    expect(script).toContain('$result.reviewCount -eq 1')
-    expect(script).toContain('$result.postProcessRunCount -eq 1')
-    expect(script).toContain('$result.postProcessStepCount -eq 2')
-    expect(script).toContain('$result.llmCallCount -eq 2')
-    expect(script).toContain('$result.summarySnapshotCount -eq 2')
-    expect(script).toContain('$result.assetInventoryPath -eq \'.vela/upgrade-data-inventory.json\'')
-    expect(script).toContain('$result.assetCount -ge 6')
-    expect(script).toContain('$result.preservedAssetCount -eq $result.assetCount')
-    expect(script).toContain('$result.embeddingSpace.vectorDimension -eq 768')
-    expect(script).toContain('$result.embeddingSpace.queryResultCount -eq 1')
-    expect(script).toContain('v0.2.5 upgrade data preservation evidence:')
-    expect(script).toContain('-LegacyProjectPathToOpen $upgradeFixtureRoot')
-    expect(script.indexOf('-LegacyProjectPathToOpen $upgradeFixtureRoot')).toBeLessThan(
-      script.indexOf('Install-Silently $resolvedInstaller'),
-    )
     expect(script).toContain('RelatedProcessStartTimeTicks')
-    expect(script).toContain('$fixtureRecentEntry')
-    expect(script).toContain('did not retain the opened fixture in recent projects')
     expect(script).not.toContain('Start-Process -FilePath $Path -ArgumentList $Arguments -Wait')
     expect(script).toContain('smoke-win-app.ps1')
     expect(script).toContain('VelaHome = $velaHome')
-    expect(script).toContain('$appSmokeParameters.ProjectPathToOpen = $upgradeFixtureRoot')
-    const legacyValidation = 'Invoke-AiNovelUpgradeDataFixture -Mode validate-legacy -ProjectRoot $upgradeFixtureRoot'
-    const migratedValidation = '$upgradeValidationEvidence = Invoke-AiNovelUpgradeDataFixture -Mode validate -ProjectRoot $upgradeFixtureRoot'
-    expect(script).toContain(legacyValidation)
-    expect(script).toContain(migratedValidation)
-    expect(script).not.toContain('UPDATE drafts SET word_count')
-    expect(script.indexOf(legacyValidation)).toBeLessThan(script.indexOf('Install-Silently $resolvedInstaller'))
-    expect(script.indexOf(migratedValidation)).toBeGreaterThan(
-      script.indexOf("& (Join-Path $PSScriptRoot 'smoke-win-app.ps1') @appSmokeParameters"),
-    )
     expect(script).toContain('PostExitQuietSeconds = $PostExitQuietSeconds')
     expect(script).toContain('Installer smoke changed existing global configuration')
 
@@ -463,7 +342,6 @@ describe('Windows installer smoke contract', () => {
     expect(appSmoke.match(/Get-AiNovelStartupBlockingErrorWindows/g)?.length).toBeGreaterThanOrEqual(3)
     expect(appSmoke).toContain('Application smoke cannot start while an existing product error dialog is open')
     expect(appSmoke).toContain('project-opened.json')
-    expect(appSmoke).toContain('renderer did not open and confirm the upgrade fixture project')
     expect(appSmoke).toContain('Application root exited during smoke test after terminal lineage refresh')
     expect(appSmoke).toContain('Could not complete terminal process lineage refresh')
     const appSource = readFileSync('src/App.tsx', 'utf8')
@@ -515,244 +393,9 @@ describe('Windows installer smoke contract', () => {
     )
     expect(appSmoke).toContain('[AllowEmptyCollection()][AllowEmptyString()][string[]]$TargetNames')
 
-    const fixture = readFileSync('scripts/upgrade-data-fixture.mjs', 'utf8')
-    expect(fixture).toContain("from 'node:sqlite'")
-    expect(fixture).toContain("from '@lancedb/lancedb'")
-    expect(fixture).toContain("from 'apache-arrow'")
-    expect(fixture).toContain("const ASSET_INVENTORY_RELATIVE_PATH = '.vela/upgrade-data-inventory.json'")
-    expect(fixture).toContain("const EMBEDDING_DIMENSION = 768")
-    expect(fixture).toContain("const PROMPT_TEMPLATE_RELATIVE_PATH = '.vela/prompts/chapter-style.md'")
-    expect(fixture).toContain('const V1_DRAFT_WORD_COUNTS = Object.freeze({ 71: 37, 72: 38 })')
-    expect(fixture).toContain('const V2_DRAFT_WORD_COUNTS = Object.freeze({ 71: 32, 72: 31 })')
-    expect(fixture).toContain('const V1_REVISION_WORD_COUNTS = Object.freeze({ 91: 30 })')
-    expect(fixture).toContain('const V2_REVISION_WORD_COUNTS = Object.freeze({ 91: 22 })')
-    expect(fixture).not.toContain('Script=Han')
-    expect(fixture).toContain('CREATE TABLE project_core')
-    expect(fixture).toContain('CREATE TABLE characters')
-    expect(fixture).toContain('CREATE TABLE blueprints')
-    expect(fixture).toContain('CREATE TABLE contents')
-    expect(fixture).toContain('CREATE TABLE drafts')
-    expect(fixture).toContain('CREATE TABLE revisions')
-    expect(fixture).toContain('CREATE TABLE reviews')
-    expect(fixture).toContain('CREATE TABLE post_process_runs')
-    expect(fixture).toContain('CREATE TABLE post_process_steps')
-    expect(fixture).toContain('CREATE TABLE llm_calls')
-    expect(fixture).toContain('CREATE TABLE summary_snapshots')
-    expect(fixture).toContain('cs_updated_at_chapter')
-    expect(fixture).toContain("status: 'finalized'")
-    expect(fixture).toContain("join(resolve(projectRoot), '.vela', 'vela.db')")
 
-    const releaseGate = readFileSync('scripts/release-win-verify.mjs', 'utf8')
     const cloudWorkflow = readFileSync('.github/workflows/windows-cloud-build-test.yml', 'utf8')
-    expect(releaseGate).toContain("'smoke:win-v025-upgrade'")
     expect(cloudWorkflow).toContain('pnpm run build:win')
-  })
-
-  it('records every physical upgrade asset and proves a non-2048 embedding space remains queryable', async () => {
-    const projectRoot = mkdtempSync(join(tmpdir(), 'ai-novel-upgrade-inventory-'))
-    const settingsPath = join(projectRoot, 'isolated-user-settings.json')
-    try {
-      writeUpgradeFixtureSettings(settingsPath)
-      const before = runUpgradeFixtureWithNode('seed', projectRoot, settingsPath)
-
-      expect(before).toMatchObject({
-        assetInventoryPath: '.vela/upgrade-data-inventory.json',
-        assetCount: expect.any(Number),
-        embeddingSpace: {
-          vectorDimension: 768,
-          activeGeneration: expect.any(Number),
-          queryResultCount: 1,
-        },
-      })
-      expect(before.assetCount).toBeGreaterThanOrEqual(6)
-      expect(before.assetInventory).toEqual(expect.arrayContaining([
-        expect.objectContaining({
-          byteSize: expect.any(Number),
-          sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
-        }),
-        expect.objectContaining({
-          path: '.vela/vela.db',
-          semanticTags: expect.arrayContaining([
-            'architecture',
-            'blueprints',
-            'characters',
-            'worldbuilding',
-            'drafts',
-            'body',
-          ]),
-        }),
-        expect.objectContaining({ path: '.vela/project.json', semanticTags: ['project-manifest'] }),
-        expect.objectContaining({ path: '.vela/prompts/chapter-style.md', semanticTags: ['prompt-template'] }),
-        expect.objectContaining({ path: '第7章 失真的航标.txt', semanticTags: ['finalized-manuscript'] }),
-        expect.objectContaining({ path: '.vela/embedding-spaces.json', semanticTags: ['embedding-registry'] }),
-        expect.objectContaining({ location: 'settings', semanticTags: ['user-settings'] }),
-      ]))
-
-      const vector = Array.from({ length: 768 }, (_, index) => index / 768)
-      const identity = {
-        modelFingerprint: 'upgrade-fixture/non-2048-768',
-        distanceMetric: 'l2',
-      }
-      await expect(getEmbeddingSpaces(projectRoot)).resolves.toMatchObject({
-        activeGeneration: 1,
-        spaces: [expect.objectContaining({
-          ...identity,
-          vectorDimension: 768,
-          tableName: 'chunks__space_1',
-          status: 'active',
-        })],
-      })
-      await expect(search(projectRoot, '升级夹具知识库', vector, 5, identity)).resolves.toEqual([
-        expect.objectContaining({
-          fileName: '升级知识库.txt',
-          text: '升级夹具知识库：轨道港航标失真记录必须保留并可检索。',
-        }),
-      ])
-      closeConnection(projectRoot)
-
-      applyExpectedDraftUnitMigration(projectRoot)
-
-      const after = runUpgradeFixtureWithNode('validate', projectRoot, settingsPath)
-      expect(after).toMatchObject({
-        assetInventoryPath: '.vela/upgrade-data-inventory.json',
-        assetCount: before.assetCount,
-        preservedAssetCount: before.assetCount,
-        embeddingSpace: before.embeddingSpace,
-      })
-      expect(after.assetInventory).toEqual(expect.arrayContaining([
-        expect.objectContaining({ path: '.vela/vela.db', semanticVerified: true }),
-        expect.objectContaining({ path: '.vela/project.json', hashMatched: true }),
-        expect.objectContaining({ path: '.vela/prompts/chapter-style.md', hashMatched: true }),
-        expect.objectContaining({ path: '第7章 失真的航标.txt', hashMatched: true }),
-        expect.objectContaining({ path: '.vela/embedding-spaces.json', semanticVerified: true }),
-      ]))
-    } finally {
-      closeConnection(projectRoot)
-      rmSync(projectRoot, { recursive: true, force: true })
-    }
-  })
-
-  it('rejects deliberate loss or corruption in every upgrade asset category and keeps its diagnostic inventory', () => {
-    const cases: Array<{
-      name: string
-      mutate(projectRoot: string, settingsPath: string): void
-      error: string
-    }> = [
-      {
-        name: 'SQLite database carrying architecture, blueprints, characters, drafts, and bodies',
-        mutate: (projectRoot) => rmSync(join(projectRoot, '.vela', 'vela.db')),
-        error: 'Upgrade fixture database is missing',
-      },
-      {
-        name: 'project manifest',
-        mutate: (projectRoot) => writeFileSync(join(projectRoot, '.vela', 'project.json'), '{}\n', 'utf8'),
-        error: 'Upgrade asset content changed: .vela/project.json',
-      },
-      {
-        name: 'custom prompt template',
-        mutate: (projectRoot) => writeFileSync(join(projectRoot, '.vela', 'prompts', 'chapter-style.md'), 'changed\n', 'utf8'),
-        error: 'Upgrade asset content changed: .vela/prompts/chapter-style.md',
-      },
-      {
-        name: 'finalized manuscript projection',
-        mutate: (projectRoot) => rmSync(join(projectRoot, '第7章 失真的航标.txt')),
-        error: 'Preserved upgrade asset 第7章 失真的航标.txt is missing',
-      },
-      {
-        name: 'embedding-space registry',
-        mutate: (projectRoot) => writeFileSync(join(projectRoot, '.vela', 'embedding-spaces.json'), '{}\n', 'utf8'),
-        error: 'Embedding-space registry version changed during upgrade',
-      },
-      {
-        name: 'LanceDB full-text and vector tables',
-        mutate: (projectRoot) => rmSync(join(projectRoot, '.vela', 'lancedb'), { recursive: true, force: true }),
-        error: 'Knowledge-base canonical chunks table is missing during upgrade',
-      },
-      {
-        name: 'user settings',
-        mutate: (_projectRoot, settingsPath) => writeFileSync(settingsPath, JSON.stringify({
-          theme: 'dark',
-          locale: 'zh-CN',
-          proxy: { enabled: false, type: 'http', host: '', port: 7890 },
-        }), 'utf8'),
-        error: 'Upgrade settings semantic content changed',
-      },
-    ]
-
-    for (const testCase of cases) {
-      const projectRoot = mkdtempSync(join(tmpdir(), 'ai-novel-upgrade-asset-loss-'))
-      const settingsPath = join(projectRoot, 'isolated-user-settings.json')
-      try {
-        writeUpgradeFixtureSettings(settingsPath)
-        runUpgradeFixtureWithNode('seed', projectRoot, settingsPath)
-        applyExpectedDraftUnitMigration(projectRoot)
-        testCase.mutate(projectRoot, settingsPath)
-
-        const rejected = validateUpgradeFixtureWithNode(projectRoot, settingsPath)
-        expect(rejected.status, testCase.name).not.toBe(0)
-        expect(rejected.stderr, testCase.name).toContain(testCase.error)
-        expect(readFileSync(join(projectRoot, '.vela', 'upgrade-data-inventory.json'), 'utf8'), testCase.name)
-          .toContain('"assets"')
-      } finally {
-        rmSync(projectRoot, { recursive: true, force: true })
-      }
-    }
-  }, 30_000)
-
-  it('accepts only semantic-preserving database and settings migrations when their recorded baselines still hold', () => {
-    const projectRoot = mkdtempSync(join(tmpdir(), 'ai-novel-upgrade-semantic-migration-'))
-    const settingsPath = join(projectRoot, 'isolated-user-settings.json')
-    try {
-      writeUpgradeFixtureSettings(settingsPath)
-      runUpgradeFixtureWithNode('seed', projectRoot, settingsPath)
-      applyExpectedDraftUnitMigration(projectRoot)
-      execFileSync(
-        process.execPath,
-        [
-          '-e',
-          "const {DatabaseSync}=require('node:sqlite');const db=new DatabaseSync(process.env.AI_NOVEL_FIXTURE_DB);db.exec('ALTER TABLE project_core ADD COLUMN migration_marker TEXT');db.close()",
-        ],
-        { env: { ...process.env, AI_NOVEL_FIXTURE_DB: join(projectRoot, '.vela', 'vela.db') } },
-      )
-      writeFileSync(settingsPath, JSON.stringify({
-        theme: 'light',
-        locale: 'zh-CN',
-        proxy: { enabled: false, type: 'http', host: '', port: 7890 },
-        updatePreferences: { lastCheckedAt: '2026-01-02T03:12:05.000Z' },
-      }), 'utf8')
-
-      const validated = runUpgradeFixtureWithNode('validate', projectRoot, settingsPath)
-      const assets = validated.assetInventory as Array<Record<string, unknown>>
-      expect(assets).toEqual(expect.arrayContaining([
-        expect.objectContaining({
-          path: '.vela/vela.db',
-          hashMatched: false,
-          semanticVerified: true,
-        }),
-        expect.objectContaining({
-          location: 'settings',
-          hashMatched: false,
-          semanticVerified: true,
-        }),
-      ]))
-    } finally {
-      rmSync(projectRoot, { recursive: true, force: true })
-    }
-  })
-
-  it('exposes a release smoke gate that requires an explicit official v0.2.5 installer', () => {
-    const script = readFileSync('scripts/smoke-win-v025-upgrade.ps1', 'utf8')
-    const packageJson = readFileSync('package.json', 'utf8')
-
-    expect(script).toContain('AI_NOVEL_PREVIOUS_INSTALLER')
-    expect(script).toContain('AI_NOVEL_PREVIOUS_PORTABLE_ZIP')
-    expect(script).toContain('AE9C88997A7DF3A48A8BEECCB0AB624BF947358CBBF702C19E70EC8460B9DFE7')
-    expect(script).toContain('22B38B7337A456882BF130CCB898F17616FFFB85D6C8B8B3D0EE431409F18531')
-    expect(script).toContain('Get-Sha256')
-    expect(script).toContain('RequireCompleteV025Fixture = $true')
-    expect(script).toContain('SHA256]::Create')
-    expect(script).toContain('smoke-win-installer.ps1')
-    expect(packageJson).toContain('smoke:win-v025-upgrade')
   })
 
   windowsPowerShellIt('detects only new error windows, including system-owned dialogs outside the app process tree', () => {
@@ -2176,7 +1819,6 @@ $abnormal = [pscustomobject]@{ ProcessId = 701; ExitCode = 1; ExitCodeCaptured =
 [pscustomobject]@{
   InstallerAvailability = Test-SyntheticNsisProbe -Step 'smoke:win-installer' -Event $event -Identity $validAvailability -Parent $parent
   UnquotedInstallerAvailability = Test-SyntheticNsisProbe -Step 'smoke:win-installer' -Event $event -Identity (New-ProbeIdentity -ImagePath $system32 -CommandLine $unquotedAvailabilityCommand) -Parent $parent
-  UpgradePolicy = Test-SyntheticNsisProbe -Step 'smoke:win-v025-upgrade' -Event $event -Identity $validPolicy -Parent $parent
   UpdateE2ERunningProcess = Test-SyntheticNsisProbe -Step 'windows-in-app-update-e2e' -Event $event -Identity $validRunningProcess -Parent $parent
   SysWow64RunningProcess = Test-SyntheticNsisProbe -Step 'smoke:win-installer' -Event $event -Identity $validRunningProcess -Parent $parent
   PathCaseOnly = Test-SyntheticNsisProbe -Step 'smoke:win-installer' -Event $event -Identity (New-ProbeIdentity -ImagePath $system32 -CommandLine $pathCaseCommand) -Parent $parent
@@ -2205,7 +1847,6 @@ $abnormal = [pscustomobject]@{ ProcessId = 701; ExitCode = 1; ExitCodeCaptured =
 
     expect(result.InstallerAvailability).toBe(true)
     expect(result.UnquotedInstallerAvailability).toBe(true)
-    expect(result.UpgradePolicy).toBe(true)
     expect(result.UpdateE2ERunningProcess).toBe(true)
     expect(result.SysWow64RunningProcess).toBe(true)
     expect(result.PathCaseOnly).toBe(true)
@@ -3196,294 +2837,6 @@ try {
     expect(result.FinalTitle).toBe('AI Writer.exe - 应用程序错误')
     expect(result.SnapshotCalls).toBe(2)
   })
-
-  windowsIt('seeds with ordinary Node and validates with Electron using the real v0.2.5 SQLite format', () => {
-    const fixtureRoot = mkdtempSync(join(tmpdir(), 'ai-novel-v025-sqlite-fixture-'))
-    try {
-      const seeded = runUpgradeFixtureWithNode('seed', fixtureRoot)
-      applyExpectedDraftUnitMigration(fixtureRoot)
-      const validated = runUpgradeFixture('validate', fixtureRoot)
-
-      expect(seeded.databasePath).toBe(join(fixtureRoot, '.vela', 'vela.db'))
-      expect(seeded.projectName).toBe('升级保留验证小说')
-      expect(seeded.characterCount).toBe(2)
-      expect(seeded.currentStateCount).toBe(2)
-      expect(seeded.blueprintCount).toBe(1)
-      expect(seeded.legacyTableCount).toBe(11)
-      expect(seeded.contentCount).toBe(4)
-      expect(seeded.draftCount).toBe(2)
-      expect(seeded.finalizedDraftCount).toBe(1)
-      expect(seeded.reviewCount).toBe(1)
-      expect(seeded.revisionCount).toBe(1)
-      expect(seeded.postProcessRunCount).toBe(1)
-      expect(seeded.postProcessStepCount).toBe(2)
-      expect(seeded.llmCallCount).toBe(2)
-      expect(seeded.failedLlmCallCount).toBe(1)
-      expect(seeded.summarySnapshotCount).toBe(2)
-      expect(validated).toMatchObject({
-        mode: 'validate',
-        legacyTableCount: 11,
-        projectName: '升级保留验证小说',
-        characterCount: 2,
-        currentStateCount: 2,
-        blueprintCount: 1,
-        contentCount: 4,
-        draftCount: 2,
-        finalizedDraftCount: 1,
-        reviewCount: 1,
-        revisionCount: 1,
-        postProcessRunCount: 1,
-        postProcessStepCount: 2,
-        llmCallCount: 2,
-        failedLlmCallCount: 1,
-        summarySnapshotCount: 2,
-      })
-
-      execFileSync(
-        electronNodeRunner,
-        ['-e', "const {DatabaseSync}=require('node:sqlite');const db=new DatabaseSync(process.env.AI_NOVEL_FIXTURE_DB);db.prepare(\"UPDATE characters SET cs_location='changed' WHERE name='林舟'\").run();db.close()"],
-        {
-          env: {
-            ...process.env,
-            ELECTRON_RUN_AS_NODE: '1',
-            NODE_NO_WARNINGS: '1',
-            AI_NOVEL_FIXTURE_DB: join(fixtureRoot, '.vela', 'vela.db'),
-          },
-        },
-      )
-      const rejected = spawnSync(
-        electronNodeRunner,
-        [upgradeFixtureScript, 'validate', fixtureRoot],
-        {
-          encoding: 'utf8',
-          env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', NODE_NO_WARNINGS: '1' },
-        },
-      )
-      expect(rejected.status).not.toBe(0)
-      expect(rejected.stderr).toContain('characters fields or current state changed')
-
-      execFileSync(
-        electronNodeRunner,
-        ['-e', "const {DatabaseSync}=require('node:sqlite');const db=new DatabaseSync(process.env.AI_NOVEL_FIXTURE_DB);db.prepare(\"UPDATE characters SET cs_location='轨道港' WHERE name='林舟'\").run();db.prepare(\"UPDATE contents SET body='changed' WHERE id=701\").run();db.close()"],
-        {
-          env: {
-            ...process.env,
-            ELECTRON_RUN_AS_NODE: '1',
-            NODE_NO_WARNINGS: '1',
-            AI_NOVEL_FIXTURE_DB: join(fixtureRoot, '.vela', 'vela.db'),
-          },
-        },
-      )
-      const contentRejected = spawnSync(
-        electronNodeRunner,
-        [upgradeFixtureScript, 'validate', fixtureRoot],
-        {
-          encoding: 'utf8',
-          env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', NODE_NO_WARNINGS: '1' },
-        },
-      )
-      expect(contentRejected.status).not.toBe(0)
-      expect(contentRejected.stderr).toContain('content bodies changed during upgrade')
-    } finally {
-      rmSync(fixtureRoot, { recursive: true, force: true })
-    }
-  }, 15_000)
-
-  windowsIt('accepts migrated Unicode draft counts without relaxing preserved draft fields', () => {
-    const fixtureRoot = mkdtempSync(join(tmpdir(), 'ai-novel-v025-draft-count-fixture-'))
-    try {
-      runUpgradeFixtureWithNode('seed', fixtureRoot)
-      expect(runUpgradeFixtureWithNode('validate-legacy', fixtureRoot)).toMatchObject({
-        draftCount: 2,
-        revisionCount: 1,
-      })
-      // Mirror schema-only app upgrades first so this assertion keeps testing
-      // the independent Unicode count migration rather than stopping at a new column.
-      applyExpectedSchemaMigration(fixtureRoot)
-      const beforeMigration = validateUpgradeFixtureWithNode(fixtureRoot)
-      expect(beforeMigration.status).not.toBe(0)
-      expect(beforeMigration.stderr).toContain('draft word counts were not migrated to the current Unicode algorithm')
-
-      applyExpectedDraftUnitMigration(fixtureRoot)
-
-      expect(runUpgradeFixtureWithNode('validate', fixtureRoot)).toMatchObject({
-        draftCount: 2,
-        finalizedDraftCount: 1,
-      })
-
-      execFileSync(
-        process.execPath,
-        [
-          '-e',
-          "const {DatabaseSync}=require('node:sqlite');const db=new DatabaseSync(process.env.AI_NOVEL_FIXTURE_DB);db.prepare('UPDATE drafts SET word_count=33 WHERE id=71').run();db.close()",
-        ],
-        {
-          env: {
-            ...process.env,
-            AI_NOVEL_FIXTURE_DB: join(fixtureRoot, '.vela', 'vela.db'),
-          },
-        },
-      )
-      const countRejected = validateUpgradeFixtureWithNode(fixtureRoot)
-      expect(countRejected.status).not.toBe(0)
-      expect(countRejected.stderr).toContain('draft word counts were not migrated to the current Unicode algorithm')
-
-      applyExpectedDraftUnitMigration(fixtureRoot)
-
-      execFileSync(
-        process.execPath,
-        [
-          '-e',
-          "const {DatabaseSync}=require('node:sqlite');const db=new DatabaseSync(process.env.AI_NOVEL_FIXTURE_DB);db.prepare(\"UPDATE drafts SET source='rewrite' WHERE id=71\").run();db.close()",
-        ],
-        {
-          env: {
-            ...process.env,
-            AI_NOVEL_FIXTURE_DB: join(fixtureRoot, '.vela', 'vela.db'),
-          },
-        },
-      )
-      const rejected = validateUpgradeFixtureWithNode(fixtureRoot)
-      expect(rejected.status).not.toBe(0)
-      expect(rejected.stderr).toContain('draft identity or content reference changed during upgrade')
-    } finally {
-      rmSync(fixtureRoot, { recursive: true, force: true })
-    }
-  }, 15_000)
-
-  windowsIt('rejects corruption in every extended v0.2.5 upgrade table', () => {
-    const cases = [
-      {
-        sql: "UPDATE revisions SET user_prompt='changed' WHERE id=91",
-        message: 'revision identity or content reference changed during upgrade',
-      },
-      {
-        sql: 'UPDATE reviews SET review_index=2 WHERE id=81',
-        message: 'review records changed during upgrade',
-      },
-      {
-        sql: "UPDATE post_process_runs SET source_label='changed'",
-        message: 'post-process run records changed during upgrade',
-      },
-      {
-        sql: "UPDATE post_process_steps SET error_msg='changed' WHERE id=102",
-        message: 'post-process step records changed during upgrade',
-      },
-      {
-        sql: "UPDATE llm_calls SET error_message='changed' WHERE id=112",
-        message: 'LLM call history changed during upgrade',
-      },
-      {
-        sql: "UPDATE summary_snapshots SET character_states='changed' WHERE id=122",
-        message: 'summary snapshots changed during upgrade',
-      },
-    ]
-
-    for (const testCase of cases) {
-      const fixtureRoot = mkdtempSync(join(tmpdir(), 'ai-novel-v025-table-check-'))
-      try {
-        runUpgradeFixtureWithNode('seed', fixtureRoot)
-        applyExpectedDraftUnitMigration(fixtureRoot)
-        execFileSync(
-          process.execPath,
-          [
-            '-e',
-            `const {DatabaseSync}=require('node:sqlite');const db=new DatabaseSync(process.env.AI_NOVEL_FIXTURE_DB);db.exec(process.env.AI_NOVEL_MUTATION);db.close()`,
-          ],
-          {
-            env: {
-              ...process.env,
-              AI_NOVEL_FIXTURE_DB: join(fixtureRoot, '.vela', 'vela.db'),
-              AI_NOVEL_MUTATION: testCase.sql,
-            },
-          },
-        )
-        const rejected = spawnSync(
-          process.execPath,
-          [upgradeFixtureScript, 'validate', fixtureRoot],
-          { encoding: 'utf8' },
-        )
-        expect(rejected.status).not.toBe(0)
-        expect(rejected.stderr).toContain(testCase.message)
-      } finally {
-        rmSync(fixtureRoot, { recursive: true, force: true })
-      }
-    }
-  }, 30_000)
-
-  windowsPowerShellIt('runs the SQLite seeder and validator through the project Electron runtime', () => {
-    const fixtureRoot = mkdtempSync(join(tmpdir(), 'ai-novel-v025-wrapper-test-'))
-    const settingsPath = join(fixtureRoot, 'isolated-settings.json')
-    const fixtureRootPowerShell = fixtureRoot.replace(/'/g, "''")
-    const settingsPathPowerShell = settingsPath.replace(/'/g, "''")
-    writeUpgradeFixtureSettings(settingsPath)
-    try {
-      const seededOutput = runInstallerLibrary(`
-$fixtureRoot = '${fixtureRootPowerShell}'
-$settingsPath = '${settingsPathPowerShell}'
-$before = $env:ELECTRON_RUN_AS_NODE
-$seeded = Invoke-AiNovelUpgradeDataFixture -Mode seed -ProjectRoot $fixtureRoot -SettingsPath $settingsPath
-$legacyValidated = Invoke-AiNovelUpgradeDataFixture -Mode validate-legacy -ProjectRoot $fixtureRoot -SettingsPath $settingsPath
-[pscustomobject]@{
-  SeededCharacters = $seeded.characterCount
-  LegacyValidatedCharacters = $legacyValidated.characterCount
-  EnvironmentRestored = $env:ELECTRON_RUN_AS_NODE -eq $before
-} | ConvertTo-Json -Compress
-`)
-      applyExpectedDraftUnitMigration(fixtureRoot)
-      const validatedOutput = runInstallerLibrary(`
-$fixtureRoot = '${fixtureRootPowerShell}'
-$settingsPath = '${settingsPathPowerShell}'
-$before = $env:ELECTRON_RUN_AS_NODE
-$validated = Invoke-AiNovelUpgradeDataFixture -Mode validate -ProjectRoot $fixtureRoot -SettingsPath $settingsPath
-[pscustomobject]@{
-  ValidatedCharacters = $validated.characterCount
-  CurrentStates = $validated.currentStateCount
-  LegacyTables = $validated.legacyTableCount
-  Revisions = $validated.revisionCount
-  Reviews = $validated.reviewCount
-  PostProcessSteps = $validated.postProcessStepCount
-  LlmCalls = $validated.llmCallCount
-  SummarySnapshots = $validated.summarySnapshotCount
-  AssetCount = $validated.assetCount
-  PreservedAssets = $validated.preservedAssetCount
-  EmbeddingDimension = $validated.embeddingSpace.vectorDimension
-  EmbeddingQueryCount = $validated.embeddingSpace.queryResultCount
-  SettingsAssetCount = @($validated.assetInventory | Where-Object { $_.location -eq 'settings' }).Count
-  EnvironmentRestored = $env:ELECTRON_RUN_AS_NODE -eq $before
-  DatabaseExists = Test-Path -LiteralPath (Join-Path $fixtureRoot '.vela\\vela.db') -PathType Leaf
-} | ConvertTo-Json -Compress
-`)
-      const result = {
-        ...parseLastJsonLine(seededOutput),
-        ...parseLastJsonLine(validatedOutput),
-      }
-
-      expect(result).toEqual({
-        SeededCharacters: 2,
-        LegacyValidatedCharacters: 2,
-        ValidatedCharacters: 2,
-        CurrentStates: 2,
-        LegacyTables: 11,
-        Revisions: 1,
-        Reviews: 1,
-        PostProcessSteps: 2,
-        LlmCalls: 2,
-        SummarySnapshots: 2,
-        AssetCount: expect.any(Number),
-        PreservedAssets: expect.any(Number),
-        EmbeddingDimension: 768,
-        EmbeddingQueryCount: 1,
-        SettingsAssetCount: 1,
-        EnvironmentRestored: true,
-        DatabaseExists: true,
-      })
-      expect(result.AssetCount).toBe(result.PreservedAssets)
-      expect(Number(result.AssetCount)).toBeGreaterThanOrEqual(7)
-    } finally {
-      rmSync(fixtureRoot, { recursive: true, force: true })
-    }
-  }, 15_000)
 
   windowsPowerShellIt('persists structured failure evidence and removes diagnostics only after success', () => {
     const output = runProbeLibrary(`

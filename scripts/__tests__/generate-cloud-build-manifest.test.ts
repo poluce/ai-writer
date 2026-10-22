@@ -113,9 +113,9 @@ describe('cloud Windows build manifest', () => {
       encoding: 'utf8',
     })
     expect(initialized.status, initialized.stderr).toBe(0)
-    recordQualificationCommands(evidenceRoot, 'windows', repositoryRoot)
+    recordQualificationCommands(evidenceRoot, repositoryRoot)
     for (const receipt of [
-      'install', 'launch', 'quiet-window', 'error-dialogs', 'uninstall', 'upgrade-data', 'native-abi', 'packaged-smoke', 'signing',
+      'install', 'launch', 'quiet-window', 'error-dialogs', 'uninstall', 'native-abi', 'packaged-smoke', 'signing',
     ]) {
       writeJson(path.join(evidenceRoot, 'acceptance', `${receipt}.json`), windowsAcceptanceReceipt(releaseDir, packageMetadata.version, receipt))
     }

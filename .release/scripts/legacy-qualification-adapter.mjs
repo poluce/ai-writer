@@ -20,7 +20,7 @@ function strictJson(rawBytes, label) {
 }
 
 export function normalizeLegacyReceipt({ platform, relativePath, rawBytes }) {
-  assert(platform === 'windows' || platform === 'macos', 'platform must equal windows or macos')
+  assert(platform === 'windows', 'platform must equal windows')
   const receipt = strictJson(rawBytes, relativePath)
   assert(receipt && typeof receipt === 'object' && !Array.isArray(receipt), `${relativePath} must contain an object`)
   assert(receipt.accepted === true, `${relativePath} must have accepted=true`)
@@ -28,28 +28,12 @@ export function normalizeLegacyReceipt({ platform, relativePath, rawBytes }) {
 
   const normalized = structuredClone(receipt)
   const sourceClassification = {}
-  if (platform === 'macos') {
-    assert(receipt.platform === 'darwin', `${relativePath} has an unknown legacy platform classification`)
-    sourceClassification.platform = receipt.platform
-    normalized.platform = 'macos'
-  } else if (receipt.platform !== undefined) {
+  if (receipt.platform !== undefined) {
     assert(receipt.platform === 'windows', `${relativePath} platform classification is invalid`)
   }
 
   if (relativePath.replaceAll('\\', '/').endsWith('/signing.json')) {
-    if (platform === 'macos') {
-      assert(receipt.status === 'ad_hoc_or_unsigned', 'macOS legacy signing status is not the known public-distribution classification')
-      assert(receipt.direct?.codeSigning?.hasDeveloperIdIdentity === false, 'Developer ID identity cannot be normalized to unsigned')
-      assert(
-        receipt.direct?.codeSigning?.observed === 'ad_hoc'
-          || receipt.direct?.codeSigning?.observed === 'unsigned',
-        'Unknown macOS signing observation cannot be normalized to unsigned',
-      )
-      sourceClassification.signingStatus = receipt.status
-      normalized.status = 'unsigned'
-    } else {
-      assert(receipt.status === 'signed' || receipt.status === 'unsigned', 'Windows signing status must be signed or unsigned')
-    }
+    assert(receipt.status === 'signed' || receipt.status === 'unsigned', 'Windows signing status must be signed or unsigned')
     assert(typeof receipt.validationResult === 'string' && receipt.validationResult.trim(), `${relativePath} validationResult is required`)
     assert(typeof receipt.unsignedDistributionImpact === 'string' && receipt.unsignedDistributionImpact.trim(), `${relativePath} unsignedDistributionImpact is required`)
   }

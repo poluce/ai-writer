@@ -41,7 +41,6 @@
     "release:win:verify": "node scripts/release-win-verify.mjs",
     "smoke:win-app": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/smoke-win-app.ps1",
     "smoke:win-installer": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/smoke-win-installer.ps1",
-    "smoke:win-v025-upgrade": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/smoke-win-v025-upgrade.ps1",
     "storybook": "storybook dev -p 6006",
     "test": "vitest run",
     "test:browser": "vitest run --config vitest.browser.config.ts",

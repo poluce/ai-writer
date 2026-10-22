@@ -1518,7 +1518,7 @@ function Test-AiNovelGateExpectedExitOne {
   )
 
   return (
-    $Step -in @('smoke:win-installer', 'smoke:win-v025-upgrade', 'windows-in-app-update-e2e') -and
+    $Step -in @('smoke:win-installer', 'windows-in-app-update-e2e') -and
     [bool]$Event.ExitCodeCaptured -and
     $null -ne $Event.ExitCode -and
     [uint32]$Event.JobMessage -eq 7 -and
@@ -3513,7 +3513,7 @@ try {
           }
         }
         elseif (
-          $activeStep -in @('build:win:artifacts', 'smoke:win-installer', 'smoke:win-v025-upgrade') -and
+          $activeStep -in @('build:win:artifacts', 'smoke:win-installer') -and
           $isCapturedNonzeroDescendantExit
         ) {
           $exitClassification = 'ignored-result-owned-descendant-nonzero'

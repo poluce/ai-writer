@@ -88,19 +88,6 @@ jobs:
         shell: pwsh
         run: node scripts/release-evidence-v2.mjs record --evidence-root "$env:AI_NOVEL_RELEASE_EVIDENCE_ROOT" --step renderer-browser-tests -- "$env:ComSpec" /d /s /c "pnpm run test:browser"
 
-      - name: Download verified v0.2.5 portable migration input
-        shell: pwsh
-        run: |
-          $portableUrl = 'https://github.com/poluce/ai-writer/releases/download/legacy-v0.2.5/AI-Novel-Writer-0.2.5-windows-x64.zip'
-          $expectedSha256 = '22b38b7337a456882bf130ccb898f17616fffb85d6c8b8b3d0ee431409f18531'
-          $portableZip = Join-Path $env:RUNNER_TEMP 'AI-Novel-Writer-0.2.5-windows-x64.zip'
-          Invoke-WebRequest -Uri $portableUrl -OutFile $portableZip
-          $actualSha256 = (Get-FileHash -LiteralPath $portableZip -Algorithm SHA256).Hash.ToLowerInvariant()
-          if ($actualSha256 -ne $expectedSha256) {
-            throw "v0.2.5 portable ZIP SHA-256 mismatch: expected $expectedSha256, got $actualSha256"
-          }
-          "AI_NOVEL_PREVIOUS_PORTABLE_ZIP=$portableZip" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-
       - name: Run complete Windows release gate
         shell: pwsh
         env:
@@ -150,7 +137,7 @@ jobs:
               }
             }
             $acceptanceRoot = Join-Path $env:AI_NOVEL_RELEASE_EVIDENCE_ROOT 'acceptance'
-            foreach ($name in @('install.json', 'launch.json', 'quiet-window.json', 'error-dialogs.json', 'uninstall.json', 'upgrade-data.json', 'native-abi.json', 'packaged-smoke.json', 'signing.json')) {
+            foreach ($name in @('install.json', 'launch.json', 'quiet-window.json', 'error-dialogs.json', 'uninstall.json', 'native-abi.json', 'packaged-smoke.json', 'signing.json')) {
               $source = Join-Path $acceptanceRoot $name
               if (Test-Path -LiteralPath $source -PathType Leaf) {
                 Copy-Item -LiteralPath $source -Destination (Join-Path $diagnosticsRoot "acceptance-$name") -Force

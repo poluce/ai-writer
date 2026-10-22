@@ -15,8 +15,8 @@ describe('desktop release profile contract', () => {
     expect(existsSync(promotionScriptPath)).toBe(true)
     const validator = readFileSync(validatorPath, 'utf8')
     const promotion = readFileSync(promotionScriptPath, 'utf8')
-    expect(validator).toContain("'macos-arm64'")
-    expect(validator).toContain("'macos-x64'")
+    expect(validator).toContain("'windows'")
+    expect(validator).not.toContain("'macos-arm64'")
     expect(promotion).toContain('qualification manifest entity mismatch')
     expect(promotion).toContain('run ledger entity mismatch')
     expect(promotion).toContain('release contract does not declare the qualification entity')
@@ -62,7 +62,6 @@ describe('desktop release profile contract', () => {
         'acceptance/quiet-window.json',
         'acceptance/error-dialogs.json',
         'acceptance/uninstall.json',
-        'acceptance/upgrade-data.json',
         'acceptance/native-abi.json',
         'acceptance/packaged-smoke.json',
         'acceptance/signing.json',

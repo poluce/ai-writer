@@ -335,7 +335,7 @@ describe('UpdateService', () => {
   it('recovers a remembered release without pretending the prior-process installer is ready', async () => {
     const updater = new FakeUpdater({ updateInfo: { version: '0.2.7' } })
     const preferences = createPreferencesStore({
-      lastAutomaticCheckDate: '2026-07-25',
+      lastCheckedAt: '2026-07-25T01:00:00.000Z',
       availableUpdate: { version: '0.2.6', releaseName: 'v0.2.6' },
     })
     const service = new UpdateService({
@@ -757,7 +757,7 @@ describe('UpdateService', () => {
     expect(JSON.stringify(result)).not.toContain('token')
   })
 
-  it('does not reject or bypass the daily automatic-check limit when update preferences cannot be read or written', async () => {
+  it('does not reject or bypass the automatic-check interval when update preferences cannot be read or written', async () => {
     const updater = new FakeUpdater()
     const service = new UpdateService({
       updater,

@@ -56,7 +56,7 @@ describe('GlobalConfigUpdatePreferencesStore', () => {
     })
     const store = new GlobalConfigUpdatePreferencesStore()
 
-    expect(store.write({ lastAutomaticCheckDate: '2026-07-25' })).toBe(false)
+    expect(store.write({ lastCheckedAt: '2026-07-25T00:00:00.000Z' })).toBe(false)
 
     expect(configUtils.writeJsonFile).not.toHaveBeenCalled()
   })
@@ -65,7 +65,7 @@ describe('GlobalConfigUpdatePreferencesStore', () => {
     configUtils.tryReadJsonFile.mockReturnValue({ status: 'ok', value: ['not', 'a', 'config'] })
     const store = new GlobalConfigUpdatePreferencesStore()
 
-    expect(store.write({ lastAutomaticCheckDate: '2026-07-25' })).toBe(false)
+    expect(store.write({ lastCheckedAt: '2026-07-25T00:00:00.000Z' })).toBe(false)
 
     expect(configUtils.writeJsonFile).not.toHaveBeenCalled()
   })
@@ -73,7 +73,7 @@ describe('GlobalConfigUpdatePreferencesStore', () => {
   it('creates a new config only when the config file is genuinely absent', () => {
     configUtils.tryReadJsonFile.mockReturnValue({ status: 'missing' })
     const store = new GlobalConfigUpdatePreferencesStore()
-    const preferences = { lastAutomaticCheckDate: '2026-07-25' }
+    const preferences = { lastCheckedAt: '2026-07-25T00:00:00.000Z' }
 
     expect(store.write(preferences)).toBe(true)
 

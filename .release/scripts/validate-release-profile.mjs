@@ -3,14 +3,10 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-// A platform key is a qualification entity, not merely an operating-system
-// family. macOS architectures must remain independently qualified so their
-// run identities, artifacts, and signing receipts cannot be interchanged.
-const PLATFORM_NAMES = new Set(['windows', 'macos-arm64', 'macos-x64']);
+// 发行线当前只做 Windows x64；平台键是资格实体，不是操作系统家族。
+const PLATFORM_NAMES = new Set(['windows']);
 const REQUIRED_PLATFORM_ARCHITECTURES = new Map([
   ['windows', 'x64'],
-  ['macos-arm64', 'arm64'],
-  ['macos-x64', 'x64'],
 ]);
 const SIGNING_MODES = new Set(['required', 'allow-unsigned-with-disclosure']);
 const FINAL_STATES = new Set(['draft', 'published']);
@@ -171,10 +167,6 @@ export function validateReleaseProfile(profile) {
       }
       if (!PLATFORM_NAMES.has(asset.platform) || !platforms.includes(asset.platform)) {
         errors.push(`releaseAssets[${index}].platform must reference a configured platform.`);
-      }
-      const requiredArchitecture = REQUIRED_PLATFORM_ARCHITECTURES.get(asset.platform);
-      if (asset.platform?.startsWith('macos-') && isNonEmptyString(asset.name) && !asset.name.includes(`-mac-${requiredArchitecture}-`)) {
-        errors.push(`releaseAssets[${index}].name must encode the ${requiredArchitecture} macOS architecture.`);
       }
       if (!isNonEmptyString(asset.role)) errors.push(`releaseAssets[${index}].role must be non-empty.`);
     }

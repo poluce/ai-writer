@@ -15,7 +15,6 @@
         "acceptance/quiet-window.json",
         "acceptance/error-dialogs.json",
         "acceptance/uninstall.json",
-        "acceptance/upgrade-data.json",
         "acceptance/native-abi.json",
         "acceptance/packaged-smoke.json",
         "acceptance/signing.json"

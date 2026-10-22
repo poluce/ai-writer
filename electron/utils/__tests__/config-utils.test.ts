@@ -120,7 +120,7 @@ describe('config-utils', () => {
     fs.writeFileSync(configUtils.GLOBAL_CONFIG_PATH, JSON.stringify(existingConfig), 'utf-8')
 
     const store = new GlobalConfigUpdatePreferencesStore()
-    const preferences = { lastAutomaticCheckDate: '2026-07-25' }
+    const preferences = { lastCheckedAt: '2026-07-25T00:00:00.000Z' }
 
     expect(store.write(preferences)).toBe(true)
     expect(JSON.parse(fs.readFileSync(configUtils.GLOBAL_CONFIG_PATH, 'utf-8'))).toEqual({

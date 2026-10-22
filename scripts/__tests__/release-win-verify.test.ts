@@ -1066,7 +1066,7 @@ finally {
     ]))
   }, 60_000)
 
-  windowsIt.each(['build:win:artifacts', 'smoke:win-installer', 'smoke:win-v025-upgrade'])(
+  windowsIt.each(['build:win:artifacts', 'smoke:win-installer'])(
     'records but ignores a nonzero descendant during result-owned step %s',
     async (step) => {
       const result = await runShortLivedProcessExitScenario({
@@ -1113,7 +1113,7 @@ $event = [pscustomobject]@{ ProcessId = 42; ExitCodeCaptured = $true; ExitCode =
     expect(result.Failure).toContain('abnormal exit')
   }, 15_000)
 
-  windowsIt.each(['build:win:artifacts', 'smoke:win-installer', 'smoke:win-v025-upgrade'])(
+  windowsIt.each(['build:win:artifacts', 'smoke:win-installer'])(
     'still fails result-owned step %s when the armed root exits nonzero',
     async (step) => {
       const result = await runShortLivedProcessExitScenario({

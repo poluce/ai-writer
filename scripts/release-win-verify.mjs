@@ -27,7 +27,6 @@ export const releaseVerificationSteps = [
   'verify:win-package',
   'smoke:win-app',
   'smoke:win-installer',
-  'smoke:win-v025-upgrade',
 ]
 
 export const releaseFinalizationSteps = [

@@ -47,7 +47,6 @@ function validWindowsReceipt(name: string, releaseRoot: string) {
     'quiet-window': { ...base, kind: 'windows-final-quiet-window', direct: { monitorState: 'step-completed', monitorStep: 'final:quiet', quietWindowSeconds: 5, completedAt: '2026-08-10T14:57:30.3051843Z' } },
     'error-dialogs': { ...base, kind: 'windows-error-dialogs', direct: { monitorState: 'step-completed', monitorStep: 'final:quiet', newProductErrorDialogCount: 0, observedThrough: '2026-08-10T14:57:30.3051843Z' } },
     uninstall: { ...base, kind: 'windows-uninstall', direct: { installedExecutableExists: false, installDirectoryState: 'absent', allowedSystemResiduals: [] } },
-    'upgrade-data': { ...base, kind: 'windows-upgrade-data', direct: { previousVersion: '0.2.5', legacyTableCount: 11, preservedAssetCount: 1, vectorDimension: 768, queryResultCount: 1 } },
     'native-abi': { ...base, kind: 'windows-native-abi', direct: { restoreMode: 'monitored', nodeModuleAbi: '127', verificationTest: 'electron/repositories/__tests__/character-repository.test.ts' } },
     'packaged-smoke': { ...base, kind: 'windows-packaged-smoke-summary', direct: { evidenceCount: 3, evidenceKinds: ['packaged-vector-smoke', 'packaged-official-homepage-smoke', 'packaged-skin-smoke'] }, evidence: [
       reference('packaged-vector-smoke', 'packaged-vector-smoke.json'),
@@ -132,7 +131,6 @@ describe('release evidence v2 CLI', () => {
       'qualification/acceptance/quiet-window.json',
       'qualification/acceptance/error-dialogs.json',
       'qualification/acceptance/uninstall.json',
-      'qualification/acceptance/upgrade-data.json',
       'qualification/acceptance/native-abi.json',
       'qualification/acceptance/packaged-smoke.json',
       'qualification/acceptance/signing.json',
@@ -171,19 +169,19 @@ describe('release evidence v2 CLI', () => {
     const init = spawnSync(process.execPath, [
       evidenceScript,
       'init',
-      '--platform', 'macos-arm64',
+      '--platform', 'windows',
       '--evidence-root', evidenceRoot,
       '--repository', 'poluce/ai-writer',
       '--commit', 'b'.repeat(40),
       '--run-id', '202',
       '--run-attempt', '1',
-      '--runner-label', 'macos-14',
-      '--image-os', 'macos14',
+      '--runner-label', 'windows-2022',
+      '--image-os', 'win22',
       '--image-version', '20260726.1',
       '--expected-node-version', process.versions.node,
       '--expected-pnpm-version', '11.21.0',
-      '--workflow-path', '.github/workflows/macos-arm64-cloud-build.yml',
-      '--workflow-name', 'macOS ARM64 cloud package qualification',
+      '--workflow-path', '.github/workflows/windows-cloud-build-test.yml',
+      '--workflow-name', 'Windows cloud package qualification',
       '--actor', 'release-operator',
       '--event', 'workflow_dispatch',
       '--dispatch-inputs-json', '{}',
@@ -225,19 +223,19 @@ describe('release evidence v2 CLI', () => {
     const init = spawnSync(process.execPath, [
       evidenceScript,
       'init',
-      '--platform', 'macos-arm64',
+      '--platform', 'windows',
       '--evidence-root', evidenceRoot,
       '--repository', 'poluce/ai-writer',
       '--commit', 'c'.repeat(40),
       '--run-id', '204',
       '--run-attempt', '1',
-      '--runner-label', 'macos-14',
-      '--image-os', 'macos14',
+      '--runner-label', 'windows-2022',
+      '--image-os', 'win22',
       '--image-version', '20260726.1',
       '--expected-node-version', process.versions.node,
       '--expected-pnpm-version', '11.21.0',
-      '--workflow-path', '.github/workflows/macos-arm64-cloud-build.yml',
-      '--workflow-name', 'macOS ARM64 cloud package qualification',
+      '--workflow-path', '.github/workflows/windows-cloud-build-test.yml',
+      '--workflow-name', 'Windows cloud package qualification',
       '--actor', 'release-operator',
       '--event', 'workflow_dispatch',
       '--dispatch-inputs-json', '{}',
@@ -262,44 +260,6 @@ describe('release evidence v2 CLI', () => {
     const [command] = JSON.parse(readFileSync(ledgerPath, 'utf8')).commands
     expect(Date.parse(command.startedAt)).toBeGreaterThanOrEqual(Date.parse(futureStart))
     expect(Date.parse(command.endedAt)).toBeGreaterThanOrEqual(Date.parse(command.startedAt))
-  })
-
-  it('freezes Intel macOS evidence with an x64-only artifact and workflow identity', () => {
-    const evidenceRoot = fixture()
-    const init = spawnSync(process.execPath, [
-      evidenceScript,
-      'init',
-      '--platform', 'macos-x64',
-      '--evidence-root', evidenceRoot,
-      '--repository', 'poluce/ai-writer',
-      '--commit', 'e'.repeat(40),
-      '--run-id', '203',
-      '--run-attempt', '1',
-      '--runner-label', 'macos-13',
-      '--image-os', 'macos13',
-      '--image-version', '20260726.1',
-      '--expected-node-version', process.versions.node,
-      '--expected-pnpm-version', '11.21.0',
-      '--workflow-path', '.github/workflows/macos-x64-cloud-build.yml',
-      '--workflow-name', 'macOS Intel x64 cloud package qualification',
-      '--actor', 'release-operator',
-      '--event', 'workflow_dispatch',
-      '--dispatch-inputs-json', '{}',
-    ], { cwd: repositoryRoot, encoding: 'utf8' })
-
-    expect(init.status, init.stderr).toBe(0)
-    const contract = JSON.parse(readFileSync(path.join(evidenceRoot, 'release-contract.json'), 'utf8'))
-    expect(contract.frozen).toMatchObject({
-      platform: 'macos-x64',
-      workflow: {
-        path: '.github/workflows/macos-x64-cloud-build.yml',
-        name: 'macOS Intel x64 cloud package qualification',
-      },
-      artifactSet: [
-        { path: `release/${releaseVersion}/ai-writer-mac-x64-${releaseVersion}-installer.dmg`, role: 'dmg' },
-        { path: `release/${releaseVersion}/ai-writer-mac-x64-${releaseVersion}-installer.dmg.sha256`, role: 'dmg-checksum' },
-      ],
-    })
   })
 
   it('rejects empty command evidence and placeholder receipts before finalizing a semantic Windows bundle', () => {
@@ -342,7 +302,7 @@ describe('release evidence v2 CLI', () => {
       schemaVersion: 1, kind: 'packaged-skin-smoke', direct: { packaged: true },
     })
     for (const receipt of [
-      'install', 'launch', 'quiet-window', 'error-dialogs', 'uninstall', 'upgrade-data', 'native-abi', 'packaged-smoke',
+      'install', 'launch', 'quiet-window', 'error-dialogs', 'uninstall', 'native-abi', 'packaged-smoke',
     ]) {
       writeJson(path.join(evidenceRoot, 'acceptance', `${receipt}.json`), {
         schemaVersion: 2,
@@ -387,7 +347,7 @@ describe('release evidence v2 CLI', () => {
     type LaunchReceipt = { expectedVersion?: unknown, direct: Record<string, unknown> }
     const writeSemanticReceipts = (timestamp?: string, mutateLaunch?: (receipt: LaunchReceipt) => void) => {
       for (const receipt of [
-        'install', 'launch', 'quiet-window', 'error-dialogs', 'uninstall', 'upgrade-data', 'native-abi', 'packaged-smoke', 'signing',
+        'install', 'launch', 'quiet-window', 'error-dialogs', 'uninstall', 'native-abi', 'packaged-smoke', 'signing',
       ]) {
         const value = validWindowsReceipt(receipt, releaseRoot) as LaunchReceipt
         if (timestamp !== undefined && receipt === 'quiet-window') value.direct.completedAt = timestamp

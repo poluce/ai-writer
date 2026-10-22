@@ -81,7 +81,7 @@ export function validatePromotionProfile(profile) {
     throw new Error("release profile does not select immutable GitHub Actions artifacts");
   }
   const platforms = Object.keys(profile.platforms || {});
-  if (platforms.length === 0 || platforms.some((platform) => !["windows", "macos-arm64", "macos-x64"].includes(platform))) throw new Error("release profile qualification entities are invalid");
+  if (platforms.length === 0 || platforms.some((platform) => platform !== "windows")) throw new Error("release profile qualification entities are invalid");
   for (const platform of platforms) {
     const policy = profile.platforms[platform];
     if (typeof policy.qualificationWorkflow !== "string" || !policy.qualificationWorkflow.startsWith(".github/workflows/") || typeof policy.artifactName !== "string" || policy.artifactName.length === 0) {

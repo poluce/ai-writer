@@ -21,38 +21,6 @@ const repositoryRoot = path.resolve(path.dirname(scriptPath), '..')
 /** 单条证据命令的超时上限：与发布门禁最长作业时间（120 分钟）一致。 */
 export const MAX_EVIDENCE_COMMAND_TIMEOUT_MS = 120 * 60 * 1000
 
-const MACOS_QUALIFICATION_ENTITIES = Object.freeze({
-  'macos-arm64': {
-    architecture: 'arm64',
-    runnerMachineArchitecture: 'arm64',
-    workflowPath: '.github/workflows/macos-arm64-cloud-build.yml',
-    workflowName: 'macOS ARM64 cloud package qualification',
-    commandProfileBuildStep: 'build-macos-arm64-package',
-  },
-  'macos-x64': {
-    architecture: 'x64',
-    runnerMachineArchitecture: 'x86_64',
-    workflowPath: '.github/workflows/macos-x64-cloud-build.yml',
-    workflowName: 'macOS Intel x64 cloud package qualification',
-    commandProfileBuildStep: 'build-macos-x64-package',
-  },
-})
-
-function isMacosQualificationEntity(platform) {
-  return Object.hasOwn(MACOS_QUALIFICATION_ENTITIES, platform)
-}
-
-function macosQualificationEntity(platform) {
-  assert(isMacosQualificationEntity(platform), 'platform must name a specific macOS qualification entity')
-  return MACOS_QUALIFICATION_ENTITIES[platform]
-}
-
-const MACOS_ACCEPTANCE_PROFILE = Object.freeze([
-  'qualification/acceptance/dmg-mount.json',
-  'qualification/acceptance/packaged-smoke.json',
-  'qualification/acceptance/signing.json',
-])
-
 export const ACCEPTANCE_PROFILES = {
   windows: [
     'qualification/acceptance/install.json',
@@ -60,27 +28,16 @@ export const ACCEPTANCE_PROFILES = {
     'qualification/acceptance/quiet-window.json',
     'qualification/acceptance/error-dialogs.json',
     'qualification/acceptance/uninstall.json',
-    'qualification/acceptance/upgrade-data.json',
     'qualification/acceptance/native-abi.json',
     'qualification/acceptance/packaged-smoke.json',
     'qualification/acceptance/signing.json',
   ],
-  'macos-arm64': MACOS_ACCEPTANCE_PROFILE,
-  'macos-x64': MACOS_ACCEPTANCE_PROFILE,
 }
 
 export const QUALIFICATION_WORKFLOWS = {
   windows: {
     path: '.github/workflows/windows-cloud-build-test.yml',
     name: 'Windows cloud package qualification',
-  },
-  'macos-arm64': {
-    path: MACOS_QUALIFICATION_ENTITIES['macos-arm64'].workflowPath,
-    name: MACOS_QUALIFICATION_ENTITIES['macos-arm64'].workflowName,
-  },
-  'macos-x64': {
-    path: MACOS_QUALIFICATION_ENTITIES['macos-x64'].workflowPath,
-    name: MACOS_QUALIFICATION_ENTITIES['macos-x64'].workflowName,
   },
 }
 
@@ -91,76 +48,7 @@ export const COMMAND_PROFILES = {
     'renderer-browser-tests',
     'complete-windows-release-gate',
   ],
-  'macos-arm64': [
-    'install-locked-dependencies',
-    'install-playwright-chromium',
-    'renderer-browser-tests',
-    'build-native-secure-helper',
-    'test-suite',
-    'build-macos-arm64-package',
-    'mounted-dmg-smoke',
-  ],
-  'macos-x64': [
-    'install-locked-dependencies',
-    'verify-lancedb-darwin-x64-binding',
-    'install-playwright-chromium',
-    'renderer-browser-tests',
-    'build-native-secure-helper',
-    'test-suite',
-    'build-macos-x64-package',
-    'mounted-dmg-smoke',
-  ],
 }
-
-export const MACOS_FORMAL_DISTRIBUTION_POLICY = Object.freeze({
-  codeSigning: 'ad_hoc_or_unsigned',
-  notarization: 'not_notarized',
-})
-
-function codesignField(output, name) {
-  const match = String(output).match(new RegExp(`^${name}=(.*)$`, 'm'))
-  return match?.[1]?.trim() || null
-}
-
-export function classifyMacosCodeSigning({ detailsExitCode, verificationExitCode, detailsOutput }) {
-  const output = String(detailsOutput)
-  const signature = codesignField(output, 'Signature')
-  const teamIdentifier = codesignField(output, 'TeamIdentifier')
-  const authorities = [...output.matchAll(/^Authority=(.*)$/gm)]
-    .map(match => match[1].trim())
-    .filter(Boolean)
-  const hasDeveloperIdIdentity = authorities.some(authority => authority.startsWith('Developer ID Application:'))
-    && teamIdentifier !== null
-    && teamIdentifier !== 'not set'
-  let observed = 'unrecognized_signature'
-  if (detailsExitCode === 0 && verificationExitCode === 0 && hasDeveloperIdIdentity) {
-    observed = 'developer_id_signed'
-  } else if (
-    detailsExitCode === 0
-    && verificationExitCode === 0
-    && signature?.toLowerCase() === 'adhoc'
-    && !hasDeveloperIdIdentity
-  ) {
-    observed = 'ad_hoc'
-  } else if (
-    detailsExitCode !== 0
-    && verificationExitCode !== 0
-    && signature === null
-    && teamIdentifier === null
-    && authorities.length === 0
-  ) {
-    observed = 'unsigned'
-  }
-
-  return { observed, signature, teamIdentifier, authorities, hasDeveloperIdIdentity }
-}
-
-const MACOS_PACKAGED_SMOKE_EVIDENCE = Object.freeze([
-  { file: 'qualification/packaged-vector-smoke.json', kind: 'packaged-vector-smoke' },
-  { file: 'qualification/packaged-official-homepage-smoke.json', kind: 'packaged-official-homepage-smoke' },
-  { file: 'qualification/packaged-skin-smoke.json', kind: 'packaged-skin-smoke' },
-  { file: 'qualification/macos-dmg-smoke.json', kind: 'macos-dmg-smoke' },
-])
 
 const PACKAGED_SMOKE_EVIDENCE = {
   windows: [
@@ -168,8 +56,6 @@ const PACKAGED_SMOKE_EVIDENCE = {
     { file: 'qualification/packaged-official-homepage-smoke.json', kind: 'packaged-official-homepage-smoke' },
     { file: 'qualification/packaged-skin-smoke.json', kind: 'packaged-skin-smoke' },
   ],
-  'macos-arm64': MACOS_PACKAGED_SMOKE_EVIDENCE,
-  'macos-x64': MACOS_PACKAGED_SMOKE_EVIDENCE,
 }
 
 function assert(condition, message) {
@@ -191,7 +77,7 @@ function requiredOption(options, name) {
 }
 
 function validatePlatform(platform) {
-  assert(platform === 'windows' || isMacosQualificationEntity(platform), '--platform must be windows, macos-arm64, or macos-x64')
+  assert(platform === 'windows', '--platform must be windows')
   return platform
 }
 
@@ -207,20 +93,12 @@ function relativeArtifactPath(version, file) {
 }
 
 function platformArtifactSet(platform, version) {
-  if (platform === 'windows') {
-    const installer = `ai-writer-setup-${version}.exe`
-    return [
-      { path: relativeArtifactPath(version, installer), role: 'installer' },
-      { path: relativeArtifactPath(version, `${installer}.blockmap`), role: 'installer-blockmap' },
-      { path: relativeArtifactPath(version, 'latest.yml'), role: 'updater-metadata' },
-    ]
-  }
-
-  const { architecture } = macosQualificationEntity(platform)
-  const dmg = `ai-writer-mac-${architecture}-${version}-installer.dmg`
+  assert(platform === 'windows', 'release artifacts are only defined for Windows')
+  const installer = `ai-writer-setup-${version}.exe`
   return [
-    { path: relativeArtifactPath(version, dmg), role: 'dmg' },
-    { path: relativeArtifactPath(version, `${dmg}.sha256`), role: 'dmg-checksum' },
+    { path: relativeArtifactPath(version, installer), role: 'installer' },
+    { path: relativeArtifactPath(version, `${installer}.blockmap`), role: 'installer-blockmap' },
+    { path: relativeArtifactPath(version, 'latest.yml'), role: 'updater-metadata' },
   ]
 }
 
@@ -616,7 +494,6 @@ function validateWindowsReceipt(receipt, name, bundleRoot, version) {
     'quiet-window': 'windows-final-quiet-window',
     'error-dialogs': 'windows-error-dialogs',
     uninstall: 'windows-uninstall',
-    'upgrade-data': 'windows-upgrade-data',
     'native-abi': 'windows-native-abi',
     'packaged-smoke': 'windows-packaged-smoke-summary',
     signing: 'windows-signing',
@@ -634,8 +511,6 @@ function validateWindowsReceipt(receipt, name, bundleRoot, version) {
     assert(direct.monitorState === 'step-completed' && direct.monitorStep === 'final:quiet' && direct.newProductErrorDialogCount === 0 && validIsoTimestamp(direct.observedThrough), 'Windows error-dialog receipt facts are invalid')
   } else if (name === 'uninstall') {
     assert(direct.installedExecutableExists === false && ['absent', 'empty', 'system-residue-only'].includes(direct.installDirectoryState) && Array.isArray(direct.allowedSystemResiduals), 'Windows uninstall receipt facts are invalid')
-  } else if (name === 'upgrade-data') {
-    assert(direct.previousVersion === '0.2.5' && direct.legacyTableCount === 11 && positiveInteger(direct.preservedAssetCount) && positiveInteger(direct.vectorDimension) && positiveInteger(direct.queryResultCount), 'Windows upgrade-data receipt facts are invalid')
   } else if (name === 'native-abi') {
     assert(direct.restoreMode === 'monitored' && /^\d+$/.test(direct.nodeModuleAbi ?? '') && direct.verificationTest === 'electron/repositories/__tests__/character-repository.test.ts', 'Windows native-ABI receipt facts are invalid')
   } else if (name === 'packaged-smoke') {
@@ -654,81 +529,6 @@ function validateWindowsReceipt(receipt, name, bundleRoot, version) {
   }
 }
 
-function validateMacosReceipt(receipt, name, bundleRoot, version, platform) {
-  const { architecture, runnerMachineArchitecture } = macosQualificationEntity(platform)
-  const direct = receipt.direct
-  const dmg = `ai-writer-mac-${architecture}-${version}-installer.dmg`
-  const dmgSha256 = sha256File(fileWithin(bundleRoot, dmg, 'macOS DMG'))
-  const expectedKinds = { 'dmg-mount': 'dmg-mount', 'packaged-smoke': 'packaged-smoke', signing: 'signing' }
-  assert(receipt.kind === expectedKinds[name] && receipt.platform === 'darwin' && receipt.arch === architecture, `macOS acceptance receipt identity is invalid: ${name}`)
-  assert(
-    direct?.architecture?.target === architecture && direct.architecture?.runnerMachine === runnerMachineArchitecture,
-    `macOS acceptance receipt architecture evidence is invalid: ${name}`,
-  )
-  if (name === 'dmg-mount') {
-    assert(direct.executable?.present === true && direct.helper?.present === true && direct.mount?.attached === true && direct.unmount?.attempted === true && direct.unmount?.succeeded === true, 'macOS DMG mount receipt facts are invalid')
-    assert(direct.hash?.algorithm === 'sha256' && direct.hash?.value?.toLowerCase() === dmgSha256, 'macOS DMG mount receipt hash is invalid')
-  } else if (name === 'packaged-smoke') {
-    assert(direct.secureFileSystemSmoke === true && direct.vectorSmoke === true && direct.officialHomepageSmoke === true && direct.skinSmoke === true && direct.dmgSha256?.toLowerCase() === dmgSha256, 'macOS packaged-smoke receipt facts are invalid')
-    validateReferenceSet(receipt, [
-      { kind: 'packaged-vector-smoke', path: 'qualification/packaged-vector-smoke.json' },
-      { kind: 'packaged-official-homepage-smoke', path: 'qualification/packaged-official-homepage-smoke.json' },
-      { kind: 'packaged-skin-smoke', path: 'qualification/packaged-skin-smoke.json' },
-      { kind: 'macos-dmg-smoke', path: 'qualification/macos-dmg-smoke.json' },
-    ], bundleRoot, 'macOS packaged-smoke receipt')
-  } else if (name === 'signing') {
-    const codeSigning = direct.codeSigning
-    const notarization = direct.notarization
-    const gatekeeper = direct.gatekeeper
-    assert(
-      receipt.status === MACOS_FORMAL_DISTRIBUTION_POLICY.codeSigning
-        && codeSigning?.expected === MACOS_FORMAL_DISTRIBUTION_POLICY.codeSigning
-        && (codeSigning?.observed === 'ad_hoc' || codeSigning?.observed === 'unsigned')
-        && codeSigning?.hasDeveloperIdIdentity === false,
-      'macOS formal distribution requires ad-hoc or unsigned code signing without a Developer ID identity',
-    )
-    assert(nonEmptyString(receipt.validationResult) && nonEmptyString(receipt.gatekeeperImpact), 'macOS signing receipt validation and Gatekeeper impact are invalid')
-    assert(
-      notarization?.expected === MACOS_FORMAL_DISTRIBUTION_POLICY.notarization
-        && notarization?.observed === MACOS_FORMAL_DISTRIBUTION_POLICY.notarization
-        && nonEmptyString(notarization?.basis),
-      'macOS formal distribution requires an unnotarized state',
-    )
-    const commands = [
-      [codeSigning?.details, 'codesign -dv --verbose=4'],
-      [codeSigning?.verification, 'codesign --verify --deep --strict --verbose=2'],
-      [gatekeeper?.assessment, 'spctl --assess --type execute --verbose=4'],
-    ]
-    for (const [record, command] of commands) {
-      assert(record?.command === command && Number.isInteger(record?.exitCode) && validSha256(record?.outputSha256), `macOS signing receipt command is invalid: ${command}`)
-    }
-    assert(Array.isArray(codeSigning.authorities), 'macOS code-signing authority facts are invalid')
-    if (codeSigning.observed === 'ad_hoc') {
-      assert(
-        codeSigning.details.exitCode === 0
-          && codeSigning.verification.exitCode === 0
-          && codeSigning.signature?.toLowerCase() === 'adhoc'
-          && (codeSigning.teamIdentifier === 'not set' || codeSigning.teamIdentifier === null)
-          && codeSigning.authorities.length === 0,
-        'macOS ad-hoc code-signing receipt facts are invalid',
-      )
-    } else {
-      assert(
-        codeSigning.details.exitCode !== 0
-          && codeSigning.verification.exitCode !== 0
-          && codeSigning.signature === null
-          && codeSigning.teamIdentifier === null
-          && codeSigning.authorities.length === 0,
-        'macOS unsigned code-signing receipt facts are invalid',
-      )
-    }
-    const expectedGatekeeperState = gatekeeper.assessment.exitCode === 0
-      ? 'accepted-on-runner'
-      : 'manual-confirmation-may-be-required'
-    assert(gatekeeper?.observed === expectedGatekeeperState, 'macOS Gatekeeper receipt state is inconsistent with its assessment')
-  }
-}
-
 function validateAcceptanceReceipt(file, relativePath, platform, bundleRoot, version) {
   const receipt = jsonEvidenceFile(file, `Acceptance receipt ${relativePath}`)
   assert(receipt?.schemaVersion === 2, `Acceptance receipt schema is invalid: ${relativePath}`)
@@ -736,17 +536,12 @@ function validateAcceptanceReceipt(file, relativePath, platform, bundleRoot, ver
   assert(nonEmptyObservations(receipt?.observations), `Acceptance receipt observations are invalid: ${relativePath}`)
   assert(nonEmptyDirectObservation(receipt?.direct), `Acceptance receipt direct observation is invalid: ${relativePath}`)
   if (relativePath.endsWith('/signing.json')) {
-    if (platform === 'windows') {
-      assert(receipt.status === 'signed' || receipt.status === 'unsigned', 'Windows signing receipt status must be signed or unsigned')
-    } else {
-      assert(nonEmptyString(receipt.status), 'macOS signing receipt status is required')
-    }
+    assert(receipt.status === 'signed' || receipt.status === 'unsigned', 'Windows signing receipt status must be signed or unsigned')
     assert(receipt.validationResult !== null && receipt.validationResult !== undefined, 'Signing receipt validationResult is required')
     assert(nonEmptyImpact(receipt.unsignedDistributionImpact), 'Signing receipt unsignedDistributionImpact is required')
   }
   const name = path.posix.basename(relativePath, '.json')
-  if (platform === 'windows') validateWindowsReceipt(receipt, name, bundleRoot, version)
-  else validateMacosReceipt(receipt, name, bundleRoot, version, platform)
+  validateWindowsReceipt(receipt, name, bundleRoot, version)
   return receipt
 }
 
@@ -785,19 +580,6 @@ function contractArtifactFile(contract, contractPath) {
   return contractPath.slice(prefix.length)
 }
 
-function ensureMacChecksum(releaseRoot, contract) {
-  if (!isMacosQualificationEntity(contract.frozen.platform)) return
-  const dmgArtifact = contract.frozen.artifactSet.find(artifact => artifact.role === 'dmg')
-  const checksumArtifact = contract.frozen.artifactSet.find(artifact => artifact.role === 'dmg-checksum')
-  assert(dmgArtifact && checksumArtifact, 'macOS contract artifact set is incomplete')
-  const dmgFile = contractArtifactFile(contract, dmgArtifact.path)
-  const checksumFile = contractArtifactFile(contract, checksumArtifact.path)
-  const dmgPath = fileWithin(releaseRoot, dmgFile, 'macOS DMG')
-  nonEmptyRegularFile(dmgPath, 'macOS DMG')
-  const checksumPath = fileWithin(releaseRoot, checksumFile, 'macOS DMG checksum')
-  writeFileSync(checksumPath, `${sha256File(dmgPath)}  ${dmgFile}\n`, 'utf8')
-}
-
 function validatePackagedSmokeEvidence(releaseRoot, platform) {
   return PACKAGED_SMOKE_EVIDENCE[platform].map(({ file, kind }) => {
     const evidenceFile = fileWithin(releaseRoot, file, 'Packaged smoke evidence')
@@ -820,7 +602,6 @@ export function finalizeReleaseEvidence({ platform, evidenceRoot, releaseRoot })
   const resolvedReleaseRoot = path.resolve(releaseRoot)
   const temporaryReceipts = validateExactTemporaryReceipts(evidence.resolvedEvidenceRoot, contract, resolvedReleaseRoot)
   mkdirSync(resolvedReleaseRoot, { recursive: true })
-  ensureMacChecksum(resolvedReleaseRoot, contract)
 
   const artifacts = contract.frozen.artifactSet.map(artifact => {
     const file = contractArtifactFile(contract, artifact.path)
@@ -850,7 +631,7 @@ export function finalizeReleaseEvidence({ platform, evidenceRoot, releaseRoot })
   const manifest = {
     schemaVersion: 2,
     platform: selectedPlatform,
-    architecture: selectedPlatform === 'windows' ? 'x64' : macosQualificationEntity(selectedPlatform).architecture,
+    architecture: 'x64',
     commit: contract.frozen.commit,
     tag: contract.frozen.tag,
     version: contract.frozen.version,
@@ -869,9 +650,6 @@ export function finalizeReleaseEvidence({ platform, evidenceRoot, releaseRoot })
     acceptanceProfile: contract.frozen.acceptance.evidenceFiles,
     artifacts,
     evidence: [...provenanceEvidence, ...acceptanceEvidence, ...packagedEvidence],
-    ...(isMacosQualificationEntity(selectedPlatform)
-      ? { dmgChecksum: `ai-writer-mac-${macosQualificationEntity(selectedPlatform).architecture}-${contract.frozen.version}-installer.dmg.sha256` }
-      : {}),
   }
   const manifestPath = path.join(resolvedReleaseRoot, 'manifest.json')
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8')
@@ -1059,7 +837,7 @@ export function verifyQualificationBundle({
   const manifest = jsonEvidenceFile(manifestPath, 'Qualification manifest')
   assert(manifest?.schemaVersion === 2, 'Qualification manifest schema is invalid')
   assert(manifest.platform === selectedPlatform, 'Qualification manifest platform is invalid')
-  const expectedArchitecture = selectedPlatform === 'windows' ? 'x64' : macosQualificationEntity(selectedPlatform).architecture
+  const expectedArchitecture = 'x64'
   assert(manifest.architecture === expectedArchitecture, 'Qualification manifest architecture is invalid')
   assert(!Object.hasOwn(manifest, 'arch'), 'Qualification manifest must use architecture instead of deprecated arch')
   assert(manifest.version === version && manifest.tag === `v${version}`, 'Qualification manifest version/tag is invalid')
@@ -1081,12 +859,6 @@ export function verifyQualificationBundle({
   exactFileSet(checksums.keys(), checksumFiles, 'Qualification SHA-256')
   for (const [file, digest] of checksums) {
     assert(sha256File(fileWithin(resolvedBundleRoot, file, 'Checksum file')) === digest, `Qualification SHA-256 mismatch: ${file}`)
-  }
-  if (isMacosQualificationEntity(selectedPlatform)) {
-    const dmg = `ai-writer-mac-${macosQualificationEntity(selectedPlatform).architecture}-${version}-installer.dmg`
-    const checksum = `${dmg}.sha256`
-    assert(manifest.dmgChecksum === checksum, 'macOS qualification manifest checksum file is invalid')
-    assert(readFileSync(fileWithin(resolvedBundleRoot, checksum, 'macOS DMG checksum'), 'utf8').trim() === `${sha256File(fileWithin(resolvedBundleRoot, dmg, 'macOS DMG'))}  ${dmg}`, 'macOS DMG checksum file does not match the DMG')
   }
   return {
     platform: selectedPlatform,
