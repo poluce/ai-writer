@@ -45,10 +45,7 @@ foreach ($name in @(
   [System.IO.Path]::GetFileNameWithoutExtension($resolvedInstaller),
   'AI Writer.exe',
   'AI Writer',
-  'ai-writer',
-  'AI小说作家.exe',
-  'AI小说作家',
-  'ai-novel-writer'
+  'ai-writer'
 )) {
   if (-not [string]::IsNullOrWhiteSpace($name) -and -not $roundTargetNames.Contains($name)) {
     $roundTargetNames.Add($name)

@@ -260,9 +260,7 @@ function Test-AiNovelVisibleMainWindow {
   if ([string]::IsNullOrWhiteSpace($title)) {
     return $false
   }
-  return $title.IndexOf('AI Writer', [System.StringComparison]::OrdinalIgnoreCase) -ge 0 `
-    -or $title.IndexOf('AI小说作家', [System.StringComparison]::OrdinalIgnoreCase) -ge 0 `
-    -or $title.IndexOf('AI Novel Writer', [System.StringComparison]::OrdinalIgnoreCase) -ge 0
+  return $title.IndexOf('AI Writer', [System.StringComparison]::OrdinalIgnoreCase) -ge 0
 }
 
 function New-AiNovelMainWindowContinuityState {

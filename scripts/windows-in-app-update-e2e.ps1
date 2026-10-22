@@ -19,7 +19,7 @@ $runtimeRoot = Join-Path $resolvedEvidenceRoot 'runtime'
 $transcriptPath = Join-Path $resolvedEvidenceRoot 'runner-transcript.log'
 $evidencePath = Join-Path $resolvedEvidenceRoot 'in-app-update-e2e.json'
 $failureWindowsPath = Join-Path $resolvedEvidenceRoot 'failure-windows.json'
-$appExecutableName = "AI$([char]0x5C0F)$([char]0x8BF4)$([char]0x4F5C)$([char]0x5BB6).exe"
+$appExecutableName = 'AI Writer.exe'
 $appDisplayName = [System.IO.Path]::GetFileNameWithoutExtension($appExecutableName)
 
 function Assert-E2eCondition {

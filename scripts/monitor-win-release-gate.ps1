@@ -1149,7 +1149,7 @@ function Test-AiNovelGateNsisInstallerImage {
       return $false
     }
     $fileName = [System.IO.Path]::GetFileName($ImagePath)
-    return $fileName -match '^(?:ai-novel-writer|ai-writer)-setup-\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?\.exe$'
+    return $fileName -match '^ai-writer-setup-\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?\.exe$'
   }
   catch {
     return $false
@@ -1294,10 +1294,7 @@ function Test-AiNovelGateNsisUninstallerImage {
   }
   try {
     $fileName = [System.IO.Path]::GetFileName([System.IO.Path]::GetFullPath($ImagePath))
-    return (
-      [string]::Equals($fileName, 'Uninstall AI Writer.exe', [System.StringComparison]::OrdinalIgnoreCase) -or
-      [string]::Equals($fileName, 'Uninstall AI小说作家.exe', [System.StringComparison]::OrdinalIgnoreCase)
-    )
+    return [string]::Equals($fileName, 'Uninstall AI Writer.exe', [System.StringComparison]::OrdinalIgnoreCase)
   }
   catch {
     return $false
@@ -1466,7 +1463,7 @@ function Test-AiNovelGateKnownNsisCmdProcessCheckCommand {
     $expectedFindPath = Join-Path ([System.IO.Path]::GetDirectoryName($CmdImagePath)) 'find.exe'
     $matchedPrefix = $null
     $matchedSuffix = $null
-    foreach ($productExeName in @('AI Writer.exe', 'AI小说作家.exe')) {
+    foreach ($productExeName in @('AI Writer.exe')) {
       $candidatePrefix = ' /C tasklist /FI "USERNAME eq %USERNAME%" /FI "IMAGENAME eq ' + $productExeName + '" /FO CSV | "'
       $candidateSuffix = '" "' + $productExeName + '"'
       if (
@@ -1504,10 +1501,7 @@ function Test-AiNovelGateKnownNsisFindNoMatchCommand {
     -ImagePath $FindImagePath
   return (
     $null -ne $arguments -and
-    (
-      [string]::Equals($arguments, '  "AI Writer.exe"', [System.StringComparison]::Ordinal) -or
-      [string]::Equals($arguments, '  "AI小说作家.exe"', [System.StringComparison]::Ordinal)
-    )
+    [string]::Equals($arguments, '  "AI Writer.exe"', [System.StringComparison]::Ordinal)
   )
 }
 
@@ -2261,7 +2255,7 @@ function New-AiNovelGateLegacyBridgeState {
   $installer = $bridge.expectedInstaller
   if (
     $null -eq $installer -or
-    [string]$installer.name -notmatch '^(?:ai-novel-writer|ai-writer)-setup-\d+\.\d+\.\d+\.exe$' -or
+    [string]$installer.name -notmatch '^ai-writer-setup-\d+\.\d+\.\d+\.exe$' -or
     [long]$installer.size -le 0 -or
     [string]$installer.sha256 -notmatch '^[a-fA-F0-9]{64}$' -or
     [string]::IsNullOrWhiteSpace($env:LOCALAPPDATA) -or
@@ -2270,7 +2264,7 @@ function New-AiNovelGateLegacyBridgeState {
     throw 'Release gate rejected incomplete legacy bridge installer metadata.'
   }
   $expectedPath = $null
-  foreach ($cacheDirName in @('ai-writer-updater', 'ai-novel-writer-updater')) {
+  foreach ($cacheDirName in @('ai-writer-updater')) {
     $candidatePath = [System.IO.Path]::GetFullPath((Join-Path $env:LOCALAPPDATA (Join-Path (Join-Path $cacheDirName 'pending') ([string]$installer.name))))
     if (Test-AiNovelGateSameAbsolutePath -Left ([string]$bridge.expectedPendingInstallerPath) -Right $candidatePath) {
       $expectedPath = $candidatePath
@@ -2316,7 +2310,7 @@ function Request-AiNovelGateLegacyBridgeArm {
     throw 'Release gate rejected a legacy bridge arm request without an absolute install root.'
   }
   $resolvedInstallRoot = [System.IO.Path]::GetFullPath($installRoot)
-  $expectedOldApplication = Join-Path $resolvedInstallRoot ('AI' + [char]0x5C0F + [char]0x8BF4 + [char]0x4F5C + [char]0x5BB6 + '.exe')
+  $expectedOldApplication = Join-Path $resolvedInstallRoot ('AI Writer.exe')
   if (
     [int]$Control.processId -le 0 -or
     [string]::IsNullOrWhiteSpace([string]$Control.processStartTimeTicks) -or
@@ -2465,7 +2459,7 @@ function Test-AiNovelGateNativeUpdaterOldApplicationIdentity {
   }
 
   try {
-    $oldApplicationName = 'AI小说作家.exe'
+    $oldApplicationName = 'AI Writer.exe'
     $expectedOldApplicationPath = [System.IO.Path]::GetFullPath(
       [System.IO.Path]::Combine(
         $env:AI_NOVEL_UPDATE_E2E_EVIDENCE_ROOT,
@@ -2521,11 +2515,11 @@ function Test-AiNovelGateNativeUpdaterPendingInstallerIdentity {
   }
   try {
     $installerName = [System.IO.Path]::GetFileName([string]$InstallerIdentity.executablePath)
-    if ($installerName -notmatch '^(?:ai-novel-writer|ai-writer)-setup-\d+\.\d+\.\d+\.exe$') {
+    if ($installerName -notmatch '^ai-writer-setup-\d+\.\d+\.\d+\.exe$') {
       return $false
     }
     $pendingMatches = $false
-    foreach ($cacheDirName in @('ai-writer-updater', 'ai-novel-writer-updater')) {
+    foreach ($cacheDirName in @('ai-writer-updater')) {
       $expectedPendingInstallerPath = [System.IO.Path]::GetFullPath((Join-Path `
         $env:LOCALAPPDATA `
         (Join-Path (Join-Path $cacheDirName 'pending') $installerName)))
@@ -2909,7 +2903,7 @@ function Test-AiNovelGateLegacyBridgeWizardWindow {
   ) {
     return $false
   }
-  $expectedTitle = 'AI' + [char]0x5C0F + [char]0x8BF4 + [char]0x4F5C + [char]0x5BB6 + ' Setup'
+  $expectedTitle = 'AI Writer Setup'
   $normalizedTitle = ([string]$Window.Title).TrimEnd()
   if (-not [string]::Equals($normalizedTitle, $expectedTitle, [System.StringComparison]::Ordinal)) {
     return $false
@@ -2991,7 +2985,7 @@ function Test-AiNovelGateLegacyBridgeTerminationArmedCleanupWindow {
   if ([string]::IsNullOrWhiteSpace($title)) {
     return $true
   }
-  $expectedTitle = 'AI' + [char]0x5C0F + [char]0x8BF4 + [char]0x4F5C + [char]0x5BB6 + ' Setup'
+  $expectedTitle = 'AI Writer Setup'
   return [string]::Equals($title.TrimEnd(), $expectedTitle, [System.StringComparison]::Ordinal)
 }
 
@@ -3035,7 +3029,7 @@ function Test-AiNovelGateLegacyBridgeTerminationCleanupWindow {
   if ([string]::IsNullOrWhiteSpace($title)) {
     return $true
   }
-  $expectedTitle = 'AI' + [char]0x5C0F + [char]0x8BF4 + [char]0x4F5C + [char]0x5BB6 + ' Setup'
+  $expectedTitle = 'AI Writer Setup'
   return [string]::Equals($title.TrimEnd(), $expectedTitle, [System.StringComparison]::Ordinal)
 }
 
@@ -3057,9 +3051,6 @@ foreach ($name in @(
   'AI Writer.exe',
   'AI Writer',
   'ai-writer',
-  'AI小说作家.exe',
-  'AI小说作家',
-  'ai-novel-writer',
   'electron-builder',
   'electron-rebuild',
   'rcedit',

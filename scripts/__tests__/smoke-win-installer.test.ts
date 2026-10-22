@@ -829,7 +829,7 @@ $uncaptured = Get-GateExitFailure ([pscustomobject]@{ ProcessId = 704; ExitCode 
   windowsPowerShellIt('binds the legacy bridge to captured official identities without trusting command contents', () => {
     const output = runReleaseMonitorLibrary(`
 $installRoot = 'C:\\e2e\\installed app'
-$oldExe = $installRoot + '\\AI' + [char]0x5C0F + [char]0x8BF4 + [char]0x4F5C + [char]0x5BB6 + '.exe'
+$oldExe = $installRoot + '\\AI' + ' Writer' + '.exe'
 $pendingExe = 'C:\\Users\\runneradmin\\AppData\\Local\\ai-writer-updater\\pending\\ai-writer-setup-0.7.0.exe'
 $old = [pscustomobject]@{
   processId = 410
@@ -877,7 +877,7 @@ $statusBeforeWizard = Get-AiNovelGateLegacyBridgeStatus -LegacyBridge $bridge
 $wizard = [pscustomobject]@{
   WindowHandle = '0x1'
   ProcessId = 411
-  Title = ('AI' + [char]0x5C0F + [char]0x8BF4 + [char]0x4F5C + [char]0x5BB6 + ' Setup ')
+  Title = ('AI' + ' Writer' + ' Setup ')
   ClassName = '#32770'
   Visible = $true
 }
@@ -946,10 +946,10 @@ try {
   $blankAccepted = Test-AiNovelGateLegacyBridgeTransientWindow -LegacyBridge $bridge -Window $blank
   $statusAfterBlank = Get-AiNovelGateLegacyBridgeStatus -LegacyBridge $bridge
   $otherTitle = [pscustomobject]@{ WindowHandle = '0x12'; ProcessId = $PID; Title = 'Other'; ClassName = '#32770'; Visible = $true }
-  $setupTitle = [pscustomobject]@{ WindowHandle = '0x13'; ProcessId = $PID; Title = ('AI' + [char]0x5C0F + [char]0x8BF4 + [char]0x4F5C + [char]0x5BB6 + ' Setup '); ClassName = '#32770'; Visible = $true }
-  $setupTitleWithTrailingWhitespace = [pscustomobject]@{ WindowHandle = '0x16'; ProcessId = $PID; Title = (('AI' + [char]0x5C0F + [char]0x8BF4 + [char]0x4F5C + [char]0x5BB6 + ' Setup') + [char]9 + '  '); ClassName = '#32770'; Visible = $true }
-  $setupTitleWithLeadingWhitespace = [pscustomobject]@{ WindowHandle = '0x17'; ProcessId = $PID; Title = (' AI' + [char]0x5C0F + [char]0x8BF4 + [char]0x4F5C + [char]0x5BB6 + ' Setup '); ClassName = '#32770'; Visible = $true }
-  $setupTitleWithSuffix = [pscustomobject]@{ WindowHandle = '0x18'; ProcessId = $PID; Title = ('AI' + [char]0x5C0F + [char]0x8BF4 + [char]0x4F5C + [char]0x5BB6 + ' Setup extra'); ClassName = '#32770'; Visible = $true }
+  $setupTitle = [pscustomobject]@{ WindowHandle = '0x13'; ProcessId = $PID; Title = ('AI' + ' Writer' + ' Setup '); ClassName = '#32770'; Visible = $true }
+  $setupTitleWithTrailingWhitespace = [pscustomobject]@{ WindowHandle = '0x16'; ProcessId = $PID; Title = (('AI' + ' Writer' + ' Setup') + [char]9 + '  '); ClassName = '#32770'; Visible = $true }
+  $setupTitleWithLeadingWhitespace = [pscustomobject]@{ WindowHandle = '0x17'; ProcessId = $PID; Title = (' AI' + ' Writer' + ' Setup '); ClassName = '#32770'; Visible = $true }
+  $setupTitleWithSuffix = [pscustomobject]@{ WindowHandle = '0x18'; ProcessId = $PID; Title = ('AI' + ' Writer' + ' Setup extra'); ClassName = '#32770'; Visible = $true }
   $wrongPid = [pscustomobject]@{ WindowHandle = '0x14'; ProcessId = ($PID + 1); Title = ''; ClassName = '#32770'; Visible = $true }
   $wrongClass = [pscustomobject]@{ WindowHandle = '0x15'; ProcessId = $PID; Title = ''; ClassName = 'OtherClass'; Visible = $true }
   $otherTitleRejected = -not (Test-AiNovelGateLegacyBridgeTransientWindow -LegacyBridge $bridge -Window $otherTitle)
@@ -1034,7 +1034,7 @@ $bridge = [pscustomobject]@{
   ObservedInstallerIdentity = $installer
 }
 $tracked = @{ 5568 = $installer }
-$setup = [pscustomobject]@{ WindowHandle = '0x21'; ProcessId = 5568; Title = ('AI' + [char]0x5C0F + [char]0x8BF4 + [char]0x4F5C + [char]0x5BB6 + ' Setup '); ClassName = '#32770'; Visible = $true }
+$setup = [pscustomobject]@{ WindowHandle = '0x21'; ProcessId = 5568; Title = ('AI' + ' Writer' + ' Setup '); ClassName = '#32770'; Visible = $true }
 $blank = [pscustomobject]@{ WindowHandle = '0x22'; ProcessId = 5568; Title = ''; ClassName = '#32770'; Visible = $true }
 $differentTitle = [pscustomobject]@{ WindowHandle = '0x23'; ProcessId = 5568; Title = 'Other Setup'; ClassName = '#32770'; Visible = $true }
 $wrongPid = [pscustomobject]@{ WindowHandle = '0x24'; ProcessId = 5569; Title = ''; ClassName = '#32770'; Visible = $true }
@@ -1089,7 +1089,7 @@ $bridge = [pscustomobject]@{
   ObservedInstallerIdentity = $installer
 }
 $tracked = @{ 1032 = $installer }
-$setup = [pscustomobject]@{ WindowHandle = '0x31'; ProcessId = 1032; Title = ('AI' + [char]0x5C0F + [char]0x8BF4 + [char]0x4F5C + [char]0x5BB6 + ' Setup '); ClassName = '#32770'; Visible = $true }
+$setup = [pscustomobject]@{ WindowHandle = '0x31'; ProcessId = 1032; Title = ('AI' + ' Writer' + ' Setup '); ClassName = '#32770'; Visible = $true }
 $blank = [pscustomobject]@{ WindowHandle = '0x32'; ProcessId = 1032; Title = ''; ClassName = '#32770'; Visible = $true }
 $differentTitle = [pscustomobject]@{ WindowHandle = '0x33'; ProcessId = 1032; Title = 'Other Setup'; ClassName = '#32770'; Visible = $true }
 $wrongPid = [pscustomobject]@{ WindowHandle = '0x34'; ProcessId = 1033; Title = ''; ClassName = '#32770'; Visible = $true }
@@ -1144,7 +1144,7 @@ $wrongStateRejected = -not (Test-AiNovelGateLegacyBridgeTerminationArmedCleanupW
 
   windowsPowerShellIt('classifies only the exact historical old app breakpoint after a bound installer handoff', () => {
     const output = runReleaseMonitorLibrary(`
-$oldExe = 'D:\\e2e\\installed-app\\AI' + [char]0x5C0F + [char]0x8BF4 + [char]0x4F5C + [char]0x5BB6 + '.exe'
+$oldExe = 'D:\\e2e\\installed-app\\AI' + ' Writer' + '.exe'
 $pendingExe = 'C:\\Users\\runneradmin\\AppData\\Local\\ai-writer-updater\\pending\\ai-writer-setup-0.7.0.exe'
 $old = [pscustomobject]@{ processId = 3472; startTimeTicks = '639217245409219881'; executablePath = $oldExe; identityCaptured = $true }
 $installer = [pscustomobject]@{
@@ -1207,7 +1207,7 @@ $wrongInstallerParentRejected = -not (Test-AiNovelGateLegacyBridgeOldApplication
     const output = runReleaseMonitorLibrary(`
 $e2eEvidenceRoot = 'D:\\a\\_temp\\ai-novel-windows-in-app-update-e2e'
 $env:AI_NOVEL_UPDATE_E2E_EVIDENCE_ROOT = $e2eEvidenceRoot
-$oldExe = $e2eEvidenceRoot + '\\runtime\\installed-app\\AI' + [char]0x5C0F + [char]0x8BF4 + [char]0x4F5C + [char]0x5BB6 + '.exe'
+$oldExe = $e2eEvidenceRoot + '\\runtime\\installed-app\\AI' + ' Writer' + '.exe'
 $pendingRoot = Join-Path $env:LOCALAPPDATA 'ai-writer-updater\\pending'
 $pendingExe = Join-Path $pendingRoot 'ai-writer-setup-0.8.0.exe'
 $old = [pscustomobject]@{
@@ -1257,7 +1257,7 @@ $multipleCandidates = New-NativeUpdaterTrackedProcesses -Installer $installer
 $multipleCandidates[5013] = New-NativeUpdaterInstallerIdentity -ProcessId 5013
 $multipleCandidatesRejected = -not (Test-AiNovelGateNativeUpdaterOldApplicationExit -Step 'windows-in-app-update-e2e' -Event $breakpoint -ProcessIdentity $old -TrackedProcessIdentities $multipleCandidates)
 $wrongPathRejected = -not (Test-AiNovelGateNativeUpdaterOldApplicationExit -Step 'windows-in-app-update-e2e' -Event $breakpoint -ProcessIdentity $old -TrackedProcessIdentities (New-NativeUpdaterTrackedProcesses -Installer (New-NativeUpdaterInstallerIdentity -Path 'C:\\temp\\ai-writer-setup-0.8.0.exe')))
-$wrongOldExe = 'D:\\e2e-other\\runtime\\installed-app\\AI' + [char]0x5C0F + [char]0x8BF4 + [char]0x4F5C + [char]0x5BB6 + '.exe'
+$wrongOldExe = 'D:\\e2e-other\\runtime\\installed-app\\AI' + ' Writer' + '.exe'
 $wrongOldPath = [pscustomobject]@{ processId = 5660; startTimeTicks = '639219070367704249'; executablePath = $wrongOldExe; identityCaptured = $true; commandLineCaptured = $true }
 $wrongOldPathRejected = -not (Test-AiNovelGateNativeUpdaterOldApplicationExit -Step 'windows-in-app-update-e2e' -Event $breakpoint -ProcessIdentity $wrongOldPath -TrackedProcessIdentities (New-NativeUpdaterTrackedProcesses -Installer (New-NativeUpdaterInstallerIdentity -ParentPath $wrongOldExe) -TrackedOld $wrongOldPath))
 $evidenceRootBeforeMissingEnvironmentCheck = $env:AI_NOVEL_UPDATE_E2E_EVIDENCE_ROOT
@@ -1329,7 +1329,7 @@ $otherProcessRejected = -not (Test-AiNovelGateNativeUpdaterOldApplicationExit -S
     const output = runReleaseMonitorLibrary(`
 $e2eEvidenceRoot = 'D:\\a\\_temp\\ai-novel-windows-in-app-update-e2e'
 $env:AI_NOVEL_UPDATE_E2E_EVIDENCE_ROOT = $e2eEvidenceRoot
-$oldExe = $e2eEvidenceRoot + '\\runtime\\installed-app\\AI' + [char]0x5C0F + [char]0x8BF4 + [char]0x4F5C + [char]0x5BB6 + '.exe'
+$oldExe = $e2eEvidenceRoot + '\\runtime\\installed-app\\AI' + ' Writer' + '.exe'
 $pendingExe = Join-Path $env:LOCALAPPDATA 'ai-writer-updater\\pending\\ai-writer-setup-0.8.0.exe'
 $oldUninstallerPath = Join-Path (Join-Path ([System.IO.Path]::GetTempPath()) 'nsn315E.tmp') 'old-uninstaller.exe'
 $system32 = Join-Path $env:SystemRoot 'System32\\WindowsPowerShell\\v1.0\\powershell.exe'
@@ -1337,8 +1337,8 @@ $cmdPath = Join-Path $env:SystemRoot 'System32\\cmd.exe'
 $findPath = Join-Path $env:SystemRoot 'System32\\find.exe'
 $policyPayload = 'if ((Get-ExecutionPolicy -Scope Process) -eq ''Restricted'') { exit 1 } else { exit 0 }'
 $policyCommand = '"' + $system32 + '" -C "' + $policyPayload + '"'
-$cmdCommand = '"' + $cmdPath + '" /C tasklist /FI "USERNAME eq %USERNAME%" /FI "IMAGENAME eq AI' + [char]0x5C0F + [char]0x8BF4 + [char]0x4F5C + [char]0x5BB6 + '.exe" /FO CSV | "' + $findPath + '" "AI' + [char]0x5C0F + [char]0x8BF4 + [char]0x4F5C + [char]0x5BB6 + '.exe"'
-$findCommand = '"' + $findPath + '"  "AI' + [char]0x5C0F + [char]0x8BF4 + [char]0x4F5C + [char]0x5BB6 + '.exe"'
+$cmdCommand = '"' + $cmdPath + '" /C tasklist /FI "USERNAME eq %USERNAME%" /FI "IMAGENAME eq AI' + ' Writer' + '.exe" /FO CSV | "' + $findPath + '" "AI' + ' Writer' + '.exe"'
+$findCommand = '"' + $findPath + '"  "AI' + ' Writer' + '.exe"'
 $old = [pscustomobject]@{
   processId = 1557
   startTimeTicks = '639219070367704249'
@@ -1439,8 +1439,8 @@ $cmdPath = Join-Path $env:SystemRoot 'System32\\cmd.exe'
 $findPath = Join-Path $env:SystemRoot 'System32\\find.exe'
 $policyPayload = 'if ((Get-ExecutionPolicy -Scope Process) -eq ''Restricted'') { exit 1 } else { exit 0 }'
 $policyCommand = '"' + $system32 + '" -C "' + $policyPayload + '"'
-$cmdCommand = '"' + $cmdPath + '" /C tasklist /FI "USERNAME eq %USERNAME%" /FI "IMAGENAME eq AI' + [char]0x5C0F + [char]0x8BF4 + [char]0x4F5C + [char]0x5BB6 + '.exe" /FO CSV | "' + $findPath + '" "AI' + [char]0x5C0F + [char]0x8BF4 + [char]0x4F5C + [char]0x5BB6 + '.exe"'
-$findCommand = '"' + $findPath + '"  "AI' + [char]0x5C0F + [char]0x8BF4 + [char]0x4F5C + [char]0x5BB6 + '.exe"'
+$cmdCommand = '"' + $cmdPath + '" /C tasklist /FI "USERNAME eq %USERNAME%" /FI "IMAGENAME eq AI' + ' Writer' + '.exe" /FO CSV | "' + $findPath + '" "AI' + ' Writer' + '.exe"'
+$findCommand = '"' + $findPath + '"  "AI' + ' Writer' + '.exe"'
 $event = [pscustomobject]@{ ProcessId = 7956; ExitCode = 1; ExitCodeCaptured = $true; JobMessage = 7 }
 $installRoot = 'D:\\a\\_temp\\ai-novel-e2e\\runtime\\installed-app'
 $stagingPath = 'D:\\a\\_temp\\ai-novel-e2e\\runtime\\legacy-bridge-staging\\ai-writer-setup-0.6.0.exe'
@@ -1644,7 +1644,7 @@ $tracked = $trackedBefore
 
   windowsPowerShellIt('arms the legacy bridge only after the monitor captures the exact old application identity', () => {
     const output = runReleaseMonitorLibrary(`
-$oldExe = 'C:\\e2e\\installed-app\\AI' + [char]0x5C0F + [char]0x8BF4 + [char]0x4F5C + [char]0x5BB6 + '.exe'
+$oldExe = 'C:\\e2e\\installed-app\\AI' + ' Writer' + '.exe'
 $request = [pscustomobject]@{
   step = 'windows-in-app-update-e2e'
   sourceTag = 'v0.5.2'
