@@ -2,7 +2,7 @@ import {
   CHAPTER_CARD_TAB_ID,
   discardChapterCardProjectDraft,
   parseChapterCardDraftLedger,
-  persistChapterCardDraftLedger} from '../components/editor/chapter-card-draft-ledger'
+  persistChapterCardDraftLedger} from './chapter-card-draft-ledger'
 import { useCharacterStore } from './character-store'
 import { useEditorDraftLedgerStore } from './editor-draft-ledger-store'
 import { useEditorStore } from './editor-store'

@@ -8,7 +8,7 @@
  */
 
 import type { ProjectSessionContext } from './ipc-channels'
-import type { WorkflowStatus } from '../stores/workflow-store'
+import type { WorkflowStatus } from './workflow-status'
 
 export interface ToolArtifactBase {
   /** 显示名称 */

@@ -2,14 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const {
   invokeWithProjectSession,
-  refreshFileTree,
   syncTabContent,
   markTabSaved,
   settleMergedRevision,
   editorTabs,
 } = vi.hoisted(() => ({
   invokeWithProjectSession: vi.fn(),
-  refreshFileTree: vi.fn(),
   syncTabContent: vi.fn(),
   markTabSaved: vi.fn(),
   settleMergedRevision: vi.fn(),
@@ -27,19 +25,6 @@ vi.mock('../../services/ipc-client', () => ({
   ipc: { invokeWithProjectSession },
 }))
 
-vi.mock('../project-store', () => ({
-  useProjectStore: {
-    getState: () => ({
-      currentProject: {
-        id: 'project-a',
-        name: '隔离测试项目',
-        path: 'C:\\novels\\project-a',
-      },
-      refreshFileTree,
-    }),
-  },
-}))
-
 vi.mock('../editor-store', () => ({
   useEditorStore: {
     getState: () => ({
@@ -51,6 +36,8 @@ vi.mock('../editor-store', () => ({
   },
 }))
 
+import type { ProjectData } from '../../shared/ipc-channels'
+import { setActiveProjectSnapshot } from '../../shared/project-session-context'
 import { useDraftStore } from '../draft-store'
 
 const projectPath = 'C:\\novels\\project-a'
@@ -59,15 +46,26 @@ const projectSession = {
   projectPath,
 }
 
+function currentProject(): ProjectData {
+  return {
+    id: 'project-a',
+    name: '隔离测试项目',
+    path: projectPath,
+    novelConfig: {} as ProjectData['novelConfig'],
+    characterStates: '',
+    createdAt: '',
+    updatedAt: '',
+  }
+}
+
 describe('draft-store merged revision persistence', () => {
   beforeEach(() => {
     invokeWithProjectSession.mockReset()
-    refreshFileTree.mockReset()
     syncTabContent.mockReset()
     markTabSaved.mockReset()
     settleMergedRevision.mockReset()
     editorTabs.splice(0)
-    refreshFileTree.mockResolvedValue(undefined)
+    setActiveProjectSnapshot(currentProject())
 
     invokeWithProjectSession.mockImplementation(async (_session: unknown, channel: string) => {
       if (channel === 'db:draft-list') {
@@ -139,7 +137,6 @@ describe('draft-store merged revision persistence', () => {
       expect.anything(),
       projectPath,
     )
-    expect(refreshFileTree).not.toHaveBeenCalled()
   })
 
   it('freezes the editor snapshot before awaiting the merge receipt', async () => {

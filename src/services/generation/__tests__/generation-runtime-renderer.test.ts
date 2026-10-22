@@ -19,11 +19,12 @@ vi.mock('../../ipc-client', () => ({
   },
 }))
 
-vi.mock('../../../components/ui/AlertDialog', () => ({ alertError: vi.fn() }))
-
 import { useLLMStore } from '../../../stores/llm-store'
 import { useProjectStore } from '../../../stores/project-store'
+import { setDialogPort } from '../../../shared/dialog-port'
 import { createGenerationRuntime } from '../generation-runtime'
+
+setDialogPort({ alertError: vi.fn() })
 
 function project(id: string, creativeStrategy: CreativeStrategy): ProjectData {
   return {

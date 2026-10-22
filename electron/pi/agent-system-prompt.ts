@@ -8,7 +8,7 @@ import {
   defaultBlueprintIdentity,
   renderAssistantIdentity,
 } from '../../src/services/agent/assistant-identity'
-import { getBuiltinPromptTemplate } from '../../src/services/prompt-templates'
+import { getBuiltinPromptTemplate } from '../../src/services/prompt-templates-core'
 import {
   AGENT_SKILL_DESCRIPTION_MAX_CHARS,
   type AgentSkillCatalogEntry,

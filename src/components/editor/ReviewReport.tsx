@@ -1,6 +1,9 @@
+/**
+ * 审稿报告查看器 — 组合根。
+ * 纯逻辑、严重度展示与修稿对话框已拆至同目录各模块。
+ */
 import { useEffect, useState } from 'react'
 import {
-  AlertTriangle,
   CheckCircle,
   CircleMinus,
   FileCheck2,
@@ -16,9 +19,6 @@ import {
 } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { Button } from '../ui/Button'
-import {
-  Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription,
-} from '../ui/Dialog'
 import { Input } from '../ui/Input'
 import { Label } from '../ui/Label'
 import { NativeSelect } from '../ui/NativeSelect'
@@ -29,54 +29,28 @@ import { useLocaleStore } from '../../stores/locale-store'
 import { useLLMStore } from '../../stores/llm-store'
 import { ipc } from '../../services/ipc-client'
 import { requireIpcSuccess } from '../../services/ipc-result'
-import type { ExpectedDraftSource, ModelProfile } from '../../shared/ipc-channels'
-import { resolveWritingLanguage, type WritingLanguage } from '../../shared/writing-language'
-import { parseChapterGoalReview, type ChapterGoalReview } from '../../shared/chapter-goal-review'
+import { resolveWritingLanguage } from '../../shared/writing-language'
 import {
   createHumanConfirmedReviewSnapshot,
   hasIncludedReviewItems,
   parseHumanConfirmedReviewSnapshot,
-  renderHumanConfirmedReviewBrief,
   serializeHumanConfirmedReviewSnapshot,
-  type HumanConfirmedReviewItem,
   type HumanConfirmedReviewSnapshot,
 } from '../../shared/human-confirmed-review'
-
-/** 审稿问题条目（JSON 格式） */
-interface ReviewIssue {
-  category: string
-  severity: 'error' | 'warning' | 'pass' | 'unknown'
-  goalId?: string
-  description: string
-  /** 引用的原文片段（有问题时提供） */
-  quote?: string
-  stableFactKey?: string
-  sourceChapter?: number
-}
-
-/** AI 返回的 JSON 审稿结构 */
-interface ReviewJSON {
-  goalReview?: unknown
-  items: Array<{
-    category: string
-    severity: string
-    goalId?: string
-    description: string
-    quote?: string
-    stableFactKey?: string
-    sourceChapter?: number
-  }>
-  summary: string
-}
-
-function chapterGoalStatusLabel(
-  status: string,
-  text: (zhCNText: string, enUSText: string) => string,
-): string {
-  if (status === 'completed') return text('已完成', 'Completed')
-  if (status === 'unmet') return text('未完成', 'Unmet')
-  return text('待核实', 'Needs verification')
-}
+import {
+  type ConfirmedChecklist,
+  type EditableReviewItem,
+  availableGenerationModelId,
+  chapterGoalStatusLabel,
+  confirmationSourceReviewId,
+  editableItemsFromReview,
+  isReviewId,
+  matchesReviewSource,
+  normalizeSeverity,
+  parseReport,
+} from './review-report-shared'
+import { SEVERITY_META, SeverityIcon, severityCopy } from './ReviewSeverityBadge'
+import { ConfirmedRevisionDialog } from './ConfirmedRevisionDialog'
 
 interface ReviewReportProps {
   /** 原始审稿报告文本（JSON 或旧版 markdown） */
@@ -91,215 +65,6 @@ interface ReviewReportProps {
   reviewId?: number
   /** 审稿与草稿所属项目。 */
   projectKey: string
-}
-
-interface EditableReviewItem extends HumanConfirmedReviewItem {
-  id: string
-  severity: ReviewIssue['severity']
-}
-
-interface ConfirmedChecklist {
-  /** The newly appended confirmation row, which is the revision's reviewSourceId. */
-  reviewSourceId: number
-  content: string
-  snapshot: HumanConfirmedReviewSnapshot
-}
-
-// ===== 解析器 =====
-
-/** 标准化 severity 值 */
-function normalizeSeverity(raw: string): ReviewIssue['severity'] {
-  const s = typeof raw === 'string' ? raw.toLowerCase().trim() : ''
-  if (s === 'error' || s === 'critical' || s === 'severe') return 'error'
-  if (s === 'warning' || s === 'warn' || s === 'minor') return 'warning'
-  if (s === 'pass') return 'pass'
-  return 'unknown'
-}
-
-/** 尝试从文本中提取 JSON（兼容 ```json 包裹） */
-function extractJSON(text: string): string | null {
-  // 先尝试直接解析
-  const trimmed = text.trim()
-  if (trimmed.startsWith('{')) return trimmed
-
-  // 尝试从 ```json ... ``` 中提取
-  const codeBlockMatch = trimmed.match(/```(?:json)?\s*\n?([\s\S]*?)```/)
-  if (codeBlockMatch) return codeBlockMatch[1].trim()
-
-  // 尝试找第一个 { 和最后一个 }
-  const firstBrace = trimmed.indexOf('{')
-  const lastBrace = trimmed.lastIndexOf('}')
-  if (firstBrace !== -1 && lastBrace > firstBrace) {
-    return trimmed.slice(firstBrace, lastBrace + 1)
-  }
-
-  return null
-}
-
-/** 解析审稿报告（标准结构化 JSON 格式） */
-function parseReport(text: string, fallbackCategory: string): { issues: ReviewIssue[]; summary: string; goalReview?: ChapterGoalReview } {
-  const jsonStr = extractJSON(text)
-  if (jsonStr) {
-    try {
-      const data = JSON.parse(jsonStr) as ReviewJSON
-      if (data.items && Array.isArray(data.items)) {
-        const issues: ReviewIssue[] = data.items.map(item => ({
-          category: item.category || fallbackCategory,
-          severity: normalizeSeverity(item.severity),
-          goalId: item.goalId,
-          description: item.description || '',
-          quote: item.quote || undefined,
-          stableFactKey: item.stableFactKey || undefined,
-          sourceChapter: Number.isSafeInteger(item.sourceChapter) && Number(item.sourceChapter) > 0
-            ? item.sourceChapter
-            : undefined,
-        }))
-        return { issues, summary: data.summary || '', goalReview: parseChapterGoalReview(data.goalReview) ?? undefined }
-      }
-    } catch {
-      // JSON 解析失败
-    }
-  }
-
-  return { issues: [], summary: text.trim() }
-}
-
-// ===== 视觉配置 =====
-
-const SEVERITY_META: Record<ReviewIssue['severity'], {
-  colorClass: string
-  bgClass: string
-  borderClass: string
-}> = {
-  unknown: {
-    colorClass: 'text-[var(--color-text-muted)]',
-    bgClass: 'bg-[var(--color-bg-elevated)]',
-    borderClass: 'border-[var(--color-border)]',
-  },
-  error: {
-    colorClass: 'text-[var(--color-error-text)]',
-    bgClass: 'bg-red-500/10',
-    borderClass: 'border-red-500/30',
-  },
-  warning: {
-    colorClass: 'text-[var(--color-warning-text)]',
-    bgClass: 'bg-yellow-500/10',
-    borderClass: 'border-yellow-500/30',
-  },
-  pass: {
-    colorClass: 'text-[var(--color-success-text)]',
-    bgClass: 'bg-green-500/10',
-    borderClass: 'border-green-500/30',
-  },
-}
-
-function severityCopy(
-  severity: ReviewIssue['severity'],
-  text: (zhCNText: string, enUSText: string) => string,
-) {
-  switch (severity) {
-    case 'unknown':
-      return {
-        label: text('待核实', 'Needs verification'),
-        actionLabel: text('证据不足，不代表通过；默认不修稿', 'Insufficient evidence; not passed or included by default'),
-        countLabel: text('待核实', 'unverified'),
-      }
-    case 'error':
-      return {
-        label: text('严重问题', 'Critical issue'),
-        actionLabel: text('强烈建议修复', 'Strongly recommended to fix'),
-        countLabel: text('严重', 'critical'),
-      }
-    case 'warning':
-      return {
-        label: text('改进建议', 'Improvement'),
-        actionLabel: text('建议酌情修复', 'Consider fixing'),
-        countLabel: text('建议', 'suggestions'),
-      }
-    default:
-      return {
-        label: text('检查通过', 'Passed'),
-        actionLabel: text('无需处理', 'No action needed'),
-        countLabel: text('通过', 'passed'),
-      }
-  }
-}
-
-function SeverityIcon({ severity }: { severity: ReviewIssue['severity'] }) {
-  if (severity === 'unknown') return <HelpCircle size={14} className="flex-shrink-0 text-[var(--color-text-muted)]" />
-  if (severity === 'error') return <AlertTriangle size={14} className="flex-shrink-0" style={{ color: 'var(--color-error)' }} />
-  if (severity === 'warning') return <AlertTriangle size={14} className="flex-shrink-0" style={{ color: 'var(--color-warning)' }} />
-  return <CheckCircle size={14} className="flex-shrink-0" style={{ color: 'var(--color-success)' }} />
-}
-
-function isGenerationModel(model: ModelProfile): boolean {
-  return Array.isArray(model?.purposes)
-    ? model.purposes.includes('generation')
-    : true
-}
-
-function availableGenerationModelId(
-  models: ModelProfile[],
-  modelId: string | null | undefined,
-): string | null {
-  return modelId && models.some(model => model.id === modelId && isGenerationModel(model))
-    ? modelId
-    : null
-}
-
-function preferredGenerationModelId(models: ModelProfile[], defaultModelId: string | null): string | null {
-  return availableGenerationModelId(models, defaultModelId)
-    ?? models.find(isGenerationModel)?.id
-    ?? null
-}
-
-function isReviewId(value: number | undefined): value is number {
-  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0
-}
-
-function editableItemsFromReview(
-  issues: ReviewIssue[],
-  snapshot: HumanConfirmedReviewSnapshot | null,
-): EditableReviewItem[] {
-  if (snapshot) {
-    return snapshot.items.map((item, index) => ({
-      ...item,
-      id: item.origin + '-' + (index + 1),
-      severity: normalizeSeverity(item.severity),
-    }))
-  }
-
-  return issues.map((issue, index) => ({
-    id: 'ai-' + (index + 1),
-    category: issue.category,
-    severity: issue.severity,
-    description: issue.description,
-    ...(issue.quote ? { quote: issue.quote } : {}),
-    ...(issue.stableFactKey ? { stableFactKey: issue.stableFactKey } : {}),
-    ...(issue.sourceChapter ? { sourceChapter: issue.sourceChapter } : {}),
-    ...(issue.goalId ? { goalId: issue.goalId } : {}),
-    decision: !issue.goalId && (issue.severity === 'error' || issue.severity === 'warning') ? 'apply' : 'ignore',
-    origin: 'ai',
-  }))
-}
-
-function confirmationSourceReviewId(
-  snapshot: HumanConfirmedReviewSnapshot | null,
-  reviewId: number | undefined,
-): number | undefined {
-  return snapshot?.sourceReviewId ?? reviewId
-}
-
-function matchesReviewSource(
-  source: ExpectedDraftSource,
-  draft: { id: number; chapterNumber: number; version: number; status: string },
-  content: string,
-): boolean {
-  return source.id === draft.id
-    && source.chapterNumber === draft.chapterNumber
-    && source.version === draft.version
-    && source.status === draft.status
-    && source.content === content
 }
 
 /** 审稿报告查看器 */
@@ -1112,149 +877,3 @@ function ReviewReportSession({
   )
 }
 
-interface ConfirmedRevisionDialogProps {
-  snapshot: HumanConfirmedReviewSnapshot
-  writingLanguage: WritingLanguage
-  onClose: () => void
-  onStart: (generationModelId: string) => Promise<string | null>
-}
-
-/**
- * Mounted only while open so every revision gets a fresh local snapshot of the
- * global default model. The chooser never writes to the global default.
- */
-function ConfirmedRevisionDialog({ snapshot, writingLanguage, onClose, onStart }: ConfirmedRevisionDialogProps) {
-  const text = useLocaleStore(s => s.text)
-  const models = useLLMStore(s => s.models)
-  const defaultModelId = useLLMStore(s => s.defaultModelId)
-  const reviewModelId = useLLMStore(s => s.resolveTaskModelId('review'))
-  const fallbackGenerationModelId = reviewModelId ?? preferredGenerationModelId(models, defaultModelId)
-  const [generationModelId, setGenerationModelId] = useState<string | null>(() => fallbackGenerationModelId)
-  const [starting, setStarting] = useState(false)
-  const [startError, setStartError] = useState<string | null>(null)
-  const generationModels = models.filter(isGenerationModel)
-  const selectedGenerationModelId = generationModelId ?? fallbackGenerationModelId
-  const selectedGenerationModel = generationModels.find(model => model.id === selectedGenerationModelId)
-  const modelSelectionError = generationModels.length === 0
-    ? text(
-      '没有已配置且可用于文本生成的模型。请在设置中添加或启用一项生成模型。',
-      'No configured model can generate text. Add or enable a generation model in Settings.',
-    )
-    : !selectedGenerationModel
-      ? text(
-        '所选修稿模型已不可用。请选择一项可用于文本生成的模型后再试。',
-        'The selected revision model is no longer available. Select a compatible generation model and try again.',
-      )
-      : null
-  const confirmedBrief = renderHumanConfirmedReviewBrief(snapshot, writingLanguage)
-
-  const start = async () => {
-    if (modelSelectionError || !selectedGenerationModelId) {
-      setStartError(modelSelectionError ?? text(
-        '请选择一项可用于文本生成的模型。',
-        'Select a compatible generation model before starting.',
-      ))
-      return
-    }
-
-    const frozenGenerationModelId = availableGenerationModelId(
-      useLLMStore.getState().models,
-      selectedGenerationModelId,
-    )
-    if (!frozenGenerationModelId) {
-      setStartError(text(
-        '所选修稿模型已不可用。请选择一项可用于文本生成的模型后再试。',
-        'The selected revision model is no longer available. Select a compatible generation model and try again.',
-      ))
-      return
-    }
-
-    setStarting(true)
-    try {
-      const error = await onStart(frozenGenerationModelId)
-      if (error) {
-        setStartError(error)
-        return
-      }
-      onClose()
-    } catch (error) {
-      setStartError(error instanceof Error
-        ? error.message
-        : text('启动审稿修稿时发生错误。', 'An error occurred while starting the review-driven revision.'))
-    } finally {
-      setStarting(false)
-    }
-  }
-
-  return (
-    <Dialog open onOpenChange={(open) => {
-      if (!open && !starting) onClose()
-    }}>
-      <DialogContent className="max-w-[520px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Sparkles size={15} className="text-[var(--color-accent)]" />
-            {text('按确认意见修稿', 'Revise from confirmed checklist')}
-          </DialogTitle>
-          <DialogDescription>
-            {text(
-              '仅将已确认纳入的审稿项和作者指导传给修稿流程；已忽略项与原始 AI 报告不会成为模型指令。',
-              'Only confirmed review items and author guidance are sent to revision. Ignored items and the raw AI report are not model instructions.',
-            )}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="px-5 py-2 space-y-3">
-          <div>
-            <Label htmlFor="review-revision-model">
-              {text('本次修稿模型', 'Model for this revision')}
-            </Label>
-            <NativeSelect
-              id="review-revision-model"
-              value={selectedGenerationModelId ?? ''}
-              onChange={(event) => {
-                setGenerationModelId(event.target.value || null)
-                setStartError(null)
-              }}
-              disabled={generationModels.length === 0 || starting}
-            >
-              <option value="" disabled>{text('请选择可用生成模型', 'Select a generation model')}</option>
-              {generationModels.map(model => (
-                <option key={model.id} value={model.id}>{model.name || model.modelName}</option>
-              ))}
-            </NativeSelect>
-            <p className="mt-1 text-[0.7rem] text-[var(--color-text-muted)]">
-              {text('仅用于本次修稿，不会更改默认模型。', 'Used for this revision only; it does not change the default model.')}
-            </p>
-            {modelSelectionError && (
-              <p role="alert" className="mt-1 text-xs text-[var(--color-error-text)]">
-                {modelSelectionError}
-              </p>
-            )}
-          </div>
-          <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-3">
-            <div className="mb-1 text-xs font-medium text-[var(--color-text)]">
-              {text('将传给修稿流程的已确认意见', 'Confirmed guidance sent to revision')}
-            </div>
-            <pre className="max-h-40 overflow-y-auto whitespace-pre-wrap font-sans text-xs leading-5 text-[var(--color-text-secondary)]">
-              {confirmedBrief}
-            </pre>
-          </div>
-          {startError && (
-            <p role="alert" className="text-xs text-[var(--color-error-text)]">
-              {startError}
-            </p>
-          )}
-        </div>
-        <DialogFooter>
-          <Button variant="ghost" onClick={onClose} disabled={starting}>
-            {text('取消', 'Cancel')}
-          </Button>
-          <Button variant="ai" onClick={start} disabled={starting || Boolean(modelSelectionError)}>
-            <Sparkles size={13} />
-            {text('开始修稿', 'Start revision')}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}

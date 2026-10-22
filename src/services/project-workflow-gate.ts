@@ -1,4 +1,4 @@
-import { confirm } from '../components/ui/Confirm'
+import { confirm } from '../shared/dialog-port'
 import { sameProjectPathKey } from '../shared/project-session-context'
 import { useLocaleStore } from '../stores/locale-store'
 

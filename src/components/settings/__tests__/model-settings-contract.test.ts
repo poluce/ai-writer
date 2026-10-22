@@ -6,9 +6,21 @@ function source(file: string): string {
   return readFileSync(resolve(process.cwd(), file), 'utf8')
 }
 
+/** 模型设置界面已按内聚拆分为同目录模块；契约断言覆盖全部拆分文件。 */
+function settingsSurface(): string {
+  return [
+    'src/components/settings/GenerationModelSettings.tsx',
+    'src/components/settings/GenerationModelForm.tsx',
+    'src/components/settings/GenerationModelChannelCard.tsx',
+    'src/components/settings/GenerationModelFetchModal.tsx',
+    'src/components/settings/GenerationModelTestStatus.tsx',
+    'src/components/settings/generation-model-settings-shared.ts',
+  ].map(source).join('\n')
+}
+
 describe('model settings contract', () => {
   it('keeps the user-facing model field vocabulary and provider options in the settings surface', () => {
-    const settingsModal = source('src/components/settings/GenerationModelSettings.tsx')
+    const settingsModal = settingsSurface()
 
     for (const field of [
       ['模型列表', 'Models'],
@@ -29,7 +41,7 @@ describe('model settings contract', () => {
   })
 
   it('creates new embedding profiles from the SiliconFlow preset and opens only fixed provider resources through IPC', () => {
-    const settingsModal = source('src/components/settings/GenerationModelSettings.tsx')
+    const settingsModal = settingsSurface()
     const resourceController = source('electron/controllers/model-provider-resource-controller.ts')
 
     expect(settingsModal).toContain('createModelProfileDraft')
@@ -45,7 +57,7 @@ describe('model settings contract', () => {
   })
 
   it('exposes test connection button and per-model connectivity status indicators in the model list', () => {
-    const settingsModal = source('src/components/settings/GenerationModelSettings.tsx')
+    const settingsModal = settingsSurface()
 
     expect(settingsModal).toContain("busyActionLabel(testing, text, '测试中...', 'Testing...', '测试连接', 'Test connection')")
     expect(settingsModal).toContain("data-test-status={testInfo.status}")

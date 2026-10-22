@@ -16,10 +16,11 @@ vi.mock('../../services/ipc-client', () => ({
   },
 }))
 
-vi.mock('../../components/ui/AlertDialog', () => ({ alertError: vi.fn() }))
-
 import { useLLMStore } from '../llm-store'
 import { useProjectStore } from '../project-store'
+import { setDialogPort } from '../../shared/dialog-port'
+
+setDialogPort({ alertError: vi.fn() })
 
 describe('LLM stream completion propagation', () => {
   beforeEach(() => {

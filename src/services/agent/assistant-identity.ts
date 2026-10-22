@@ -3,7 +3,7 @@ import {
   composePromptSystemRole,
   renderPrompt,
   type PromptTemplate,
-} from '../prompt-templates'
+} from '../prompt-templates-core'
 
 export const ASSISTANT_WRITING_IDENTITY_KEY = 'assistant_writing_identity'
 export const ASSISTANT_ARCHITECT_IDENTITY_KEY = 'assistant_architect_identity'

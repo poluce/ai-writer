@@ -8,7 +8,7 @@ import { projectSessionContextFromProject } from '../../shared/project-session-c
 import { ipc } from '../ipc-client'
 import { requireIpcSuccess } from '../ipc-result'
 import { useEditorStore } from '../../stores/editor-store'
-import { useProjectStore } from '../../stores/project-store'
+import { readActiveProject } from '../active-project'
 import { useLocaleStore } from '../../stores/locale-store'
 
 export interface ReplaceDraftExcerptRequest {
@@ -33,7 +33,7 @@ export async function applyDraftExcerptReplace(
   request: ReplaceDraftExcerptRequest,
 ): Promise<RendererActionResult> {
   const text = useLocaleStore.getState().text
-  const project = useProjectStore.getState().currentProject
+  const project = readActiveProject()
   const session = projectSessionContextFromProject(project)
   if (!project || !session) {
     return { ok: false, error: text('未打开项目，无法修改草稿。', 'No project is open, so the draft was not changed.') }

@@ -26,24 +26,17 @@ import { guardDirectoryGeneration } from '../../services/workflow-guards'
 import DirectoryConfigDialog from '../dialogs/DirectoryConfigDialog'
 import BatchChapterCreationDialog from '../dialogs/BatchChapterCreationDialog'
 import { Button } from '../ui/Button'
-import { Input } from '../ui/Input'
-import { Textarea } from '../ui/Textarea'
-import { Label } from '../ui/Label'
-import { NativeSelect } from '../ui/NativeSelect'
 import { cn } from '../../lib/utils'
 import { toast } from '../ui/Toast'
 import { confirm } from '../ui/Confirm'
 import { globalEventBus } from '../../shared/event-bus'
 import { shouldRefreshBlueprints } from './blueprint-refresh'
 import { useLocaleStore } from '../../stores/locale-store'
-import { useEditorDraftLedgerStore } from '../../stores/editor-draft-ledger-store'
 import { registerEditorExitSaveHandler } from '../../stores/editor-store'
 import { composeEditorDraftTabWriter } from '../../stores/project-editor-draft-ledger'
 import {
-  CHAPTER_CARD_TAB_ID,
   captureBlueprintSnapshots,
   getChapterCardProjectDraft,
-  parseChapterCardDraftLedger,
   persistChapterCardDraftLedger,
   refreshChapterCardDraftFromRemote,
   reconcileClearedBlueprintSnapshots,
@@ -51,126 +44,28 @@ import {
   reconcileSavedBlueprintSnapshots,
   updateEditableChapterBlueprintField,
   updateChapterCardProjectDraft,
-  type ChapterCardDraftLedger,
   type DraftState,
   type EditableChapterBlueprintField,
-} from './chapter-card-draft-ledger'
+} from '../../stores/chapter-card-draft-ledger'
 import { LatestRequestGate } from './latest-request-gate'
 import {
-  AuthoritativeChapterSequenceError,
   readAuthoritativeNextChapter,
 } from '../../services/authoritative-chapter-sequence'
-
-const ROLES = ['建置', '铺垫', '发展', '冲突', '高潮', '转折', '收尾']
-
-const ROLE_EN: Record<string, string> = {
-  建置: 'Setup',
-  铺垫: 'Foreshadowing',
-  发展: 'Development',
-  冲突: 'Conflict',
-  高潮: 'Climax',
-  转折: 'Turning point',
-  收尾: 'Resolution',
-}
-
-const ROLE_COLORS: Record<string, string> = {
-  高潮: 'bg-red-500/20 text-[var(--color-error-text)]',
-  冲突: 'bg-orange-500/20 text-[var(--color-warning-text)]',
-  转折: 'bg-purple-500/20 text-[var(--color-category-review-text)]',
-  建置: 'bg-blue-500/20 text-[var(--color-category-progress-text)]',
-  收尾: 'bg-green-500/20 text-[var(--color-success-text)]',
-}
-
-function readDraftLedgerFromFixedTab(): ChapterCardDraftLedger {
-  return parseChapterCardDraftLedger(
-    useEditorDraftLedgerStore.getState().draftLedgers[CHAPTER_CARD_TAB_ID],
-  )
-}
-
-function currentProjectSessionForPath(projectKey: string): ProjectSessionContext | null {
-  const projectSession = projectSessionContextFromProject(
-    useProjectStore.getState().currentProject,
-  )
-  if (!projectSession || !sameProjectPathKey(projectSession.projectPath, projectKey)) {
-    return null
-  }
-  return projectSession
-}
-
-function isCurrentProjectSession(projectSession: ProjectSessionContext): boolean {
-  return sameProjectSessionContext(
-    projectSession,
-    projectSessionContextFromProject(useProjectStore.getState().currentProject),
-  )
-}
-
-function matchingDataProjectSession(
-  projectKey: string,
-  dataProjectSession: ProjectSessionContext | null,
-): ProjectSessionContext | null {
-  const projectSession = currentProjectSessionForPath(projectKey)
-  if (!projectSession || !sameProjectSessionContext(dataProjectSession, projectSession)) {
-    return null
-  }
-  return projectSession
-}
-
-function isLoadedCurrentSession(
-  projectSession: ProjectSessionContext,
-  dataProjectSession: ProjectSessionContext | null,
-): boolean {
-  return isCurrentProjectSession(projectSession)
-    && sameProjectSessionContext(dataProjectSession, projectSession)
-}
-
-function isRenderableProjectSession(
-  projectSession: ProjectSessionContext | null,
-  projectMatches: boolean,
-  renderedProjectId: string | null,
-  renderedProjectPath: string | null,
-): projectSession is ProjectSessionContext {
-  return projectMatches
-    && projectSession !== null
-    && projectSession.projectId === renderedProjectId
-    && sameProjectPathKey(projectSession.projectPath, renderedProjectPath)
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
-}
-
-function recoveryChapterFromSequenceError(error: unknown): number | null {
-  if (!(error instanceof AuthoritativeChapterSequenceError)) return null
-  const gap = error.sequence.firstGapChapterNumber
-  if (gap === undefined || error.sequence.lastChapterNumber <= gap) return null
-  return gap
-}
-
-function createEmptyBlueprint(chapterNumber: number): ChapterBlueprint {
-  return {
-    chapterNumber,
-    title: '',
-    role: '发展',
-    purpose: '',
-    keyEvents: '',
-    characters: [],
-    suspenseHook: '',
-    userGuidance: '',
-    notes: '',
-    notesUpdatedAt: '',
-  }
-}
-
-function emitBlueprintResourceRefresh(
-  projectKey: string,
-  projectSession: ProjectSessionContext,
-): void {
-  globalEventBus.emit('REFRESH_RESOURCE', {
-    resources: ['blueprints', 'fileTree'],
-    projectPath: projectKey,
-    projectSession,
-  })
-}
+import {
+  ROLE_COLORS,
+  ROLE_EN,
+  createEmptyBlueprint,
+  currentProjectSessionForPath,
+  emitBlueprintResourceRefresh,
+  errorMessage,
+  isCurrentProjectSession,
+  isLoadedCurrentSession,
+  isRenderableProjectSession,
+  matchingDataProjectSession,
+  readDraftLedgerFromFixedTab,
+  recoveryChapterFromSequenceError,
+} from './chapter-card-shared'
+import { ChapterCardForm } from './ChapterCardForm'
 
 interface ChapterCardEditorProps {
   projectKey: string
@@ -927,177 +822,15 @@ export default function ChapterCardEditor({
 
         {/* 右侧编辑区 */}
         <div className="flex-1 overflow-y-auto">
-          {selected ? (
-            <div className="max-w-2xl mx-auto px-5 py-4">
-              {/* 编辑区头部 */}
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-bold" style={{ color: 'var(--color-text)' }}>
-                  {text(
-                    `第 ${selected.chapterNumber} 章：${selected.title || '未命名'}`,
-                    `Chapter ${selected.chapterNumber}: ${selected.title || 'Untitled'}`,
-                  )}
-                </h3>
-                <div className="flex items-center gap-1.5">
-                  {/* 仅下一章允许写作 */}
-                  {nextWritableBlueprint && selected.chapterNumber === nextWritableBlueprint.chapterNumber && (
-                    <Button
-                      variant="ai"
-                      size="sm"
-                      onClick={() => handleWriteChapter(selected)}
-                      title={text('以当前蓝图信息生成草稿', 'Create a draft from this blueprint')}
-                    >
-                      <PenLine size={12} /> {text('写作此章', 'Write this chapter')}
-                    </Button>
-                  )}
-                  <Button variant="destructive" size="sm" onClick={handleDeleteChapter} title={text('删除此章', 'Delete this chapter')}>
-                    <Trash2 size={12} />
-                    {text('删除此章', 'Delete chapter')}
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={handleSaveOne} disabled={saving}>
-                    <Save size={12} /> {saving ? text('保存中...', 'Saving...') : text('保存', 'Save')}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                {/* 基本信息 */}
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <Label>{text('章节号', 'Chapter number')}</Label>
-                    <Input
-                      type="number"
-                      value={selected.chapterNumber}
-                      readOnly
-                      aria-readonly="true"
-                      title={text('章节号是现有内容的稳定标识，不能在普通编辑中修改', 'The chapter number is a stable identifier and cannot be changed in ordinary editing.')}
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <Label>{text('章节标题', 'Chapter title')}</Label>
-                    <Input
-                      value={selected.title}
-                      onChange={e => updateField('title', e.target.value)}
-                      placeholder={text('引人入胜的章节标题', 'A compelling chapter title')}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label>{text('章节定位', 'Chapter role')}</Label>
-                    <NativeSelect value={selected.role} onChange={e => updateField('role', e.target.value)}>
-                      {ROLES.map(r => <option key={r} value={r}>{roleLabel(r)}</option>)}
-                    </NativeSelect>
-                  </div>
-                  <div>
-                    <Label>{text('出场关键人（逗号分隔）', 'Key characters (comma-separated)')}</Label>
-                    <Input
-                      value={selected.characters.join('、')}
-                      onChange={e => updateField('characters', e.target.value.split(/[,，、\s]+/).filter(Boolean))}
-                      placeholder={text('如：主角、反派A', 'For example: protagonist, antagonist A')}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label>{text('主角小目标（本章最想解决的事）', 'Protagonist goal (the main thing to resolve in this chapter)')}</Label>
-                  <Textarea
-                    value={selected.purpose}
-                    onChange={e => updateField('purpose', e.target.value)}
-                    placeholder={text('本章主角最迫切要解决的一件事...', 'The most urgent thing the protagonist needs to resolve in this chapter...')}
-                    rows={2}
-                  />
-                </div>
-
-                <div>
-                  <Label>{text('实质冲突与转折', 'Core conflict and turning point')}</Label>
-                  <Textarea
-                    value={selected.keyEvents}
-                    onChange={e => updateField('keyEvents', e.target.value)}
-                    placeholder={text('主角做了什么，遭遇了什么反转，金手指怎么用的...', 'What the protagonist does, the reversal they encounter, and how special abilities are used...')}
-                    rows={4}
-                  />
-                </div>
-
-                <div>
-                  <Label>{text('末尾悬念钩子', 'Ending suspense hook')}</Label>
-                  <Textarea
-                    value={selected.suspenseHook}
-                    onChange={e => updateField('suspenseHook', e.target.value)}
-                    placeholder={text('一句话说明结尾留了什么悬念...', 'In one sentence, describe the suspense left at the end...')}
-                    rows={2}
-                  />
-                </div>
-
-                {/* 作者微操指导 — 特别标注，写稿时注入为最高优先级 */}
-                <div
-                  className="p-3 rounded-lg border"
-                  style={{
-                    borderColor: 'var(--color-accent)',
-                    backgroundColor: 'rgba(var(--accent-rgb, 99 102 241), 0.06)',
-                  }}
-                >
-                  <Label className="flex items-center gap-1.5">
-                    <span>{text('作者微操指导', 'Author guidance')}</span>
-                    <span
-                      className="text-[0.7rem] font-normal"
-                      style={{ color: 'var(--color-text-muted)' }}
-                    >
-                      {text('（写稿时会作为最高优先级注入 AI — 可覆盖蓝图）', '(Used as the highest-priority instruction during drafting; it can override the blueprint.)')}
-                    </span>
-                  </Label>
-                  <Textarea
-                    value={selected.userGuidance}
-                    onChange={e => updateField('userGuidance', e.target.value)}
-                    placeholder={text(
-                      '我想在这章加入一个意外的背叛...\n让反派在这章露出破绽...\n（不填则完全按蓝图走）',
-                      'Add an unexpected betrayal in this chapter...\nLet the antagonist reveal a weakness...\n(Leave blank to follow the blueprint exactly.)',
-                    )}
-                    rows={3}
-                    style={{ marginTop: 6 }}
-                  />
-                </div>
-                {/* 章节要点（定稿后自动生成，也可手动编辑） */}
-                <div
-                  className="p-3 rounded-lg border"
-                  style={{
-                    borderColor: 'var(--color-border)',
-                    backgroundColor: 'rgba(34,197,94,0.04)',
-                  }}
-                >
-                  <Label className="flex items-center gap-1.5">
-                    <span>{text('章节要点', 'Chapter notes')}</span>
-                    <span
-                      className="text-[0.7rem] font-normal"
-                      style={{ color: 'var(--color-text-muted)' }}
-                    >
-                      {selected.notesUpdatedAt
-                        ? text(
-                          `（定稿后自动生成 — ${new Date(selected.notesUpdatedAt).toLocaleDateString(locale)}）`,
-                          `(Generated after finalization — ${new Date(selected.notesUpdatedAt).toLocaleDateString(locale)})`,
-                        )
-                        : text('（定稿后自动生成，也可手动填写）', '(Generated after finalization, or enter it manually.)')
-                      }
-                    </span>
-                  </Label>
-                  <Textarea
-                    value={selected.notes || ''}
-                    onChange={e => updateField('notes', e.target.value)}
-                    placeholder={text(
-                      '定稿后 AI 会自动填充本章要点（事件进展/角色变化/伏笔埋点），也可以提前手动输入给 AI 作参考',
-                      'After finalization, AI fills these notes with plot progress, character changes, and foreshadowing. You can also enter them beforehand as AI reference.',
-                    )}
-                    rows={4}
-                  />
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full gap-3 opacity-30">
-              <BookOpen size={36} />
-              <span className="text-sm">{text('在左侧选择一章开始编辑', 'Choose a chapter on the left to start editing')}</span>
-            </div>
-          )}
+          <ChapterCardForm
+            selected={selected ?? null}
+            nextWritableBlueprint={nextWritableBlueprint}
+            onUpdateField={updateField}
+            onWriteChapter={handleWriteChapter}
+            onDeleteChapter={handleDeleteChapter}
+            onSaveOne={handleSaveOne}
+            saving={saving}
+          />
         </div>
       </div>
     </div>

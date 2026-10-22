@@ -2,7 +2,7 @@ import type { PromptLoadDiagnostic, ProjectSessionContext } from '../shared/ipc-
 import { sameProjectSessionContext } from '../shared/project-session-context'
 import { ipc } from './ipc-client'
 import { requireIpcSuccess } from './ipc-result'
-import type { PromptTemplate } from './prompt-templates'
+import type { PromptTemplate } from './prompt-templates-core'
 import { resolveWritingLanguage, type WritingLanguage } from '../shared/writing-language'
 
 export type PromptSource = 'builtin' | 'global' | 'project'

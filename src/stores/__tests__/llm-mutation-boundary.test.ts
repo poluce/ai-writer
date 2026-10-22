@@ -12,11 +12,10 @@ vi.mock('../../services/ipc-client', () => ({
   },
 }))
 
-vi.mock('../../components/ui/AlertDialog', () => ({
-  alertError: mocks.alertError,
-}))
-
 import { useLLMStore } from '../llm-store'
+import { setDialogPort } from '../../shared/dialog-port'
+
+setDialogPort({ alertError: mocks.alertError })
 
 beforeEach(() => {
   vi.clearAllMocks()

@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { ProjectData } from '../../shared/ipc-channels'
+import { setDialogPort } from '../../shared/dialog-port'
 import { useEditorDraftLedgerStore } from '../editor-draft-ledger-store'
 import { useEditorStore } from '../editor-store'
 import { useLocaleStore } from '../locale-store'
-import { useProjectStore } from '../project-store'
+import { registerProjectLifecycleHooks, useProjectStore } from '../project-store'
 import { useWorkflowStore } from '../workflow-store'
 
 const mocks = vi.hoisted(() => ({
@@ -30,20 +31,15 @@ vi.mock('../../services/ipc-client', () => ({
   },
 }))
 
-vi.mock('../../components/ui/AlertDialog', () => ({
-  alertError: mocks.alertError,
-}))
+setDialogPort({ alertError: mocks.alertError, confirm: mocks.confirm })
 
-vi.mock('../../components/ui/Confirm', () => ({
-  confirm: mocks.confirm,
-}))
-
-vi.mock('../../services/project-service', () => ({
-  disableProjectBindingsPreservingDrafts: mocks.disableProjectBindingsPreservingDrafts,
+// 生命周期钩子通过 Seam 注册：project-store 不再动态导入 project-service。
+registerProjectLifecycleHooks({
   onProjectOpening: mocks.onProjectOpening,
   onProjectOpened: mocks.onProjectOpened,
   onProjectClosed: mocks.onProjectClosed,
-}))
+  disableProjectBindingsPreservingDrafts: mocks.disableProjectBindingsPreservingDrafts,
+})
 
 function project(key: 'A' | 'B' | 'C'): ProjectData {
   return {

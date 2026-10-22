@@ -1,10 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { ProjectData } from '../../shared/ipc-channels'
+import { setDialogPort } from '../../shared/dialog-port'
 import { useCharacterStore, type CharacterCard } from '../character-store'
 import { useEditorDraftLedgerStore } from '../editor-draft-ledger-store'
 import { useEditorStore } from '../editor-store'
-import { useProjectStore } from '../project-store'
+import { registerProjectLifecycleHooks, useProjectStore } from '../project-store'
+import {
+  disableProjectBindingsPreservingDrafts,
+  onProjectClosed,
+  onProjectOpening,
+  onProjectOpened,
+} from '../../services/project-service'
 import {
   CHARACTER_DRAFT_TAB,
   CONFIG_DRAFT_TAB,
@@ -21,7 +28,15 @@ const { alertError, invoke } = vi.hoisted(() => ({
   invoke: vi.fn(),
 }))
 
-vi.mock('../../components/ui/AlertDialog', () => ({ alertError }))
+setDialogPort({ alertError })
+
+// 与生产组合根一致：注册真实生命周期钩子（旧路径由 project-store 动态装配）。
+registerProjectLifecycleHooks({
+  onProjectOpening,
+  onProjectOpened,
+  onProjectClosed,
+  disableProjectBindingsPreservingDrafts,
+})
 
 vi.mock('../../services/ipc-client', () => ({
   ipc: {
