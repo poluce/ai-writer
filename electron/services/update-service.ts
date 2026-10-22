@@ -185,7 +185,8 @@ export function isHigherStableVersion(candidate: string, current: string): boole
 }
 
 /**
- * 更新服务的最小公共行为：在已打包的应用中，成功自动检查每天最多一次；
+ * 更新服务的最小公共行为：已打包应用中，自动检查（启动 + 运行期复查）共用
+ * 「距上次成功检查至少 1 小时」的最小间隔，失败按阶梯退避；
  * 用户手动检查始终可以绕过该频率限制。
  */
 export class UpdateService {
@@ -306,9 +307,9 @@ export class UpdateService {
   /**
    * 运行期自动复查：标准桌面应用的更新规则。
    *
-   * 启动检查受「每天一次」限制，但应用长时间开着时也必须能发现新发布的版本，
-   * 因此主进程会周期性调用本方法：仅当距上次检查超过 `maxAgeMs`（默认 1 小时）
-   * 且不在下载/待安装状态时才真正联网；失败按指数退避，避免反复请求。
+   * 应用长时间开着时也必须能发现新发布的版本，因此主进程会周期性调用本方法：
+   * 仅当距上次成功检查超过 `maxAgeMs`（默认 1 小时）且不在下载/待安装状态时
+   * 才真正联网；失败按指数退避，避免反复请求。
    */
   async refreshWhileRunning(maxAgeMs: number = AUTOMATIC_CHECK_MIN_INTERVAL_MS): Promise<void> {
     if (!this.options.isPackaged) return
