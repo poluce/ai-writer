@@ -75,3 +75,65 @@ describe('startUpdateRuntime', () => {
     expect(reportFailure).toHaveBeenCalledWith('初始化更新服务', expect.any(Error))
   })
 })
+
+describe('startUpdateRuntime periodic refresh', () => {
+  function start(options: {
+    periodicRefreshIntervalMs?: number
+    updateRuntimeEnabled?: boolean
+    updateConfiguration?: 'available' | 'missing'
+  } = {}) {
+    const ticks: Array<() => void> = []
+    const cancel = vi.fn()
+    const refresh = vi.fn(async () => {})
+    const cleanup = startUpdateRuntime({
+      updateRuntimeEnabled: options.updateRuntimeEnabled ?? true,
+      updateConfiguration: options.updateConfiguration ?? 'available',
+      currentVersion: '0.3.0',
+      createBackend,
+      createPreferences,
+      registerController: () => {},
+      reportFailure: () => {},
+      ...(options.periodicRefreshIntervalMs === undefined
+        ? {}
+        : { periodicRefreshIntervalMs: options.periodicRefreshIntervalMs }),
+      scheduleInterval: (run) => {
+        ticks.push(run)
+        return cancel
+      },
+      createService: serviceOptions => {
+        const service = new UpdateService(serviceOptions)
+        vi.spyOn(service, 'refreshWhileRunning').mockImplementation(refresh)
+        return service
+      },
+    })
+    return { cleanup, ticks, cancel, refresh }
+  }
+
+  it('schedules running refresh checks only when an interval is configured', () => {
+    const disabled = start()
+    expect(disabled.ticks).toHaveLength(0)
+
+    const enabled = start({ periodicRefreshIntervalMs: 30 * 60 * 1000 })
+    expect(enabled.ticks).toHaveLength(1)
+  })
+
+  it('invokes the running refresh on each tick and stops on cleanup', async () => {
+    const { cleanup, ticks, cancel, refresh } = start({ periodicRefreshIntervalMs: 1000 })
+
+    ticks[0]?.()
+    await vi.waitFor(() => expect(refresh).toHaveBeenCalledOnce())
+
+    cleanup()
+    expect(cancel).toHaveBeenCalledOnce()
+  })
+
+  it('does not schedule refresh checks when the update runtime is disabled', () => {
+    const disabled = start({ periodicRefreshIntervalMs: 1000, updateRuntimeEnabled: false })
+    expect(disabled.ticks).toHaveLength(0)
+  })
+
+  it('does not schedule refresh checks when the packaged configuration is missing', () => {
+    const missing = start({ periodicRefreshIntervalMs: 1000, updateConfiguration: 'missing' })
+    expect(missing.ticks).toHaveLength(0)
+  })
+})

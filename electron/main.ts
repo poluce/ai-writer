@@ -15,7 +15,7 @@ import {
   isMacUpdateReminderEnabled,
   isWindowsUpdateRuntimeEnabled,
 } from './services/update-runtime'
-import { startUpdateRuntime } from './services/update-startup'
+import { DEFAULT_PERIODIC_REFRESH_INTERVAL_MS, startUpdateRuntime } from './services/update-startup'
 import {
   claimReleaseVectorSmokeInvocation,
   releaseVectorSmokeWasRequested,
@@ -341,6 +341,7 @@ app.whenReady().then(async () => {
       ? createElectronUpdaterBackend
       : createGitHubReleaseUpdateBackend,
     createPreferences: () => new GlobalConfigUpdatePreferencesStore(),
+    periodicRefreshIntervalMs: DEFAULT_PERIODIC_REFRESH_INTERVAL_MS,
     registerController: updateService => {
       registerUpdateController(updateService, { ipc: ipcMain, publish: publishUpdateState })
     },

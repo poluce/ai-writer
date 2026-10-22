@@ -172,6 +172,11 @@ function classifyUpdateFailure(phase: Extract<UpdateErrorPhase, 'check' | 'downl
   return makeUpdateError(code, phase, 'unknown', true, 'UPDATE_OPERATION_FAILED')
 }
 
+/** 运行期自动复查：距上次检查超过该间隔才重新联网。 */
+export const RUNNING_REFRESH_MIN_AGE_MS = 60 * 60 * 1000
+/** 自动检查连续失败后的退避阶梯；成功一次即重置。 */
+export const AUTOMATIC_RETRY_BACKOFF_MS = [15 * 60 * 1000, 60 * 60 * 1000, 6 * 60 * 60 * 1000] as const
+
 /** 预发布版本和非 SemVer 版本不属于可用更新。 */
 export function isHigherStableVersion(candidate: string, current: string): boolean {
   const candidateParts = stableVersionParts(candidate)
@@ -196,6 +201,9 @@ export class UpdateService {
   private reminder?: UpdateReminder
   private downloadedVersion?: string
   private checkedAvailableVersion?: string
+  /** 自动检查失败后的退避截止时间；成功检查会清空。 */
+  private automaticRetryNotBefore?: Date
+  private automaticFailureCount = 0
   private readonly listeners = new Set<(state: UpdateState) => void>()
   private checkQueue: Promise<void> = Promise.resolve()
 
@@ -307,6 +315,48 @@ export class UpdateService {
       lastCheckedAt: now.toISOString(),
     })
     return this.enqueueCheck(() => this.performCheck('manual', now))
+  }
+
+  /**
+   * 运行期自动复查：标准桌面应用的更新规则。
+   *
+   * 启动检查受「每天一次」限制，但应用长时间开着时也必须能发现新发布的版本，
+   * 因此主进程会周期性调用本方法：仅当距上次检查超过 `maxAgeMs`（默认 1 小时）
+   * 且不在下载/待安装状态时才真正联网；失败按指数退避，避免反复请求。
+   */
+  async refreshWhileRunning(maxAgeMs: number = RUNNING_REFRESH_MIN_AGE_MS): Promise<void> {
+    if (!this.options.isPackaged) return
+    if (this.options.updateConfiguration === 'missing') return
+    if (this.downloadedVersion || this.state.status === 'downloading') return
+
+    const now = this.now()
+    if (this.automaticRetryNotBefore && now.getTime() < this.automaticRetryNotBefore.getTime()) return
+
+    const preferences = this.readPreferences()
+    if (!preferences) return
+    if (preferences.lastCheckedAt) {
+      const lastChecked = Date.parse(preferences.lastCheckedAt)
+      if (Number.isFinite(lastChecked) && now.getTime() - lastChecked < maxAgeMs) return
+    }
+
+    await this.enqueueCheck(async () => {
+      const result = await this.performCheck('automatic', now)
+      if (result.success && result.checked) {
+        this.automaticFailureCount = 0
+        this.automaticRetryNotBefore = undefined
+        this.writePreferences({
+          ...(this.readPreferences() ?? preferences),
+          lastCheckedAt: now.toISOString(),
+        })
+      } else if (!result.success) {
+        this.automaticFailureCount += 1
+        const backoff = AUTOMATIC_RETRY_BACKOFF_MS[
+          Math.min(this.automaticFailureCount - 1, AUTOMATIC_RETRY_BACKOFF_MS.length - 1)
+        ]
+        this.automaticRetryNotBefore = new Date(now.getTime() + backoff)
+      }
+      return result
+    })
   }
 
   private enqueueCheck(operation: () => Promise<UpdateCheckResponse>): Promise<UpdateCheckResponse> {

@@ -805,3 +805,98 @@ describe('UpdateService', () => {
     expect(JSON.stringify(result)).not.toContain('download URL')
   })
 })
+
+describe('UpdateService runtime refresh rules', () => {
+  function createService(options: {
+    now?: () => Date
+    preferences?: UpdatePreferences
+    result?: UpdateCheckResult | null
+    updateConfiguration?: 'available' | 'missing'
+  } = {}) {
+    const updater = new FakeUpdater(options.result ?? { updateInfo: { version: '0.2.6' } })
+    const preferences = createPreferencesStore(options.preferences)
+    const service = new UpdateService({
+      updater,
+      currentVersion: '0.2.5',
+      isPackaged: true,
+      updateConfiguration: options.updateConfiguration ?? 'available',
+      preferences,
+      ...(options.now ? { now: options.now } : {}),
+    })
+    return { updater, preferences, service }
+  }
+
+  it('rechecks while running once the last check is older than the minimum age', async () => {
+    const now = new Date('2026-10-22T12:00:00.000Z')
+    const { updater, preferences, service } = createService({
+      now: () => now,
+      preferences: { lastCheckedAt: '2026-10-22T09:00:00.000Z' },
+    })
+
+    await service.refreshWhileRunning()
+
+    expect(updater.checkCalls).toBe(1)
+    expect(service.getState()).toMatchObject({ status: 'available', availableVersion: '0.2.6' })
+    expect(preferences.read().lastCheckedAt).toBe(now.toISOString())
+  })
+
+  it('skips the running recheck while the last check is still fresh', async () => {
+    const now = new Date('2026-10-22T12:00:00.000Z')
+    const { updater, service } = createService({
+      now: () => now,
+      preferences: { lastCheckedAt: '2026-10-22T11:30:00.000Z' },
+    })
+
+    await service.refreshWhileRunning()
+
+    expect(updater.checkCalls).toBe(0)
+  })
+
+  it('never rechecks once the update has been downloaded', async () => {
+    const now = new Date('2026-10-22T12:00:00.000Z')
+    const { updater, service } = createService({
+      now: () => now,
+      preferences: { lastCheckedAt: '2026-10-22T09:00:00.000Z' },
+    })
+    await service.checkManually()
+    await service.downloadUpdate()
+
+    await service.refreshWhileRunning()
+
+    expect(updater.checkCalls).toBe(1)
+    expect(service.getState()).toMatchObject({ status: 'downloaded' })
+  })
+
+  it('backs off after a failed automatic recheck instead of retrying immediately', async () => {
+    let current = new Date('2026-10-22T12:00:00.000Z')
+    const { updater, service } = createService({ now: () => current, preferences: { lastCheckedAt: '2026-10-22T09:00:00.000Z' } })
+    updater.checkError = new Error('offline')
+
+    await service.refreshWhileRunning()
+    expect(updater.checkCalls).toBe(1)
+
+    current = new Date('2026-10-22T12:05:00.000Z')
+    await service.refreshWhileRunning()
+    expect(updater.checkCalls).toBe(1)
+
+    // 退避 15 分钟后允许再试，成功即重置退避。
+    current = new Date('2026-10-22T12:16:00.000Z')
+    updater.checkError = undefined
+    await service.refreshWhileRunning()
+    expect(updater.checkCalls).toBe(2)
+    expect(service.getState()).toMatchObject({ status: 'available' })
+  })
+
+  it('does not recheck when the packaged update configuration is missing', async () => {
+    const now = new Date('2026-10-22T12:00:00.000Z')
+    const { updater, service } = createService({
+      now: () => now,
+      preferences: { lastCheckedAt: '2026-10-22T09:00:00.000Z' },
+      updateConfiguration: 'missing',
+    })
+
+    await service.refreshWhileRunning()
+
+    expect(updater.checkCalls).toBe(0)
+  })
+})

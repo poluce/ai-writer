@@ -28,6 +28,10 @@
   <img src="docs/assets/readme/ui-zh-v085-project-config.png" alt="AI Writer v0.8.5：在本地桌面工作台中配置长篇小说的故事前提、世界观、角色、蓝图与章节" width="100%" />
 </p>
 
+> ## v0.1.3 · 更新检查按标准规则运行
+>
+> 应用长时间运行时每 30 分钟触发一次自动复查（实际联网不超过每小时一次），发现新版本立即提醒；检查失败按 15 分钟 → 1 小时 → 6 小时指数退避；启动检查保持每天最多一次，手动「检查更新」不受限制。
+>
 > ## v0.1.2 · 修复安装版图标缺失
 >
 > 修复安装版标题栏与状态栏应用图标不显示的问题：打包后的渲染进程以 file:// 加载页面，图标地址改用 Vite BASE_URL 拼接，开发态与安装态一致；同时新增回归测试，禁止渲染层以绝对路径引用 public 资源。
@@ -54,7 +58,7 @@
 - 中文长篇工作流串联蓝图、草稿、审稿、修订和定稿。
 - Windows 用户可在应用内收到新版本提醒，一键下载、重启并完成更新。
 
-逐项变更见 [0.1.2 双语更新内容](.release/notes/v0.1.2.md)。正式安装包以本仓库 [GitHub Release](https://github.com/poluce/ai-writer/releases/latest) 为准。
+逐项变更见 [0.1.3 双语更新内容](.release/notes/v0.1.3.md)。正式安装包以本仓库 [GitHub Release](https://github.com/poluce/ai-writer/releases/latest) 为准。
 
 
 
@@ -155,7 +159,7 @@ ai-writer-setup-<版本号>.exe
 
 ### macOS
 
-0.1.2 暂未发布 macOS 安装包：本发行线先完成 Windows x64 的云端资格构建与发布，macOS 安装包将在后续版本恢复，届时仍按 ARM64 / Intel 分别发布。
+0.1.3 暂未发布 macOS 安装包：本发行线先完成 Windows x64 的云端资格构建与发布，macOS 安装包将在后续版本恢复，届时仍按 ARM64 / Intel 分别发布。
 
 ## 当前限制
 

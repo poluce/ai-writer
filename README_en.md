@@ -28,6 +28,10 @@
   <img src="docs/assets/readme/hero-en-v2.png" alt="AI Writer — a local-first desktop workspace for long-form fiction" width="100%" />
 </p>
 
+> ## v0.1.3 — standard update-check rules
+>
+> While the app keeps running, an automatic recheck fires every 30 minutes with at most one network check per hour, so newly published releases surface immediately. Failed checks back off exponentially (15 minutes → 1 hour → 6 hours). The startup check stays at most once per day, and the manual "Check for updates" action is never rate-limited.
+>
 > ## v0.1.2 — fix missing app icons in installed builds
 >
 > Fixed the title-bar and status-bar app icons in installed builds: the packaged renderer loads pages from file://, so icon URLs now resolve through Vite's BASE_URL and stay correct in both development and packaged runs. A regression guard now forbids absolute public-asset URLs in the renderer.
@@ -54,7 +58,7 @@
 - The Chinese long-form workflow connects blueprints, drafts, reviews, revisions, and final chapters.
 - Windows users receive an in-app reminder for new releases and can download, restart, and finish the update in one flow.
 
-See the [bilingual 0.1.2 notes](.release/notes/v0.1.2.md) for each change. Official installers are published through this repository's [GitHub Releases](https://github.com/poluce/ai-writer/releases/latest).
+See the [bilingual 0.1.3 notes](.release/notes/v0.1.3.md) for each change. Official installers are published through this repository's [GitHub Releases](https://github.com/poluce/ai-writer/releases/latest).
 
 > ## Feature baseline inherited from upstream (historical)
 >
@@ -169,7 +173,7 @@ The installer is not code-signed at present. Windows may show publisher or reput
 
 ### macOS
 
-0.1.2 does not ship a macOS installer yet: this release line qualifies and publishes Windows x64 first. macOS installers return in a later version, still as separate ARM64 and Intel builds.
+0.1.3 does not ship a macOS installer yet: this release line qualifies and publishes Windows x64 first. macOS installers return in a later version, still as separate ARM64 and Intel builds.
 
 ## Current limits
 

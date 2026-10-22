@@ -1,10 +1,10 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
-describe('v0.1.2 release metadata', () => {
+describe('v0.1.3 release metadata', () => {
   it('uses the release version in package metadata', () => {
     const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as { version: string }
-    expect(pkg.version).toBe('0.1.2')
+    expect(pkg.version).toBe('0.1.3')
   })
 
   it('resolves the release tag and exact three-asset contract from the package version', () => {
@@ -13,16 +13,16 @@ describe('v0.1.2 release metadata', () => {
       releaseAssets: Array<{ name: string }>
     }
 
-    expect(`v${pkg.version}`).toBe('v0.1.2')
+    expect(`v${pkg.version}`).toBe('v0.1.3')
     expect(profile.releaseAssets.map(({ name }) => name.replaceAll('{version}', pkg.version))).toEqual([
-      'ai-writer-setup-0.1.2.exe',
-      'ai-writer-setup-0.1.2.exe.blockmap',
+      'ai-writer-setup-0.1.3.exe',
+      'ai-writer-setup-0.1.3.exe.blockmap',
       'latest.yml',
     ])
   })
 
-  it('documents the bilingual 0.1.2 icon-fix scope, independence, and signing disclosure', () => {
-    const notes = readFileSync('.release/notes/v0.1.2.md', 'utf8')
+  it('documents the bilingual 0.1.3 update-check scope, independence, and signing disclosure', () => {
+    const notes = readFileSync('.release/notes/v0.1.3.md', 'utf8')
     const chineseReadme = readFileSync('README.md', 'utf8')
     const englishReadme = readFileSync('README_en.md', 'utf8')
 
@@ -32,10 +32,10 @@ describe('v0.1.2 release metadata', () => {
       '三项资产',
       '尚未进行代码签名',
       'macOS',
-      '图标',
-      'file://',
-      'BASE_URL',
-      '回归测试',
+      '自动复查',
+      '退避',
+      '每 30 分钟',
+      '手动',
     ]) expect(notes).toContain(expected)
 
     for (const expected of [
@@ -44,14 +44,14 @@ describe('v0.1.2 release metadata', () => {
       'three-asset contract',
       'not code-signed',
       'macOS',
-      'icons',
-      'file://',
-      'BASE_URL',
-      'regression guard',
+      'recheck',
+      'back off',
+      '30 minutes',
+      'manual',
     ]) expect(notes).toContain(expected)
 
-    expect(chineseReadme).toContain('v0.1.2')
-    expect(englishReadme).toContain('v0.1.2')
+    expect(chineseReadme).toContain('v0.1.3')
+    expect(englishReadme).toContain('v0.1.3')
     expect(chineseReadme).not.toContain('v1.1.0')
     expect(englishReadme).not.toContain('v1.1.0')
   })
