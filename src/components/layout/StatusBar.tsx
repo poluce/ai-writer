@@ -6,6 +6,7 @@ import { useLayoutStore } from '../../stores/layout-store'
 import { useWorkflowStore } from '../../stores/workflow-store'
 import { useLocaleStore } from '../../stores/locale-store'
 import { APP_BRAND } from '../../shared/brand'
+import { publicAssetUrl } from '../../shared/public-asset'
 
 /** 底部状态栏 — JetBrains 风格：22px、深灰底、多分段、hover 可点击感 */
 export default function StatusBar() {
@@ -30,7 +31,7 @@ export default function StatusBar() {
       {/* 左侧 */}
       <div className="flex items-center h-full">
         <StatusBarSegment title={text(APP_BRAND.zhName, APP_BRAND.enName)}>
-          <img src="/logo.svg" alt="logo" className="w-3.5 h-3.5 object-contain" />
+          <img src={publicAssetUrl('logo.svg')} alt="logo" className="w-3.5 h-3.5 object-contain" />
           <span className="opacity-90 font-medium">{text(APP_BRAND.shortName, APP_BRAND.enName)}</span>
         </StatusBarSegment>
 

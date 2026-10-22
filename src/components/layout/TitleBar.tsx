@@ -30,6 +30,7 @@ import { countUnsavedEditorItems } from '../../stores/editor-unsaved'
 import { discardAllEditorChanges } from '../../stores/editor-discard'
 import { useLayoutStore } from '../../stores/layout-store'
 import { APP_BRAND } from '../../shared/brand'
+import { publicAssetUrl } from '../../shared/public-asset'
 import { ipc } from '../../services/ipc-client'
 import { useLocaleStore } from '../../stores/locale-store'
 import type { MessageKey } from '../../i18n/core'
@@ -240,7 +241,7 @@ export default function TitleBar() {
           className="writer-brand-mark flex h-8 w-8 items-center justify-center rounded-md overflow-hidden"
           title={locale === 'zh-CN' ? APP_BRAND.zhName : APP_BRAND.enName}
         >
-          <img src="/logo.svg" alt="logo" className="h-6 w-6 object-contain" />
+          <img src={publicAssetUrl('logo.svg')} alt="logo" className="h-6 w-6 object-contain" />
         </div>
       </div>
 
