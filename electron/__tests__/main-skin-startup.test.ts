@@ -73,7 +73,10 @@ vi.mock('../services/update-runtime', () => ({
   isMacUpdateReminderEnabled: mocks.isMacUpdateReminderEnabled,
   isWindowsUpdateRuntimeEnabled: () => false,
 }))
-vi.mock('../services/update-startup', () => ({ startUpdateRuntime: mocks.startUpdateRuntime }))
+vi.mock('../services/update-startup', () => ({
+  DEFAULT_PERIODIC_REFRESH_INTERVAL_MS: 30 * 60 * 1000,
+  startUpdateRuntime: mocks.startUpdateRuntime,
+}))
 vi.mock('../services/release-vector-smoke', () => ({
   claimReleaseVectorSmokeInvocation: vi.fn(),
   releaseVectorSmokeWasRequested: () => false,
