@@ -7,7 +7,6 @@ import {
   createFinalizeWorkflow,
   createRefineFromReviewWorkflow,
   createRefineOnlyWorkflow,
-  createReviewOnlyWorkflow,
 } from '../chapter-workflow'
 
 const projectPath = 'C:\\novels\\english-chapter'
@@ -39,14 +38,6 @@ describe('chapter workflow locale', () => {
         purpose: 'Deepen the relationship',
         characters: ['Maya'],
         keyEvents: 'Maya joins the literature club.',
-      }, projectSession),
-      createReviewOnlyWorkflow({
-        projectPath,
-        chapterNumber: 2,
-        chapterTitle: 'A New Term',
-        draftPath: 'vela://draft/2',
-        draftContent: 'Draft',
-        sourceDraft,
       }, projectSession),
       createRefineOnlyWorkflow({
         projectPath,
@@ -80,7 +71,6 @@ describe('chapter workflow locale', () => {
       completion: workflow.onComplete?.message,
     }))).toEqual([
       expect.objectContaining({ locale: 'en-US', title: 'Draft — Chapter 2 · A New Term', step: 'Draft chapter' }),
-      expect.objectContaining({ locale: 'en-US', title: 'Review — Chapter 2 A New Term', step: 'Review chapter' }),
       expect.objectContaining({ locale: 'en-US', title: 'Revise — Chapter 2 A New Term', step: 'Revise draft' }),
       expect.objectContaining({ locale: 'en-US', title: 'Apply review — Chapter 2 A New Term', step: 'Revise from review' }),
       expect.objectContaining({ locale: 'en-US', title: 'Finalize — Chapter 2 A New Term', step: 'Finalize chapter' }),

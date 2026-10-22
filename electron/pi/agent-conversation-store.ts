@@ -17,9 +17,11 @@ import { AGENT_LANE_NAME, VELA_SESSION_CONFIG } from './agent-session'
 import { isAssistantThinkingLevel, type AssistantThinkingLevel } from '../../src/shared/agent-runtime'
 import { normalizeModelProfiles } from '../../src/shared/model-profile'
 import type {
+  AssistantType,
   PersistedAgentConversation,
   PersistedAgentMessage,
 } from '../../src/shared/agent-conversation-archive'
+import { assistantTypeFromConversationId, isAssistantType } from '../../src/shared/agent-conversation-archive'
 
 /** 会话文件所在的一级目录名（项目内 `.vela` 下）。 */
 export const SESSIONS_DIR = 'agent-sessions'
@@ -322,7 +324,7 @@ export class AgentConversationStore {
 
     let thinkingLevel: AssistantThinkingLevel | null = null
     let modelId: string | null = null
-    let storedAssistantType: 'general' | 'architect' | 'blueprint' | undefined
+    let storedAssistantType: AssistantType | undefined
     try {
       // 1. 优先读取 Vela 原生写入的权威配置快照（包含确切的 ModelProfile.id 与 thinkingLevel）
       const velaConfig = await session.getValue(VELA_SESSION_CONFIG, BACKGROUND_CONTEXT)
@@ -338,7 +340,7 @@ export class AgentConversationStore {
       if (velaVal?.thinkingLevel && isAssistantThinkingLevel(velaVal.thinkingLevel)) {
         thinkingLevel = velaVal.thinkingLevel
       }
-      if (velaVal?.assistantType === 'architect' || velaVal?.assistantType === 'blueprint' || velaVal?.assistantType === 'general') {
+      if (isAssistantType(velaVal?.assistantType)) {
         storedAssistantType = velaVal.assistantType
       }
 
@@ -365,13 +367,7 @@ export class AgentConversationStore {
       // session may not have config yet
     }
 
-    const assistantType = storedAssistantType ?? (
-      meta.id.startsWith('blueprint-')
-        ? 'blueprint'
-        : meta.id.startsWith('architect-')
-          ? 'architect'
-          : 'general'
-    )
+    const assistantType = storedAssistantType ?? assistantTypeFromConversationId(meta.id)
 
     return {
       id: meta.id,

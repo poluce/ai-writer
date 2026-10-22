@@ -559,18 +559,28 @@ export function isManageDraftsWrite(params: Record<string, unknown>): boolean {
   return action === 'write' || action === 'replace_excerpt' || action === 'delete'
 }
 
+export interface ManageDraftsToolOptions {
+  /** 审稿助手等只读角色：只允许读取，写入动作在工具层直接拒绝。 */
+  readOnly?: boolean
+}
+
 export function createManageDraftsTool(
   language: WritingLanguage,
   rendererAction: RendererActionSink,
+  options: ManageDraftsToolOptions = {},
 ): AgentTool<typeof Schema> {
   const isEn = language === 'en-US'
   function text(zhCN: string, enUS: string): string {
     return writingLanguageText(language, zhCN, enUS)
   }
 
-  const description = isEn
-    ? 'All-in-one Chapter Draft Tool: read drafts with active author annotations; batch or single replace passages with surrounding context previews and whitespace tolerance; write or rewrite complete drafts; resolve/archive addressed annotations; view versions; and delete unfinalized drafts.'
-    : '全功能草稿中枢工具：支持读取草稿正文及待处理的作者划词批注；支持单处或批量（replacements）精准替换正文，自动返回带行号的局部上下文预览切片，兼具换行与行末空白弱容错；支持新建首版草稿与整章推倒重写；支持将已改动的批注标记为已解决（resolve_annotation）归档；支持草稿版本清单查看与安全删除未定稿草稿。'
+  const description = options.readOnly
+    ? (isEn
+        ? 'Read-only Chapter Draft Tool: read draft bodies with pending author annotations and list draft versions. This assistant cannot modify drafts.'
+        : '只读草稿工具：读取草稿正文（含待处理的作者划词批注）与草稿版本清单。本助手不能修改草稿。')
+    : (isEn
+        ? 'All-in-one Chapter Draft Tool: read drafts with active author annotations; batch or single replace passages with surrounding context previews and whitespace tolerance; write or rewrite complete drafts; resolve/archive addressed annotations; view versions; and delete unfinalized drafts.'
+        : '全功能草稿中枢工具：支持读取草稿正文及待处理的作者划词批注；支持单处或批量（replacements）精准替换正文，自动返回带行号的局部上下文预览切片，兼具换行与行末空白弱容错；支持新建首版草稿与整章推倒重写；支持将已改动的批注标记为已解决（resolve_annotation）归档；支持草稿版本清单查看与安全删除未定稿草稿。')
 
   return {
     name: 'manage_drafts',
@@ -580,6 +590,16 @@ export function createManageDraftsTool(
     isWriteOperation: isManageDraftsWrite,
     execute: async function execute(_id, params): Promise<ToolOutput> {
       requireOpenProject(text)
+
+      if (options.readOnly) {
+        const action = resolveDraftAction(String(params.action || 'read').toLowerCase().trim())
+        if (action !== 'read' && action !== 'list_versions' && action !== 'list_annotations') {
+          throw new Error(text(
+            '本助手为只读审稿角色，不能修改草稿；请只使用 read / list_versions / list_annotations。',
+            'This assistant is read-only for review and cannot modify drafts. Use read, list_versions, or list_annotations only.',
+          ))
+        }
+      }
 
       const chapterNumber = params.chapter_number
       if (!Number.isInteger(chapterNumber) || chapterNumber < 1) {

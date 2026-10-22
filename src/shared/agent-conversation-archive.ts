@@ -13,7 +13,36 @@ export interface PersistedAgentMessage {
   artifacts?: unknown
 }
 
-export type AssistantType = 'general' | 'architect' | 'blueprint'
+export const ASSISTANT_TYPES = ['general', 'architect', 'blueprint', 'review'] as const
+
+export type AssistantType = (typeof ASSISTANT_TYPES)[number]
+
+/**
+ * 会话 ID 前缀是助手类型的稳定身份编码：主进程与渲染进程都靠它把历史会话
+ * 归档回各自的助手面板。general 保留无前缀的历史格式。
+ */
+const ASSISTANT_CONVERSATION_PREFIXES: Record<AssistantType, string> = {
+  general: '',
+  architect: 'architect-',
+  blueprint: 'blueprint-',
+  review: 'review-',
+}
+
+export function isAssistantType(value: unknown): value is AssistantType {
+  return typeof value === 'string' && (ASSISTANT_TYPES as readonly string[]).includes(value)
+}
+
+export function conversationPrefixForAssistantType(type: AssistantType): string {
+  return ASSISTANT_CONVERSATION_PREFIXES[type]
+}
+
+export function assistantTypeFromConversationId(conversationId: string): AssistantType {
+  for (const type of ASSISTANT_TYPES) {
+    const prefix = ASSISTANT_CONVERSATION_PREFIXES[type]
+    if (prefix && conversationId.startsWith(prefix)) return type
+  }
+  return 'general'
+}
 
 export interface PersistedAgentConversation {
   id: string
@@ -25,7 +54,7 @@ export interface PersistedAgentConversation {
   modelId: string | null
   /** 会话级思考等级；缺省表示 Pi 默认（off）。 */
   thinkingLevel?: AssistantThinkingLevel | null
-  /** 助手类型：通用写作助手（general）、架构助手（architect）或章节蓝图助手（blueprint） */
+  /** 助手类型：通用写作助手（general）、架构助手（architect）、章节蓝图助手（blueprint）或审稿助手（review） */
   assistantType?: AssistantType
 }
 
@@ -92,11 +121,9 @@ function persistConversation(value: unknown): PersistedAgentConversation | null 
     thinkingLevel: isAssistantThinkingLevel(conversation.thinkingLevel)
       ? conversation.thinkingLevel
       : null,
-    assistantType: conversation.assistantType === 'blueprint' || conversation.id.startsWith('blueprint-')
-      ? 'blueprint'
-      : conversation.assistantType === 'architect' || conversation.id.startsWith('architect-')
-        ? 'architect'
-        : 'general',
+    assistantType: isAssistantType(conversation.assistantType)
+      ? conversation.assistantType
+      : assistantTypeFromConversationId(conversation.id),
   }
 }
 

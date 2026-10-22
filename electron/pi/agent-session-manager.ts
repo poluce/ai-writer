@@ -10,7 +10,7 @@ import { ConversationQueue } from './conversation-queue'
 import { createPiModels } from './pi-models'
 import { toPiModelSamplingParams } from './pi-stream-options'
 import { resolveGenerationParameters } from '../llm/generation-parameter-policy'
-import { buildAgentTools, buildArchitectAgentTools, buildBlueprintAgentTools, confirmationToolNames, type AssistantDelegateHandler } from './tool-builder'
+import { buildToolsForAssistantType, confirmationToolNames, type AssistantDelegateHandler } from './tool-builder'
 import type { AgentConversationStore } from './agent-conversation-store'
 
 import type { CreativeStrategy } from '../../src/shared/reasoning-types'
@@ -18,7 +18,8 @@ import type { AgentEditorSnapshot, PiAgentEvent, RendererActionSink } from '../.
 import type { AgentSkillCatalogEntry } from '../../src/shared/agent-skills'
 import type { AssistantThinkingLevel } from '../../src/shared/agent-runtime'
 import type { AgentTurnRefusalCode } from '../../src/shared/agent-turn-refusal'
-import type { AgentPromptHistoryTurn, PersistedAgentConversation } from '../../src/shared/agent-conversation-archive'
+import type { AgentPromptHistoryTurn, AssistantType, PersistedAgentConversation } from '../../src/shared/agent-conversation-archive'
+import { assistantTypeFromConversationId } from '../../src/shared/agent-conversation-archive'
 import type { ModelProfile } from '../../src/shared/ipc-channels'
 import { writingLanguageText, type WritingLanguage } from '../../src/shared/writing-language'
 import { logFailure, logInfo } from '../../src/shared/fail-log'
@@ -51,11 +52,11 @@ export class AgentTurnRefusal extends Error {
 
 export interface AgentSessionManagerOptions {
   /** Resolve a persisted model profile for a turn (modelId may be undefined). */
-  resolveModel: (modelId: string | undefined) => ModelProfile | null
+  resolveModel: (modelId: string | undefined, assistantType?: AssistantType) => ModelProfile | null
   resolveSystemPrompt: (
     conversationId: string,
     skills?: readonly AgentSkillCatalogEntry[],
-    assistantType?: 'general' | 'architect' | 'blueprint',
+    assistantType?: AssistantType,
   ) => string
   resolveLanguage: (conversationId: string) => WritingLanguage
   /** Forward a normalized agent event toward the renderer. */
@@ -110,16 +111,12 @@ export class AgentSessionManager {
     skills?: readonly AgentSkillCatalogEntry[],
     thinkingLevel?: AssistantThinkingLevel,
     executionMode?: 'plan' | 'writing',
-    assistantType: 'general' | 'architect' | 'blueprint' = conversationId.startsWith('blueprint-')
-      ? 'blueprint'
-      : conversationId.startsWith('architect-')
-        ? 'architect'
-        : 'general',
+    assistantType: AssistantType = assistantTypeFromConversationId(conversationId),
   ): Promise<{ success: boolean; error?: string; code?: AgentTurnRefusalCode }> {
     const queue = this.getQueue(conversationId)
     return queue.enqueue(async () => {
       try {
-        const profile = this.options.resolveModel(modelId)
+        const profile = this.options.resolveModel(modelId, assistantType)
         logInfo('Agent', 'prompt start', {
           conversationId,
           modelId,
@@ -137,17 +134,11 @@ export class AgentSessionManager {
         session.setEditorSnapshot(editorSnapshot)
         session.setExecutionMode(executionMode)
         session.setSystemPrompt(this.options.resolveSystemPrompt(conversationId, skills, assistantType))
-        const tools = assistantType === 'blueprint'
-          ? buildBlueprintAgentTools(language, this.options.rendererAction)
-          : assistantType === 'architect'
-            ? buildArchitectAgentTools(language, this.options.rendererAction)
-            : buildAgentTools(
-                language,
-                this.options.rendererAction,
-                skills,
-                this.options.resolveSkillRoots?.() ?? [],
-                this.createDelegateHandler(conversationId),
-              )
+        const tools = buildToolsForAssistantType(assistantType, language, this.options.rendererAction, {
+          skills,
+          skillRoots: this.options.resolveSkillRoots?.() ?? [],
+          delegateHandler: this.createDelegateHandler(conversationId),
+        })
         await session.setTools(tools)
         await session.prompt(input)
         logInfo('Agent', 'prompt finished', { conversationId, modelId, assistantType })
@@ -269,9 +260,7 @@ export class AgentSessionManager {
         // 委派执行强制使用 writing 模式（自动执行领域工具落盘，避免弹窗阻断委派流）
         session.setExecutionMode('writing')
         session.setSystemPrompt(this.options.resolveSystemPrompt(targetConvId, undefined, params.target))
-        const tools = params.target === 'blueprint'
-          ? buildBlueprintAgentTools(language, this.options.rendererAction)
-          : buildArchitectAgentTools(language, this.options.rendererAction)
+        const tools = buildToolsForAssistantType(params.target, language, this.options.rendererAction)
         await session.setTools(tools)
 
         // 执行提示词生成并获取结果
@@ -372,14 +361,10 @@ export class AgentSessionManager {
     history?: readonly AgentPromptHistoryTurn[],
     skills?: readonly AgentSkillCatalogEntry[],
     requestedThinkingLevel?: AssistantThinkingLevel,
-    assistantType: 'general' | 'architect' | 'blueprint' = conversationId.startsWith('blueprint-')
-      ? 'blueprint'
-      : conversationId.startsWith('architect-')
-        ? 'architect'
-        : 'general',
+    assistantType: AssistantType = assistantTypeFromConversationId(conversationId),
   ): Promise<AgentSession> {
     const existing = this.sessions.get(conversationId)
-    const profile = this.options.resolveModel(modelId)
+    const profile = this.options.resolveModel(modelId, assistantType)
     // 档案被删掉时不让老会话跟着失效：沿用现有运行时，一个会话都没有才报错。
     if (!profile) {
       if (existing) return existing
@@ -399,10 +384,14 @@ export class AgentSessionManager {
       throw new AgentTurnRefusal('no-project', '打开项目后助手才可用')
     }
 
-    // 与工作流同一条生成参数策略：架构助手与蓝图助手走 planning 阶段，通用助手走 general 阶段。
+    // 与工作流同一条生成参数策略：架构/蓝图助手走 planning，审稿助手走 review，通用助手走 general。
     const sampling = resolveGenerationParameters(profile, {
       creativeStrategy: this.options.resolveCreativeStrategy?.(),
-      reasoningStage: assistantType === 'architect' || assistantType === 'blueprint' ? 'planning' : 'general',
+      reasoningStage: assistantType === 'review'
+        ? 'review'
+        : assistantType === 'architect' || assistantType === 'blueprint'
+          ? 'planning'
+          : 'general',
     })
     const { models, model } = createPiModels(profile, {
       modelSamplingParams: toPiModelSamplingParams(sampling),
@@ -413,21 +402,16 @@ export class AgentSessionManager {
       throw new AgentTurnRefusal('session-store-unavailable', '会话存档不可用')
     }
 
-    // 架构助手与蓝图助手不挂载底层 bash/write/edit 沙箱工具
-    const executionEnv = assistantType === 'architect' || assistantType === 'blueprint'
+    // 架构/蓝图/审稿助手不挂载底层 bash/write/edit 沙箱工具：
+    // 审稿必须只读，才能保证审查与创作互不污染。
+    const executionEnv = assistantType === 'architect' || assistantType === 'blueprint' || assistantType === 'review'
       ? null
       : (this.options.resolveToolEnvironment?.() ?? null)
-    const tools = assistantType === 'blueprint'
-      ? buildBlueprintAgentTools(language, this.options.rendererAction)
-      : assistantType === 'architect'
-        ? buildArchitectAgentTools(language, this.options.rendererAction)
-        : buildAgentTools(
-            language,
-            this.options.rendererAction,
-            skills,
-            this.options.resolveSkillRoots?.() ?? [],
-            this.createDelegateHandler(conversationId),
-          )
+    const tools = buildToolsForAssistantType(assistantType, language, this.options.rendererAction, {
+      skills,
+      skillRoots: this.options.resolveSkillRoots?.() ?? [],
+      delegateHandler: this.createDelegateHandler(conversationId),
+    })
 
     const session = await AgentSession.create({
       models,

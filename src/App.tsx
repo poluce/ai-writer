@@ -18,6 +18,7 @@ import EditorArea from './components/panels/EditorArea'
 import AIPanel from './components/panels/AIPanel'
 import ArchitectPanel from './components/panels/ArchitectPanel'
 import BlueprintPanel from './components/panels/BlueprintPanel'
+import ReviewPanel from './components/panels/ReviewPanel'
 import AIOutputPanel from './components/panels/AIOutputPanel'
 import BottomPanel from './components/panels/BottomPanel'
 import NewProjectDialog from './components/dialogs/NewProjectDialog'
@@ -304,7 +305,7 @@ export default function App() {
                 </ErrorBoundary>
               </Panel>
 
-              {/* 右侧面板（Agent 对话 / 架构助手 / AI 输出） */}
+              {/* 右侧面板（Agent 对话 / 架构助手 / 蓝图助手 / 审稿助手 / AI 输出） */}
               {aiPanelOpen && (
                 <>
                   <PanelResizeHandle />
@@ -316,7 +317,9 @@ export default function App() {
                           ? <BlueprintPanel />
                           : rightView === 'architect'
                             ? <ArchitectPanel />
-                            : <AIPanel />}
+                            : rightView === 'review'
+                              ? <ReviewPanel />
+                              : <AIPanel />}
                     </ErrorBoundary>
                   </Panel>
                 </>

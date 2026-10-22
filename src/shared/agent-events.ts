@@ -51,6 +51,18 @@ export type RendererAction =
   | { type: 'refresh_architecture'; section?: string }
   | { type: 'refresh_character_roster' }
   | { type: 'sync_draft_content'; chapterNumber: number; draftId: number; content: string; isNewVersion: boolean }
+  /** 打开审稿助手刚写入的审稿报告 Tab（原始报告与人工确认快照都以此为来源）。 */
+  | {
+      type: 'open_review_report'
+      chapterNumber: number
+      draftId: number
+      draftPath: string
+      chapterDir: string
+      reportPath: string
+      reviewId: number
+      reviewIndex: number
+      content: string
+    }
 
 /** 工作流启动收据：产物卡片与工具 details 都用它，避免再解析摘要文本。 */
 export interface WorkflowLaunchReceipt {
@@ -74,6 +86,8 @@ export interface AgentEditorTabSnapshot {
   type: string
   active: boolean
   unsaved: boolean
+  /** 草稿类 Tab 的章节号，让助手知道作者正在看哪一章。 */
+  chapterNumber?: number
 }
 
 export interface AgentWorkflowSnapshot {

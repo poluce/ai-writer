@@ -155,5 +155,27 @@ export async function handleRendererAction(action: RendererAction): Promise<Rend
       }
       return
     }
+    case 'open_review_report': {
+      const project = useProjectStore.getState().currentProject
+      if (!project) return
+      const uiText = useLocaleStore.getState().text
+      useEditorStore.getState().openFile({
+        id: `review-${action.draftPath}-${action.reviewIndex}`,
+        name: uiText(
+          `审稿报告：第${action.chapterNumber}章`,
+          `Review report: Chapter ${action.chapterNumber}`,
+        ),
+        type: 'review-report',
+        content: action.content,
+        filePath: action.draftPath,
+        reportPath: action.reportPath,
+        reviewReport: action.content,
+        chapterNumber: action.chapterNumber,
+        chapterDir: action.chapterDir,
+        reviewId: action.reviewId,
+        projectKey: project.path,
+      })
+      return
+    }
   }
 }

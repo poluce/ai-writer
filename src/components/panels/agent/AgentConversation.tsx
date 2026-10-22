@@ -16,76 +16,8 @@ import { ipc } from '../../../services/ipc-client'
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle} from '../../ui/Dialog'
 import type { AssistantType } from '../../../shared/agent-conversation-archive'
+import { ASSISTANT_UI_COPY, type AssistantStarter } from './assistant-ui-copy'
 
-const ARCHITECT_STARTERS = [
-  {
-    titleZh: '梳理核心前提与戏剧冲突',
-    titleEn: 'Clarify Premise & Stakes',
-    descZh: '推演主角核心动机、阻碍与核心困境',
-    descEn: 'Deduce protagonist desires and central dilemma',
-    promptZh: '请协助我梳理当前小说的核心前提（主角欲望、外部阻碍、核心困境与不可逆代价），增强开篇的故事动力。',
-    promptEn: 'Please help me clarify the core premise of this novel (protagonist desire, obstacles, central dilemma, and irreversible stakes).',
-  },
-  {
-    titleZh: '规划分卷大纲与高潮起伏',
-    titleEn: 'Outline Volume Arc & Climax',
-    descZh: '运用起承转合编织全书主线与第一卷高潮',
-    descEn: 'Structure volume arcs and first volume climax',
-    promptZh: '请根据当前设定，帮我规划全书的分卷大纲架构，并设计第一卷的高潮起伏与关键转折节拍。',
-    promptEn: 'Please help me outline the overarching multi-volume arcs and design the first volume climax beats.',
-  },
-  {
-    titleZh: '设计世界观与力量体系',
-    titleEn: 'Design Worldbuilding & Power System',
-    descZh: '构建严密自洽的社会、阵营与力量层级',
-    descEn: 'Build cohesive factions and power rules',
-    promptZh: '请帮我设计一套严密自洽的世界观规则与力量升级体系，包含层级划分、代价值与潜在矛盾。',
-    promptEn: 'Please help me design a cohesive worldbuilding ruleset and power progression system with clear tiering and stakes.',
-  },
-  {
-    titleZh: '拆解黄金前三章剧情蓝图',
-    titleEn: 'Decompose Opening Chapter Blueprint',
-    descZh: '细化前三章事件、出场人物与钩子悬念',
-    descEn: 'Map opening scenes, characters, and cliffhangers',
-    promptZh: '请结合核心大纲，帮我拆解前三章的剧情细纲蓝图（每章核心事件、出场人物、情节点与钩子悬念）。',
-    promptEn: 'Please decompose the opening three chapters into concrete blueprints with core events, characters, and cliffhangers.',
-  },
-]
-
-const BLUEPRINT_STARTERS = [
-  {
-    titleZh: '推演下一章核心细纲',
-    titleEn: 'Deduce Next Chapter Blueprint',
-    descZh: '承接前文剧情，规划本章主线推进与核心事件',
-    descEn: 'Continue prior events and structure main chapter beats',
-    promptZh: '请结合当前最新章节事实与整体大纲，帮我推演下一章的剧情细纲（核心事件、发生地点、主导矛盾与转折）。',
-    promptEn: 'Please help me deduce the next chapter blueprint based on current project state and overall outline (core event, location, central conflict, and turning point).',
-  },
-  {
-    titleZh: '设计戏剧冲突与高潮节拍',
-    titleEn: 'Design Dramatic Conflict & Beats',
-    descZh: '排布起承转合，设计角色主动抉择与代价',
-    descEn: 'Structure dramatic beats, active choices, and stakes',
-    promptZh: '请为本章设计紧凑的戏剧冲突与情节节拍，确保主角有明确行动目标、外部强力阻碍，并在高潮处做出有代价的抉择。',
-    promptEn: 'Please design tight dramatic conflict and scene beats for this chapter, ensuring clear protagonist desire, severe obstacles, and a costly choice at the climax.',
-  },
-  {
-    titleZh: '编排登场角色与关系互动',
-    titleEn: 'Orchestrate Characters & Dynamic',
-    descZh: '明确出场人员、动机诉求与潜台词交锋',
-    descEn: 'Specify appearing cast, scene motives, and dialogue subtext',
-    promptZh: '请帮我梳理本章登场的关键角色阵容，明确各人在场的核心动机、情绪曲线走向，并设计充满潜台词的互动交锋。',
-    promptEn: 'Please help me orchestrate the key characters appearing in this chapter, clarifying their immediate motives, emotional arcs, and dialogue subtext.',
-  },
-  {
-    titleZh: '布局伏笔线索与章末悬念钩子',
-    titleEn: 'Plant Clues & Cliffhanger Hooks',
-    descZh: '回收/埋设线索，设计强烈章末阅读悬念',
-    descEn: 'Weave clues and craft an irresistible cliffhanger hook',
-    promptZh: '请帮我检查本章需要推进或埋设的信息伏笔，并精心设计一个强烈的章末悬念钩子（Cliffhanger），维持读者的翻页期待。',
-    promptEn: 'Please help me review foreshadowing clues to plant or advance in this chapter, and craft a compelling cliffhanger hook to keep readers turning pages.',
-  },
-]
 
 /**
  * 对话区域主组件
@@ -93,12 +25,8 @@ const BLUEPRINT_STARTERS = [
  * - 有会话：消息列表 + 底部固定输入框
  */
 export default function AgentConversation({ assistantType = 'general' }: { assistantType?: AssistantType }) {
-  const { getActiveConversation, showHistory, showArchitectHistory, showBlueprintHistory } = useAgentStore()
-  const isHistoryOpen = assistantType === 'blueprint'
-    ? showBlueprintHistory
-    : assistantType === 'architect'
-      ? showArchitectHistory
-      : showHistory
+  const { getActiveConversation, getShowHistory } = useAgentStore()
+  const isHistoryOpen = getShowHistory(assistantType)
   const activeConv = getActiveConversation(assistantType)
 
   // 历史面板模式
@@ -121,6 +49,7 @@ function EmptyState({ assistantType = 'general' }: { assistantType?: AssistantTy
   const text = useLocaleStore(s => s.text)
   const isEn = useLocaleStore(s => s.locale === 'en-US')
   const { conversations, selectConversation } = useAgentStore()
+  const copy = ASSISTANT_UI_COPY[assistantType]
   const targetConvs = conversations.filter(c => (c.assistantType ?? 'general') === assistantType && c && c.messages.length > 0)
   const recentConvs = targetConvs
     .slice()
@@ -131,15 +60,7 @@ function EmptyState({ assistantType = 'general' }: { assistantType?: AssistantTy
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto px-4 py-4">
         <div className="mb-3 pl-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>
-          {assistantType === 'blueprint' ? (
-            <span>{text('蓝图助手 — 专注单章细纲推演、场景节拍设计、伏笔回收与章末悬念', 'Blueprint Assistant — Focus on chapter blueprints, scene beats, foreshadowing, and cliffhangers')}</span>
-          ) : assistantType === 'architect' ? (
-            <span>{text('架构助手 — 专注世界观、全书大纲、战力体系与角色推演', 'Architecture Assistant — Focus on worldbuilding, outline, power systems, and characters')}</span>
-          ) : (
-            <>
-              {text('创作助手 — 支持', 'Creative assistant — use')} <code className="px-1 py-0.5 rounded text-[0.68rem]" style={{ backgroundColor: 'var(--color-hover)', color: 'var(--color-accent)' }}>/</code> {text('命令和', 'commands and')} <code className="px-1 py-0.5 rounded text-[0.68rem]" style={{ backgroundColor: 'var(--color-hover)', color: 'var(--color-accent)' }}>@</code> {text('引用', 'mentions')}
-            </>
-          )}
+          {copy.description(text)}
         </div>
 
         {recentConvs.length > 0 ? (
@@ -163,49 +84,19 @@ function EmptyState({ assistantType = 'general' }: { assistantType?: AssistantTy
                 onMouseEnter={e => (e.currentTarget.style.opacity = '0.8')}
                 onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
               >
-                {assistantType === 'blueprint'
-                  ? text('查看全部蓝图推演记录', 'View all blueprint discussions')
-                  : assistantType === 'architect'
-                    ? text('查看全部架构推演记录', 'View all architecture discussions')
-                    : text('查看全部对话', 'View all conversations')}
+                {copy.historyLinkLabel(text)}
               </button>
             )}
           </div>
-        ) : assistantType === 'blueprint' ? (
+        ) : copy.starters.length > 0 ? (
           <div className="mt-4 space-y-2">
             <div className="text-xs font-medium pl-1 mb-2" style={{ color: 'var(--color-text-secondary)' }}>
-              {text('蓝图推演起点', 'Blueprint Kickstarts')}
+              {copy.starterHeading(text)}
             </div>
-            {BLUEPRINT_STARTERS.map(item => (
+            {copy.starters.map((item: AssistantStarter) => (
               <button
                 key={item.titleZh}
-                onClick={() => useAgentStore.getState().sendMessage(isEn ? item.promptEn : item.promptZh, 'blueprint')}
-                className="w-full text-left p-2.5 rounded border transition-colors text-xs"
-                style={{
-                  borderColor: 'var(--color-border)',
-                  backgroundColor: 'var(--color-bg-secondary)',
-                }}
-                onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--color-hover)'}
-                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'var(--color-bg-secondary)'}
-              >
-                <div className="font-medium mb-0.5" style={{ color: 'var(--color-text)' }}>
-                  {isEn ? item.titleEn : item.titleZh}
-                </div>
-                <div style={{ color: 'var(--color-text-muted)', fontSize: '0.7rem' }}>
-                  {isEn ? item.descEn : item.descZh}
-                </div>
-              </button>
-            ))}
-          </div>
-        ) : assistantType === 'architect' ? (
-          <div className="mt-4 space-y-2">
-            <div className="text-xs font-medium pl-1 mb-2" style={{ color: 'var(--color-text-secondary)' }}>
-              {text('架构推演起点', 'Architecture Kickstarts')}
-            </div>
-            {ARCHITECT_STARTERS.map(item => (
-              <button
-                key={item.titleZh}
-                onClick={() => useAgentStore.getState().sendMessage(isEn ? item.promptEn : item.promptZh, 'architect')}
+                onClick={() => useAgentStore.getState().sendMessage(isEn ? item.promptEn : item.promptZh, assistantType)}
                 className="w-full text-left p-2.5 rounded border transition-colors text-xs"
                 style={{
                   borderColor: 'var(--color-border)',
@@ -470,18 +361,13 @@ function AgentHistoryPanel({ assistantType = 'general' }: { assistantType?: Assi
   const text = useLocaleStore(s => s.text)
   const {
     conversations,
-    activeConversationId,
-    activeArchitectConversationId,
-    activeBlueprintConversationId,
+    getActiveConversation,
     selectConversation,
     deleteConversation,
     setShowHistory} = useAgentStore()
+  const copy = ASSISTANT_UI_COPY[assistantType]
 
-  const targetId = assistantType === 'blueprint'
-    ? activeBlueprintConversationId
-    : assistantType === 'architect'
-      ? activeArchitectConversationId
-      : activeConversationId
+  const targetId = getActiveConversation(assistantType)?.id ?? null
   const filtered = conversations.filter(c => (c.assistantType ?? 'general') === assistantType)
   const sorted = [...filtered].sort((a, b) => b.updatedAt - a.updatedAt)
 
@@ -493,11 +379,7 @@ function AgentHistoryPanel({ assistantType = 'general' }: { assistantType?: Assi
         style={{ borderBottom: '1px solid var(--color-border)' }}
       >
         <span className="text-xs font-medium" style={{ color: 'var(--color-text-secondary)' }}>
-          {assistantType === 'blueprint'
-            ? text('全部章节蓝图推演记录', 'All chapter blueprint discussions')
-            : assistantType === 'architect'
-              ? text('全部架构推演记录', 'All architecture discussions')
-              : text('全部对话', 'All conversations')}
+          {copy.historyTitle(text)}
         </span>
         <button
           onClick={() => setShowHistory(false, assistantType)}

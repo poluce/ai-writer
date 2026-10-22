@@ -24,7 +24,6 @@ import type { Locale } from '../../i18n/types'
 
 export type CreativeWorkflowName =
   | 'generate_draft'
-  | 'review'
   | 'refine'
   | 'finalize'
   | 'generate_blueprint'
@@ -42,7 +41,7 @@ export type CreativeIntent =
       resumeSynopsis?: ArchitectureWorkflowParams['resumeSynopsis']
     }
   | { workflow: 'generate_blueprint'; params?: DirectoryWorkflowParams }
-  | { workflow: 'review' | 'refine' | 'finalize'; chapterNumber: number }
+  | { workflow: 'refine' | 'finalize'; chapterNumber: number }
 
 export interface CreativeWorkflowLaunchReceipt {
   readonly accepted: true

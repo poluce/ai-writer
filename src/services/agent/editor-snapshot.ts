@@ -80,6 +80,7 @@ export function captureAgentEditorSnapshot(options?: { commitSurface?: boolean }
     type: tab.type,
     active: tab.id === editorState.activeTabId,
     unsaved: Boolean(tab.dirty),
+    ...(typeof tab.chapterNumber === 'number' ? { chapterNumber: tab.chapterNumber } : {}),
   }))
 
   const workflowState = useWorkflowStore.getState()

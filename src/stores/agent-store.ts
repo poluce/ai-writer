@@ -21,6 +21,9 @@ import { readActiveProject } from '../services/active-project'
 import type { ProjectSessionContext } from '../shared/ipc-channels'
 import type { AssistantThinkingLevel } from '../shared/agent-runtime'
 import {
+  ASSISTANT_TYPES,
+  assistantTypeFromConversationId,
+  conversationPrefixForAssistantType,
   toAgentPromptHistory,
   type AgentConversationArchive,
   type AssistantType,
@@ -93,12 +96,16 @@ export interface AgentState {
   activeArchitectConversationId: string | null
   /** 当前活跃章节蓝图助手会话 ID */
   activeBlueprintConversationId: string | null
+  /** 当前活跃审稿助手会话 ID */
+  activeReviewConversationId: string | null
   /** 是否显示通用助手历史面板 */
   showHistory: boolean
   /** 是否显示架构助手历史面板 */
   showArchitectHistory: boolean
   /** 是否显示章节蓝图助手历史面板 */
   showBlueprintHistory: boolean
+  /** 是否显示审稿助手历史面板 */
+  showReviewHistory: boolean
   /** 全局默认模式 */
   defaultMode: AgentMode
   /** 当前流式请求 ID（用于取消） */
@@ -115,6 +122,8 @@ export interface AgentState {
   // ===== 计算属性（Getters） =====
   /** 获取当前活跃会话 */
   getActiveConversation: (type?: AssistantType) => AgentConversation | null
+  /** 当前助手的历史面板是否打开 */
+  getShowHistory: (type?: AssistantType) => boolean
 
   // ===== Actions =====
   /** 切换执行模式（计划/写作） */
@@ -157,6 +166,73 @@ export interface AgentState {
 
 // ===== 工具函数 =====
 
+type ActiveConversationField =
+  | 'activeConversationId'
+  | 'activeArchitectConversationId'
+  | 'activeBlueprintConversationId'
+  | 'activeReviewConversationId'
+
+type HistoryVisibleField =
+  | 'showHistory'
+  | 'showArchitectHistory'
+  | 'showBlueprintHistory'
+  | 'showReviewHistory'
+
+const ACTIVE_CONVERSATION_FIELD: Record<AssistantType, ActiveConversationField> = {
+  general: 'activeConversationId',
+  architect: 'activeArchitectConversationId',
+  blueprint: 'activeBlueprintConversationId',
+  review: 'activeReviewConversationId',
+}
+
+const HISTORY_VISIBLE_FIELD: Record<AssistantType, HistoryVisibleField> = {
+  general: 'showHistory',
+  architect: 'showArchitectHistory',
+  blueprint: 'showBlueprintHistory',
+  review: 'showReviewHistory',
+}
+
+/** 每个助手新建会话的默认标题（zh, en）。 */
+const DEFAULT_CONVERSATION_TITLES: Record<AssistantType, readonly [string, string]> = {
+  general: ['新对话', 'New conversation'],
+  architect: ['新架构推演', 'New architecture discussion'],
+  blueprint: ['新章节蓝图推演', 'New chapter blueprint'],
+  review: ['审稿对话', 'New review'],
+}
+
+/** 切换助手面板的活跃会话，并收起历史面板。 */
+function activeConversationPatch(
+  type: AssistantType,
+  conversationId: string | null,
+): Partial<Pick<AgentState, ActiveConversationField | HistoryVisibleField>> {
+  switch (type) {
+    case 'architect':
+      return { activeArchitectConversationId: conversationId, showArchitectHistory: false }
+    case 'blueprint':
+      return { activeBlueprintConversationId: conversationId, showBlueprintHistory: false }
+    case 'review':
+      return { activeReviewConversationId: conversationId, showReviewHistory: false }
+    case 'general':
+      return { activeConversationId: conversationId, showHistory: false }
+  }
+}
+
+function historyVisiblePatch(
+  type: AssistantType,
+  show: boolean,
+): Partial<Pick<AgentState, HistoryVisibleField>> {
+  switch (type) {
+    case 'architect':
+      return { showArchitectHistory: show }
+    case 'blueprint':
+      return { showBlueprintHistory: show }
+    case 'review':
+      return { showReviewHistory: show }
+    case 'general':
+      return { showHistory: show }
+  }
+}
+
 /** 生成唯一 ID */
 const genId = () => crypto.randomUUID()
 
@@ -171,13 +247,7 @@ function fromPersistedConversation(
     mode: conversation.mode,
     modelId: conversation.modelId,
     thinkingLevel: conversation.thinkingLevel ?? null,
-    assistantType: conversation.assistantType ?? (
-      conversation.id.startsWith('blueprint-')
-        ? 'blueprint'
-        : conversation.id.startsWith('architect-')
-          ? 'architect'
-          : 'general'
-    ),
+    assistantType: conversation.assistantType ?? assistantTypeFromConversationId(conversation.id),
     messages: conversation.messages.map(message => ({
       id: message.id,
       role: message.role,
@@ -318,9 +388,11 @@ export const useAgentStore = create<AgentState>()((set, get) => ({
   activeConversationId: null,
   activeArchitectConversationId: null,
   activeBlueprintConversationId: null,
+  activeReviewConversationId: null,
   showHistory: false,
   showArchitectHistory: false,
   showBlueprintHistory: false,
+  showReviewHistory: false,
   defaultMode: 'planning',
   executionMode: getSavedExecutionMode(),
   activeRequestId: null,
@@ -338,23 +410,16 @@ export const useAgentStore = create<AgentState>()((set, get) => ({
   },
 
   getActiveConversation: (type: AssistantType = 'general') => {
-    const {
-      conversations,
-      activeConversationId,
-      activeArchitectConversationId,
-      activeBlueprintConversationId,
-    } = get()
-    const targetId = type === 'blueprint'
-      ? activeBlueprintConversationId
-      : type === 'architect'
-        ? activeArchitectConversationId
-        : activeConversationId
+    const { conversations } = get()
+    const targetId = get()[ACTIVE_CONVERSATION_FIELD[type]]
     if (targetId) {
       const found = conversations.find(c => c.id === targetId)
       if (found) return found
     }
     return conversations.find(c => (c.assistantType ?? 'general') === type) ?? null
   },
+
+  getShowHistory: (type: AssistantType = 'general') => Boolean(get()[HISTORY_VISIBLE_FIELD[type]]),
 
   initializeTools: () => {
     if (get().toolsInitialized) return
@@ -370,18 +435,10 @@ export const useAgentStore = create<AgentState>()((set, get) => ({
     const previous = get().getActiveConversation(type)
     const isEn = useLocaleStore.getState().locale === 'en-US'
 
-    const prefix = type === 'blueprint' ? 'blueprint-' : type === 'architect' ? 'architect-' : ''
+    const prefix = conversationPrefixForAssistantType(type)
     const defaultTitle = isEn
-      ? (type === 'blueprint'
-          ? 'New chapter blueprint'
-          : type === 'architect'
-            ? 'New architecture discussion'
-            : 'New conversation')
-      : (type === 'blueprint'
-          ? '新章节蓝图推演'
-          : type === 'architect'
-            ? '新架构推演'
-            : '新对话')
+      ? DEFAULT_CONVERSATION_TITLES[type][1]
+      : DEFAULT_CONVERSATION_TITLES[type][0]
 
     const newConv: AgentConversation = {
       id: prefix ? `${prefix}${genId()}` : genId(),
@@ -398,31 +455,17 @@ export const useAgentStore = create<AgentState>()((set, get) => ({
     }
     set(state => ({
       conversations: [newConv, ...state.conversations],
-      ...(type === 'blueprint'
-        ? { activeBlueprintConversationId: newConv.id, showBlueprintHistory: false }
-        : type === 'architect'
-          ? { activeArchitectConversationId: newConv.id, showArchitectHistory: false }
-          : { activeConversationId: newConv.id, showHistory: false }),
+      ...activeConversationPatch(type, newConv.id),
     }))
     return newConv
   },
 
   selectConversation: (id, type) => {
     const conv = get().conversations.find(c => c.id === id)
-    const resolvedType = conv?.assistantType ?? type ?? (
-      id.startsWith('blueprint-')
-        ? 'blueprint'
-        : id.startsWith('architect-')
-          ? 'architect'
-          : 'general'
-    )
-    set({
-      ...(resolvedType === 'blueprint'
-        ? { activeBlueprintConversationId: id, showBlueprintHistory: false }
-        : resolvedType === 'architect'
-          ? { activeArchitectConversationId: id, showArchitectHistory: false }
-          : { activeConversationId: id, showHistory: false }),
-    })
+    const resolvedType = conv?.assistantType
+      ?? type
+      ?? assistantTypeFromConversationId(id)
+    set(activeConversationPatch(resolvedType, id))
   },
 
   deleteConversation: (id) => {
@@ -432,24 +475,13 @@ export const useAgentStore = create<AgentState>()((set, get) => ({
     })
     set(state => {
       const filtered = state.conversations.filter(c => c.id !== id)
-      let nextGeneralId = state.activeConversationId
-      if (nextGeneralId === id) {
-        nextGeneralId = filtered.find(c => (c.assistantType ?? 'general') === 'general')?.id ?? null
+      const patch: Partial<AgentState> = { conversations: filtered }
+      for (const type of ASSISTANT_TYPES) {
+        if (state[ACTIVE_CONVERSATION_FIELD[type]] !== id) continue
+        const nextId = filtered.find(c => (c.assistantType ?? 'general') === type)?.id ?? null
+        Object.assign(patch, activeConversationPatch(type, nextId))
       }
-      let nextArchitectId = state.activeArchitectConversationId
-      if (nextArchitectId === id) {
-        nextArchitectId = filtered.find(c => c.assistantType === 'architect')?.id ?? null
-      }
-      let nextBlueprintId = state.activeBlueprintConversationId
-      if (nextBlueprintId === id) {
-        nextBlueprintId = filtered.find(c => c.assistantType === 'blueprint')?.id ?? null
-      }
-      return {
-        conversations: filtered,
-        activeConversationId: nextGeneralId,
-        activeArchitectConversationId: nextArchitectId,
-        activeBlueprintConversationId: nextBlueprintId,
-      }
+      return patch
     })
   },
 
@@ -473,69 +505,42 @@ export const useAgentStore = create<AgentState>()((set, get) => ({
       })
     }
     if (!type) {
-      set({
-        conversations: [],
-        activeConversationId: null,
-        activeArchitectConversationId: null,
-        activeBlueprintConversationId: null,
-        showHistory: false,
-        showArchitectHistory: false,
-        showBlueprintHistory: false,
-      })
-    } else if (type === 'blueprint') {
-      set(s => ({
-        conversations: s.conversations.filter(c => c.assistantType !== 'blueprint'),
-        activeBlueprintConversationId: null,
-        showBlueprintHistory: false,
-      }))
-    } else if (type === 'architect') {
-      set(s => ({
-        conversations: s.conversations.filter(c => c.assistantType !== 'architect'),
-        activeArchitectConversationId: null,
-        showArchitectHistory: false,
-      }))
+      const patch: Partial<AgentState> = { conversations: [] }
+      for (const assistantType of ASSISTANT_TYPES) {
+        Object.assign(patch, activeConversationPatch(assistantType, null))
+      }
+      set(patch)
     } else {
-      set(s => ({
-        conversations: s.conversations.filter(c => (c.assistantType ?? 'general') !== 'general'),
-        activeConversationId: null,
-        showHistory: false,
-      }))
+      set(s => {
+        const patch: Partial<AgentState> = {
+          conversations: s.conversations.filter(c => (c.assistantType ?? 'general') !== type),
+        }
+        Object.assign(patch, activeConversationPatch(type, null))
+        return patch
+      })
     }
   },
 
   toggleHistory: (type: AssistantType = 'general') => {
-    if (type === 'blueprint') {
-      set(s => ({ showBlueprintHistory: !s.showBlueprintHistory }))
-    } else if (type === 'architect') {
-      set(s => ({ showArchitectHistory: !s.showArchitectHistory }))
-    } else {
-      set(s => ({ showHistory: !s.showHistory }))
-    }
+    const field = HISTORY_VISIBLE_FIELD[type]
+    set(historyVisiblePatch(type, !get()[field]))
   },
 
   setShowHistory: (show: boolean, type: AssistantType = 'general') => {
-    if (type === 'blueprint') {
-      set({ showBlueprintHistory: show })
-    } else if (type === 'architect') {
-      set({ showArchitectHistory: show })
-    } else {
-      set({ showHistory: show })
-    }
+    set(historyVisiblePatch(type, show))
   },
 
   beginProjectLoad: () => {
-    set({
+    const patch: Partial<AgentState> = {
       conversations: [],
-      activeConversationId: null,
-      activeArchitectConversationId: null,
-      activeBlueprintConversationId: null,
-      showHistory: false,
-      showArchitectHistory: false,
-      showBlueprintHistory: false,
       activeRequestId: null,
       dataProjectSession: null,
       composerCitations: [],
-    })
+    }
+    for (const type of ASSISTANT_TYPES) {
+      Object.assign(patch, activeConversationPatch(type, null))
+    }
+    set(patch)
   },
 
   addComposerCitation: (citation) => {
@@ -555,35 +560,28 @@ export const useAgentStore = create<AgentState>()((set, get) => ({
 
   hydrateFromArchive: (projectSession, archive) => {
     const conversations = archive.conversations.map(fromPersistedConversation)
-    const generalConvs = conversations.filter(c => (c.assistantType ?? 'general') === 'general')
-    const architectConvs = conversations.filter(c => c.assistantType === 'architect')
-    const blueprintConvs = conversations.filter(c => c.assistantType === 'blueprint')
-
-    const currentGeneralId = get().activeConversationId
-    const activeConversationId = currentGeneralId && generalConvs.some(c => c.id === currentGeneralId)
-      ? currentGeneralId
-      : (archive.activeConversationId && generalConvs.some(conversation => conversation.id === archive.activeConversationId)
-          ? archive.activeConversationId
-          : generalConvs[0]?.id ?? null)
-
-    const currentArchitectId = get().activeArchitectConversationId
-    const activeArchitectConversationId = currentArchitectId && architectConvs.some(c => c.id === currentArchitectId)
-      ? currentArchitectId
-      : architectConvs[0]?.id ?? null
-
-    const currentBlueprintId = get().activeBlueprintConversationId
-    const activeBlueprintConversationId = currentBlueprintId && blueprintConvs.some(c => c.id === currentBlueprintId)
-      ? currentBlueprintId
-      : blueprintConvs[0]?.id ?? null
-
-    set({
+    const patch: Partial<AgentState> = {
       conversations,
-      activeConversationId,
-      activeArchitectConversationId,
-      activeBlueprintConversationId,
       activeRequestId: get().activeRequestId,
       dataProjectSession: projectSession,
-    })
+    }
+    for (const type of ASSISTANT_TYPES) {
+      const matches = conversations.filter(c => (c.assistantType ?? 'general') === type)
+      const currentId = get()[ACTIVE_CONVERSATION_FIELD[type]]
+      let nextId = currentId && matches.some(c => c.id === currentId)
+        ? currentId
+        : matches[0]?.id ?? null
+      // 通用助手的活跃会话由存档本身记录，其余助手按各自列表恢复。
+      if (
+        type === 'general'
+        && archive.activeConversationId
+        && matches.some(c => c.id === archive.activeConversationId)
+      ) {
+        nextId = archive.activeConversationId
+      }
+      Object.assign(patch, activeConversationPatch(type, nextId))
+    }
+    set(patch)
   },
 
   setMode: (mode) => {

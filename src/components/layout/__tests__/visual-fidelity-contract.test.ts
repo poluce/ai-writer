@@ -28,6 +28,8 @@ const files = [
   'src/components/panels/BottomPanel.tsx',
   'src/components/panels/agent/AgentHeader.tsx',
   'src/components/panels/agent/AgentConversation.tsx',
+  'src/components/panels/agent/assistant-ui-copy.ts',
+  'src/components/panels/ReviewPanel.tsx',
   'src/index.css',
 ]
 
