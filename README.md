@@ -28,6 +28,10 @@
   <img src="docs/assets/readme/ui-zh-v085-project-config.png" alt="AI Writer v0.8.5：在本地桌面工作台中配置长篇小说的故事前提、世界观、角色、蓝图与章节" width="100%" />
 </p>
 
+> ## v0.1.4 · 新增只读审稿助手与架构优化
+>
+> 新增只读审稿助手（Review Assistant），右侧常驻独立入口并采用前缀隔离会话；审稿助手挂载只读安全工具集，唯一写工具执行强类型结构化审稿契约并具备快照防脏写保护；全面重构消除 Store 与 Service 间循环依赖，消灭超千行单体模块并引入 DAG 架构分层守护测试。
+>
 > ## v0.1.3 · 更新检查按标准规则运行
 >
 > 应用长时间运行时每 30 分钟触发一次自动复查（实际联网不超过每小时一次），发现新版本立即提醒；检查失败按 15 分钟 → 1 小时 → 6 小时指数退避；启动检查保持每天最多一次，手动「检查更新」不受限制。
@@ -58,7 +62,7 @@
 - 中文长篇工作流串联蓝图、草稿、审稿、修订和定稿。
 - Windows 用户可在应用内收到新版本提醒，一键下载、重启并完成更新。
 
-逐项变更见 [0.1.3 双语更新内容](.release/notes/v0.1.3.md)。正式安装包以本仓库 [GitHub Release](https://github.com/poluce/ai-writer/releases/latest) 为准。
+逐项变更见 [0.1.4 双语更新内容](.release/notes/v0.1.4.md)。正式安装包以本仓库 [GitHub Release](https://github.com/poluce/ai-writer/releases/latest) 为准。
 
 
 
@@ -159,7 +163,7 @@ ai-writer-setup-<版本号>.exe
 
 ### macOS
 
-0.1.3 暂未发布 macOS 安装包：本发行线先完成 Windows x64 的云端资格构建与发布，macOS 安装包将在后续版本恢复，届时仍按 ARM64 / Intel 分别发布。
+0.1.4 暂未发布 macOS 安装包：本发行线先完成 Windows x64 的云端资格构建与发布，macOS 安装包将在后续版本恢复，届时仍按 ARM64 / Intel 分别发布。
 
 ## 当前限制
 
