@@ -41,12 +41,27 @@ vi.mock('../agent-session', () => ({
 vi.mock('../pi-models', () => ({
   createPiModels: vi.fn(() => ({ models: { streamSimple: vi.fn() }, model: {} })),
 }))
-vi.mock('../tool-builder', () => ({
-  buildAgentTools: vi.fn(() => []),
-  buildArchitectAgentTools: vi.fn(() => []),
-  buildBlueprintAgentTools: vi.fn(() => []),
-  confirmationToolNames: vi.fn(() => new Set(['write'])),
-}))
+vi.mock('../tool-builder', () => {
+  const buildAgentTools = vi.fn(() => [])
+  const buildArchitectAgentTools = vi.fn(() => [])
+  const buildBlueprintAgentTools = vi.fn(() => [])
+  const buildReviewAgentTools = vi.fn(() => [])
+  return {
+    buildAgentTools,
+    buildArchitectAgentTools,
+    buildBlueprintAgentTools,
+    buildReviewAgentTools,
+    buildToolsForAssistantType: vi.fn((assistantType: string) => {
+      switch (assistantType) {
+        case 'architect': return buildArchitectAgentTools()
+        case 'blueprint': return buildBlueprintAgentTools()
+        case 'review': return buildReviewAgentTools()
+        default: return buildAgentTools()
+      }
+    }),
+    confirmationToolNames: vi.fn(() => new Set(['write'])),
+  }
+})
 
 import { createPiModels } from '../pi-models'
 import { buildAgentTools } from '../tool-builder'

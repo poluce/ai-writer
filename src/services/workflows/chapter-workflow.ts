@@ -75,17 +75,6 @@ export interface RefineFromReviewParams {
   generationModelId?: string
 }
 
-export interface ReviewOnlyParams {
-  projectPath: string
-  chapterNumber: number
-  chapterTitle: string
-  draftPath: string
-  draftContent: string
-  sourceDraft: FrozenDraftSourceIdentity
-  /** 审稿维度侧重点（可选） */
-  reviewFocus?: string
-}
-
 export interface FinalizeOnlyParams {
   projectPath: string
   chapterNumber: number
@@ -325,58 +314,6 @@ export function createRefineFromReviewWorkflow(
       },
     ],
     onComplete: { mode: 'open', openResult: async () => { } },
-  }
-}
-
-export function createReviewOnlyWorkflow(
-  params: ReviewOnlyParams,
-  sourceProjectSession: ProjectSessionContext,
-): WorkflowDefinition {
-  const uiLocale = chapterWorkflowLocale()
-  const frozenParams = Object.freeze({
-    ...params,
-    sourceDraft: Object.freeze({ ...params.sourceDraft }),
-  })
-  return {
-    type: 'chapter_creation',
-    projectPath: params.projectPath,
-    projectSession: workflowProjectSession(params.projectPath, sourceProjectSession),
-    uiLocale,
-    resourceKeys: [workflowResourceKey('chapter', params.chapterNumber)],
-    readResourceKeys: CHAPTER_CONTEXT_READ_RESOURCE_KEYS,
-    title: localize(uiLocale,
-      `审稿 — 第${params.chapterNumber}章 ${params.chapterTitle}`,
-      `Review — Chapter ${params.chapterNumber} ${params.chapterTitle}`,
-    ),
-    steps: [
-      {
-        name: localize(uiLocale, '审稿', 'Review chapter'),
-        description: localize(
-          uiLocale,
-          '一致性检查（角色/剧情/世界观），生成审稿报告',
-          'Check character, plot, and worldbuilding consistency and generate a review report',
-        ),
-        executor: async (step, context, callbacks) => {
-          const { ReviewChapterCommand } = await import('./commands/review-chapter.command')
-          const cmd = new ReviewChapterCommand({
-            draftPath: frozenParams.draftPath,
-            draftContent: frozenParams.draftContent,
-            sourceDraft: frozenParams.sourceDraft,
-            chapterNumber: frozenParams.chapterNumber,
-            reviewFocus: frozenParams.reviewFocus,
-          })
-          return cmd.execute({ step, context, callbacks })
-        },
-      },
-    ],
-    onComplete: {
-      mode: 'open',
-      message: localize(
-        uiLocale,
-        `第${params.chapterNumber}章审稿完成`,
-        `Chapter ${params.chapterNumber} review completed`,
-      ),
-    },
   }
 }
 

@@ -92,7 +92,7 @@ export function DraftActionConfirmDialog({
             </>
           ) : (
             <>
-              <div>{text('将调用 AI 对本章草稿进行一致性检查，并生成审稿报告。', 'AI will check this chapter for consistency and generate a review report.')}</div>
+              <div>{text('将切到右侧审稿助手，对本章草稿做只读审查并产出审稿报告。', 'This opens the review assistant for a read-only audit of this chapter and produces a review report.')}</div>
               <div className="mt-3">
                 <div className="text-xs font-medium mb-2" style={{ color: 'var(--color-text)' }}>{text('重点检查维度：', 'Review focus:')}</div>
                 <div className="flex flex-wrap gap-2">

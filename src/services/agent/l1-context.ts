@@ -72,15 +72,21 @@ export function buildL1AgentContext(
     const tabSummaries = snapshot.tabs.map(tab => {
       const active = tab.active ? ` [${label('当前活跃', 'active')}]` : ''
       const dirty = tab.unsaved ? ` [${label('未保存', 'unsaved')}]` : ''
-      return `  - ${tab.name} (${tab.type})${active}${dirty}`
+      const chapter = typeof tab.chapterNumber === 'number'
+        ? label(`第${tab.chapterNumber}章`, `Chapter ${tab.chapterNumber}`) + ' · '
+        : ''
+      return `  - ${chapter}${tab.name} (${tab.type})${active}${dirty}`
     }).join('\n')
     parts.push(`## ${label('编辑器状态', 'Editor state')}\n${label('打开的文件', 'Open files')}:\n${tabSummaries}`)
 
     const activeTab = snapshot.tabs.find(tab => tab.active)
     if (activeTab) {
+      const chapterHint = typeof activeTab.chapterNumber === 'number'
+        ? label(`（这是第 ${activeTab.chapterNumber} 章）`, ` (this is Chapter ${activeTab.chapterNumber})`)
+        : ''
       parts.push(label(
-        `用户正在查看「${activeTab.name}」（${activeTab.type}）。需要正文时请用工具读取，不要假设已经看到文件内容。`,
-        `The user is viewing "${activeTab.name}" (${activeTab.type}). Read the body with tools; do not assume file contents are already in context.`,
+        `用户正在查看「${activeTab.name}」（${activeTab.type}）${chapterHint}。需要正文时请用工具读取，不要假设已经看到文件内容。`,
+        `The user is viewing "${activeTab.name}" (${activeTab.type})${chapterHint}. Read the body with tools; do not assume file contents are already in context.`,
       ))
     }
   }

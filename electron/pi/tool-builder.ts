@@ -18,9 +18,12 @@ import { createManageCharactersTool } from './tools/manage-characters.tool'
 import { createManageMcpTool } from './tools/manage-mcp.tool'
 import { createWebFetchTool } from './tools/web-fetch.tool'
 import { buildMcpAgentTools } from './tools/mcp.tool'
+import { createReadContinuityFactsTool } from './tools/read-continuity-facts.tool'
+import { createSubmitChapterReviewTool } from './tools/submit-chapter-review.tool'
 import { createDelegateToAssistantTool, type AssistantDelegateHandler } from './tools/delegate-to-assistant.tool'
 import type { AnyAgentTool } from './tool-types'
 import type { AgentSkillCatalogEntry } from '../../src/shared/agent-skills'
+import type { AssistantType } from '../../src/shared/agent-conversation-archive'
 
 export type { AssistantDelegateHandler }
 
@@ -42,6 +45,7 @@ export function sequentialToolNames(): ReadonlySet<string> {
     'manage_mcp',
     'manage_skills',
     'manage_knowledge_base',
+    'submit_chapter_review',
     'delegate_to_assistant',
   ])
 }
@@ -145,6 +149,61 @@ export function buildBlueprintAgentTools(
 }
 
 /**
+ * Build the tools dedicated to the Chapter Review Assistant.
+ *
+ * 审稿助手是只读审查角色：只能读取草稿、设定、蓝图、连续性事实与知识库，
+ * 唯一的写工具是把审稿结论落成审稿报告。不挂执行工具，也不挂任何正文/设定写工具。
+ */
+export function buildReviewAgentTools(
+  language: WritingLanguage,
+  rendererAction: RendererActionSink,
+): AnyAgentTool[] {
+  return [
+    createReadProjectStateTool(language),
+    createReadArchitectureTool(language),
+    createReadBlueprintTool(language),
+    createReadContinuityFactsTool(language),
+    createManageDraftsTool(language, rendererAction, { readOnly: true }),
+    createManageCharactersTool(language, rendererAction, { readOnly: true }),
+    createSearchKnowledgeTool(language),
+    createReadFileTool(language),
+    createOpenEditorTool(language, rendererAction),
+    createSubmitChapterReviewTool(language, rendererAction),
+  ].map(withExecutionMode)
+}
+
+export interface AssistantToolKitOptions {
+  skills?: readonly AgentSkillCatalogEntry[]
+  skillRoots?: readonly string[]
+  delegateHandler?: AssistantDelegateHandler
+}
+
+/** 助手类型到工具集的唯一分发点：四个助手各有一套职责边界。 */
+export function buildToolsForAssistantType(
+  assistantType: AssistantType,
+  language: WritingLanguage,
+  rendererAction: RendererActionSink,
+  options: AssistantToolKitOptions = {},
+): AnyAgentTool[] {
+  switch (assistantType) {
+    case 'architect':
+      return buildArchitectAgentTools(language, rendererAction)
+    case 'blueprint':
+      return buildBlueprintAgentTools(language, rendererAction)
+    case 'review':
+      return buildReviewAgentTools(language, rendererAction)
+    case 'general':
+      return buildAgentTools(
+        language,
+        rendererAction,
+        options.skills ?? [],
+        options.skillRoots ?? [],
+        options.delegateHandler,
+      )
+  }
+}
+
+/**
  * Write tools that must be confirmed by the user before execution.
  *
  * `write` / `edit` / `bash` 是 Pi harness 自带的执行工具：它们能改文件、
@@ -164,6 +223,7 @@ export function confirmationToolNames(): ReadonlySet<string> {
     'manage_mcp',
     'manage_skills',
     'manage_knowledge_base',
+    'submit_chapter_review',
     'delegate_to_assistant',
   ])
 }

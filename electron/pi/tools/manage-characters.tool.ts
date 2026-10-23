@@ -134,18 +134,28 @@ export function isManageCharactersWrite(params: Record<string, unknown>): boolea
   )
 }
 
+export interface ManageCharactersToolOptions {
+  /** 审稿助手等只读角色：只允许查询，写入动作在工具层直接拒绝。 */
+  readOnly?: boolean
+}
+
 export function createManageCharactersTool(
   language: WritingLanguage,
   rendererAction: RendererActionSink,
+  options: ManageCharactersToolOptions = {},
 ): AgentTool<typeof Schema> {
   const isEn = language === 'en-US'
   function text(zhCN: string, enUS: string): string {
     return writingLanguageText(language, zhCN, enUS)
   }
 
-  const description = isEn
-    ? 'All-in-one Character Management Tool: supports querying character lists, profiles, and chapter-level historical state snapshots; tracking chapter appearances and continuity; creating single or batch characters (sects/factions); partial profile and delta state updates with auto-inheritance; project-wide cascading renames; fine-grained relationship maintenance; and safe deletions.'
-    : '全功能人物中枢工具：支持全书人物多维查询、单人档案、以及基于章节时间线的历史身心状态快照回溯；支持角色出场章节轨迹追踪与章节在场阵容反查；支持单角色建档与宗门/阵营群像批量建档；支持档案局部修改与状态增量Patch继承（未提供字段自动从前文继承）；支持全工程级联改名（自动同步更新关系网与所有章节蓝图）；支持人际关系网细粒度微调与安全删除。'
+  const description = options.readOnly
+    ? (isEn
+        ? 'Read-only character roster tool: query character lists, profiles, chapter-level historical state snapshots, and chapter appearances. This assistant cannot modify characters.'
+        : '只读人物工具：查询全书人物名单、单人档案、章节时间线的历史身心状态快照与出场章节轨迹。本助手不能修改角色数据。')
+    : (isEn
+        ? 'All-in-one Character Management Tool: supports querying character lists, profiles, and chapter-level historical state snapshots; tracking chapter appearances and continuity; creating single or batch characters (sects/factions); partial profile and delta state updates with auto-inheritance; project-wide cascading renames; fine-grained relationship maintenance; and safe deletions.'
+        : '全功能人物中枢工具：支持全书人物多维查询、单人档案、以及基于章节时间线的历史身心状态快照回溯；支持角色出场章节轨迹追踪与章节在场阵容反查；支持单角色建档与宗门/阵营群像批量建档；支持档案局部修改与状态增量Patch继承（未提供字段自动从前文继承）；支持全工程级联改名（自动同步更新关系网与所有章节蓝图）；支持人际关系网细粒度微调与安全删除。')
 
   return {
     name: 'manage_characters',
@@ -154,6 +164,13 @@ export function createManageCharactersTool(
     parameters: Schema,
     isWriteOperation: isManageCharactersWrite,
     execute: async (_id, params) => {
+      if (options.readOnly && isManageCharactersWrite(params)) {
+        throw new Error(text(
+          '本助手为只读审稿角色，不能修改角色数据；请改用查询动作（read / track_appearances）。',
+          'This assistant is read-only for review and cannot modify character data. Use read or track_appearances instead.',
+        ))
+      }
+
       const projectPath = getCurrentProjectPath()
       if (!projectPath) {
         throw new Error(text('未打开小说项目', 'No novel project is currently open'))

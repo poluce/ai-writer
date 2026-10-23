@@ -92,6 +92,7 @@ describe('buildAgentTools', () => {
       'open_editor',
       'propose_chapter_blueprint',
       'story_architecture',
+      'submit_chapter_review',
       'write',
     ])
   })
@@ -110,6 +111,7 @@ describe('buildAgentTools', () => {
       'open_editor',
       'propose_chapter_blueprint',
       'story_architecture',
+      'submit_chapter_review',
       'write',
     ])
   })

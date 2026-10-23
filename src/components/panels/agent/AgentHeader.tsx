@@ -11,6 +11,7 @@ import { MenuItem } from '../../ui/MenuItem'
 import { useOutsideClick } from '../../../hooks/useOutsideClick'
 import { useLocaleStore } from '../../../stores/locale-store'
 import type { AssistantType } from '../../../shared/agent-conversation-archive'
+import { ASSISTANT_UI_COPY } from './assistant-ui-copy'
 
 /**
  * Agent 面板顶部工具栏
@@ -20,10 +21,8 @@ export default function AgentHeader({ assistantType = 'general' }: { assistantTy
   const {
     createConversation,
     toggleHistory,
-    showHistory,
-    showArchitectHistory,
-    showBlueprintHistory,
     getActiveConversation,
+    getShowHistory,
   } = useAgentStore()
   const toggleAIPanel = useLayoutStore(s => s.toggleAIPanel)
   const [showMore, setShowMore] = useState(false)
@@ -38,11 +37,8 @@ export default function AgentHeader({ assistantType = 'general' }: { assistantTy
 
   const activeConv = getActiveConversation(assistantType)
   const isCurrentEmpty = !activeConv || activeConv.messages.filter(m => m.role !== 'system').length === 0
-  const isHistoryActive = assistantType === 'blueprint'
-    ? showBlueprintHistory
-    : assistantType === 'architect'
-      ? showArchitectHistory
-      : showHistory
+  const isHistoryActive = getShowHistory(assistantType)
+  const copy = ASSISTANT_UI_COPY[assistantType]
 
   return (
     <div
@@ -56,11 +52,7 @@ export default function AgentHeader({ assistantType = 'general' }: { assistantTy
         className="min-w-0 truncate"
         style={{ color: 'var(--color-text-secondary)', fontSize: '0.75rem', fontWeight: 500 }}
       >
-        {assistantType === 'blueprint'
-          ? text('AI 蓝图助手', 'AI Blueprint Assistant')
-          : assistantType === 'architect'
-            ? text('AI 架构助手', 'AI Architecture Assistant')
-            : text('AI 写作助手', 'AI Writing Assistant')}
+        {copy.title(text)}
       </div>
 
       <div className="flex items-center gap-1.5 px-0.5 flex-shrink-0 ml-auto">
@@ -152,13 +144,7 @@ export default function AgentHeader({ assistantType = 'general' }: { assistantTy
         </div>
 
         <IconBtn
-          title={
-            assistantType === 'blueprint'
-              ? text('关闭蓝图助手', 'Close Blueprint panel')
-              : assistantType === 'architect'
-                ? text('关闭架构助手', 'Close Architecture panel')
-                : text('关闭 Agent 面板', 'Close Agent panel')
-          }
+          title={copy.closeTitle(text)}
           onClick={toggleAIPanel}
           size={18}
         >

@@ -1,4 +1,4 @@
-import { Bot, DraftingCompass, ListTree, Workflow } from 'lucide-react'
+import { Bot, ClipboardCheck, DraftingCompass, ListTree, Workflow } from 'lucide-react'
 import { useLayoutStore, type RightView } from '../../stores/layout-store'
 import { useWorkflowStore } from '../../stores/workflow-store'
 import { useLocaleStore } from '../../stores/locale-store'
@@ -6,10 +6,12 @@ import { useLocaleStore } from '../../stores/locale-store'
 /**
  * 右侧工具窗口栏（RightToolWindowBar）
  * JetBrains 风格：30px 宽，纯图标，激活时右侧 2px 竖线。
- * 提供三个独立的专用视图入口：
+ * 提供四个独立的专用视图入口：
  * 1. AI 创作助手（Agent 对话面板）
  * 2. 架构助手（专职大纲/世界观/设定推演）
- * 3. 结构化工作流输出（AI Output 面板）
+ * 3. 蓝图助手（专职章节细纲与场景节拍）
+ * 4. 审稿助手（只读审查、产出审稿报告）
+ * 以及底部结构化工作流输出面板。
  */
 export default function RightToolWindowBar() {
   const text = useLocaleStore(s => s.text)
@@ -30,6 +32,7 @@ export default function RightToolWindowBar() {
   const isAgentActive = aiPanelOpen && rightView === 'agent'
   const isArchitectActive = aiPanelOpen && rightView === 'architect'
   const isBlueprintActive = aiPanelOpen && rightView === 'blueprint'
+  const isReviewActive = aiPanelOpen && rightView === 'review'
   const isWorkflowActive = aiPanelOpen && rightView === 'ai-output'
 
   /** 后台任务/工作流活跃时的指示脉冲 */
@@ -110,7 +113,25 @@ export default function RightToolWindowBar() {
         <ListTree size={15} strokeWidth={isBlueprintActive ? 2 : 1.5} />
       </button>
 
-      {/* 4. 结构化工作流输出面板按钮 */}
+      {/* 4. 审稿助手面板按钮 */}
+      <button
+        onClick={() => handleToggle('review')}
+        title={text('审稿助手', 'Review Assistant')}
+        className="tool-btn relative"
+        style={{
+          height: 30,
+          boxShadow: isReviewActive
+            ? 'inset -2px 0 0 var(--color-activity-indicator)'
+            : 'none',
+          color: isReviewActive
+            ? 'var(--color-activity-icon-active)'
+            : 'var(--color-activity-icon)',
+        }}
+      >
+        <ClipboardCheck size={15} strokeWidth={isReviewActive ? 2 : 1.5} />
+      </button>
+
+      {/* 5. 结构化工作流输出面板按钮 */}
       <button
         onClick={() => handleToggle('ai-output')}
         title={text('结构化工作流输出', 'Structured workflow output')}

@@ -11,7 +11,8 @@ import {
   acceptedAssistantThinkingLevel,
 } from '../../src/shared/agent-runtime'
 import { isAgentSkillCatalog, type AgentSkillCatalogEntry } from '../../src/shared/agent-skills'
-import type { AgentPromptHistoryTurn } from '../../src/shared/agent-conversation-archive'
+import type { AgentPromptHistoryTurn, AssistantType } from '../../src/shared/agent-conversation-archive'
+import { assistantTypeFromConversationId, isAssistantType } from '../../src/shared/agent-conversation-archive'
 
 import {
   readJsonFile,
@@ -23,7 +24,7 @@ import { getCurrentProjectPath } from '../database'
 import { logFailure } from '../../src/shared/fail-log'
 import { ProjectCoreRepository } from '../repositories/project-core-repository'
 import { loadAssistantWritingIdentity } from './assistant-identity-loader'
-import { buildMainProcessAgentSystemPrompt, buildArchitectAgentSystemPrompt, buildBlueprintAgentSystemPrompt } from './agent-system-prompt'
+import { buildMainProcessAgentSystemPrompt, buildArchitectAgentSystemPrompt, buildBlueprintAgentSystemPrompt, buildReviewAgentSystemPrompt } from './agent-system-prompt'
 import type { GlobalConfig, ModelProfile } from '../../src/shared/ipc-channels'
 import {
   DEFAULT_WRITING_LANGUAGE,
@@ -31,7 +32,14 @@ import {
 } from '../../src/shared/writing-language'
 import { normalizeModelProfiles } from '../../src/shared/model-profile'
 
-function resolveModel(modelId: string | undefined): ModelProfile | null {
+/** 助手类型到创作环节模型路由的映射：审稿走 review，架构/蓝图走 planning。 */
+function assistantModelTaskKey(assistantType: AssistantType): 'assistant' | 'planning' | 'review' {
+  if (assistantType === 'review') return 'review'
+  if (assistantType === 'architect' || assistantType === 'blueprint') return 'planning'
+  return 'assistant'
+}
+
+function resolveModel(modelId: string | undefined, assistantType: AssistantType = 'general'): ModelProfile | null {
   const models = normalizeModelProfiles(readJsonFile<unknown[]>(MODELS_CONFIG_PATH, []))
   if (models.length === 0) return null
 
@@ -43,8 +51,8 @@ function resolveModel(modelId: string | undefined): ModelProfile | null {
   }
 
   const config = readJsonFile<GlobalConfig>(GLOBAL_CONFIG_PATH, DEFAULT_GLOBAL_CONFIG)
-  const assistantConfigId = config.taskModelRouting?.assistant?.modelId?.trim()
-  const defaultId = assistantConfigId || config.defaultModelId
+  const taskConfigId = config.taskModelRouting?.[assistantModelTaskKey(assistantType)]?.modelId?.trim()
+  const defaultId = taskConfigId || config.defaultModelId
 
   if (defaultId) {
     const foundDefault = models.find((m) => m.id === defaultId)
@@ -62,7 +70,7 @@ function resolveLanguage(): WritingLanguage {
 
 function resolveSystemPrompt(
   skills?: readonly AgentSkillCatalogEntry[],
-  assistantType: 'general' | 'architect' | 'blueprint' = 'general',
+  assistantType: AssistantType = 'general',
 ): string {
   // 助手只在项目内工作：L0 项目事实与项目级身份覆盖都以当前书为准。
   const core = ProjectCoreRepository.get()
@@ -73,6 +81,9 @@ function resolveSystemPrompt(
   }
   if (assistantType === 'architect') {
     return buildArchitectAgentSystemPrompt(core)
+  }
+  if (assistantType === 'review') {
+    return buildReviewAgentSystemPrompt(core)
   }
   return buildMainProcessAgentSystemPrompt(
     core,
@@ -218,12 +229,9 @@ export function registerAgentController(): void {
     assistantType?: unknown,
   ) => {
     const resolvedExecutionMode: 'plan' | 'writing' = executionMode === 'writing' ? 'writing' : 'plan'
-    const resolvedAssistantType: 'general' | 'architect' | 'blueprint' =
-      assistantType === 'blueprint' || conversationId.startsWith('blueprint-')
-        ? 'blueprint'
-        : assistantType === 'architect' || conversationId.startsWith('architect-')
-          ? 'architect'
-          : 'general'
+    const resolvedAssistantType: AssistantType = isAssistantType(assistantType)
+      ? assistantType
+      : assistantTypeFromConversationId(conversationId)
     return manager.prompt(
       conversationId,
       input,
@@ -260,8 +268,7 @@ export function registerAgentController(): void {
 
   ipcMain.handle('agent:system-prompt', async (_event, skills?: unknown, assistantType?: unknown) => {
     try {
-      const resolvedType: 'general' | 'architect' | 'blueprint' =
-        assistantType === 'blueprint' ? 'blueprint' : assistantType === 'architect' ? 'architect' : 'general'
+      const resolvedType: AssistantType = isAssistantType(assistantType) ? assistantType : 'general'
       return {
         success: true,
         prompt: resolveSystemPrompt(acceptedSkillCatalog(skills), resolvedType),

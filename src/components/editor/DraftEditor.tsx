@@ -393,26 +393,24 @@ function DraftEditorSession({ tabId, filePath, content, projectKey }: Props) {
     }
   }
 
-  /** 执行 AI 审稿 */
+  /** 执行 AI 审稿 —— 审稿助手接管：先落盘当前正文，再带着章节与维度切到审稿助手。 */
   const doReview = async () => {
     const projectSession = captureProjectSession(currentProject)
     if (!projectMatches || !currentProject || !meta || !projectSession || !isProjectSessionPath(projectSession, projectKey)) return
     try {
       const source = await freezeDraftSourceForAI(projectSession)
       if (!source || !isProjectSessionCurrent(projectSession)) return
-      const { useWorkflowStore } = await import('../../stores/workflow-store')
-      const { createReviewOnlyWorkflow } = await import('../../services/workflows/chapter-workflow')
-      if (!isProjectSessionCurrent(projectSession)) return
       if (!isFrozenAISourceCurrent(source.body, source.sourceDraft)) return
-
-      useWorkflowStore.getState().startWorkflow(createReviewOnlyWorkflow({
-        projectPath: projectSession.projectPath,
-        chapterNumber: meta.chapterNumber,
-        chapterTitle: meta.chapterTitle ?? '未知标题',
-        draftPath: filePath,
-        draftContent: source.body,
-        sourceDraft: source.sourceDraft,
-        reviewFocus: REVIEW_DIMS.filter(d => reviewDims[d.key]).map(d => d.promptLabel).join('、') || undefined}, projectSession), false)
+      const focus = REVIEW_DIMS
+        .filter(d => reviewDims[d.key])
+        .map(d => d.promptLabel)
+        .join('、')
+      const prompt = text(
+        `请审查第 ${meta.chapterNumber} 章《${meta.chapterTitle || '未命名'}》的草稿（draft_id: ${meta.id}）。先读取最新草稿、本章蓝图与已定稿的连续性事实，再逐项审查；重点检查维度：${focus || '全部维度'}。每条问题引用原文，最后调用 submit_chapter_review 提交审稿报告。`,
+        `Review the draft of Chapter ${meta.chapterNumber} "${meta.chapterTitle || 'Untitled'}" (draft_id: ${meta.id}). Read the latest draft, this chapter's blueprint, and finalized continuity facts first and then review it. Focus: ${focus || 'all dimensions'}. Quote the draft for each issue, and finish with submit_chapter_review.`,
+      )
+      useLayoutStore.getState().openRightPanel('review')
+      void useAgentStore.getState().sendMessage(prompt, 'review')
     } catch (e) {
       if (!isProjectSessionCurrent(projectSession)) return
       toast.error(text(`审稿启动失败：${e}`, 'Could not start AI review.'))
@@ -846,7 +844,7 @@ function DraftEditorSession({ tabId, filePath, content, projectKey }: Props) {
               size="sm"
               onClick={() => setConfirmAction('review')}
               disabled={isChapterBusy}
-                title={text('AI 审稿 — 一致性检查，生成审稿报告', 'AI review — run a consistency check and create a review report')}
+                title={text('AI 审稿 — 交给审稿助手做只读审查，产出可勾选的审稿报告', 'AI review — hand off to the review assistant for a read-only audit and a confirmable report')}
             >
               <Search size={12} />
                 {text('AI 审稿', 'AI review')}

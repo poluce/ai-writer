@@ -28,7 +28,8 @@ import { logFailure, logInfo } from '../../src/shared/fail-log'
 import { buildL1AgentContext } from './agent-l1-context'
 import type { AgentEditorSnapshot, PiAgentEvent, PiToolCallInfo } from '../../src/shared/agent-events'
 import type { FileWriteCommitState } from '../../src/shared/ipc-channels'
-import type { AgentPromptHistoryTurn } from '../../src/shared/agent-conversation-archive'
+import type { AgentPromptHistoryTurn, AssistantType } from '../../src/shared/agent-conversation-archive'
+import { assistantTypeFromConversationId } from '../../src/shared/agent-conversation-archive'
 import type { WritingLanguage } from '../../src/shared/writing-language'
 import type { AssistantThinkingLevel } from '../../src/shared/agent-runtime'
 import type { PiModelRuntime } from './pi-models'
@@ -87,7 +88,7 @@ export interface AgentSessionOptions {
   /** harness 的思考等级；缺省 `off`，即 Pi 的默认行为。 */
   thinkingLevel?: AssistantThinkingLevel
   /** 助手类型：通用写作助手（general）、架构助手（architect）或章节蓝图助手（blueprint）。 */
-  assistantType?: 'general' | 'architect' | 'blueprint'
+  assistantType?: AssistantType
   /**
    * 产品侧的思考预算补丁是否生效。用户在输入框里显式选了思考等级时为
    * false——那个等级由 harness 直接下发，不该被预算覆盖。
@@ -123,7 +124,7 @@ export class AgentSession {
   private readonly model: PiModelRuntime['model']
   private readonly session: Session<SessionMetadata>
   private readonly thinkingLevel: AssistantThinkingLevel
-  private readonly assistantType: 'general' | 'architect' | 'blueprint'
+  private readonly assistantType: AssistantType
   /** 执行工具的提交态记录；没有执行环境时为 null。 */
   private readonly commitTracker: ConfinedExecutionEnv | null
   /** 挂 harness 执行工具的执行环境；`setTools` 每轮要用它把执行工具补回来。 */
@@ -166,11 +167,9 @@ export class AgentSession {
     this.session = options.session
     this.thinkingLevel = options.thinkingLevel ?? 'off'
     this.assistantType = options.assistantType ?? (
-      options.conversationId?.startsWith('blueprint-')
-        ? 'blueprint'
-        : options.conversationId?.startsWith('architect-')
-          ? 'architect'
-          : 'general'
+      options.conversationId
+        ? assistantTypeFromConversationId(options.conversationId)
+        : 'general'
     )
     this.applySamplingThinking = options.applySamplingThinking ?? true
     this.executionEnv = options.executionEnv ?? null

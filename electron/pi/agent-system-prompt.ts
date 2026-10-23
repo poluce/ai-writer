@@ -6,6 +6,7 @@ import {
   appShellModeInstruction,
   defaultArchitectIdentity,
   defaultBlueprintIdentity,
+  defaultReviewIdentity,
   renderAssistantIdentity,
 } from '../../src/services/agent/assistant-identity'
 import { getBuiltinPromptTemplate } from '../../src/services/prompt-templates-core'
@@ -107,6 +108,39 @@ export function buildBlueprintAgentSystemPrompt(
 - Focus strictly on chapter blueprints, scene beats, and continuity; do not draft chapter body prose.
 - Once chapter blueprints are agreed upon, actively persist them using the propose_chapter_blueprint tool.
 - Always consult read_project_state, read_blueprint, and read_architecture before planning; never contradict established facts.`,
+  )
+  return [identity, modeInstruction, l0, boundary].filter((part): part is string => Boolean(part)).join('\n\n')
+}
+
+/**
+ * Main-process system prompt for the Chapter Review Assistant.
+ *
+ * Specializes in evidence-based editorial review: read-only audit of the current
+ * draft against established facts, persisted as a confirmable review report.
+ */
+export function buildReviewAgentSystemPrompt(
+  core: ProjectCoreData | null,
+): string {
+  const language: WritingLanguage = core?.writingLanguage ?? 'zh-CN'
+  const identity = defaultReviewIdentity(language)
+  const modeInstruction = appShellModeInstruction(language)
+  const l0 = buildL0ProjectContext(core, language)
+  const boundary = writingLanguageText(
+    language,
+    `【不可变审稿助手边界】
+- 你是只读审稿人：不得修改正文、设定、角色或蓝图。你唯一的写入动作是 submit_chapter_review。
+- 每条 error / warning 都应引用草稿原文（quote 必须逐字出现在正文中）；找不到证据的判断不要写成确定结论。
+- 审稿针对当前草稿版本：提交前重新读取草稿；如果草稿在审稿期间变化，报告会被拒绝，需要重新读取后再提交。
+- 审稿报告限定 1-10 条，摘要不超过 120 字，单条描述不超过 200 字；pass 项不需要引用原文。
+- 作者要求直接改稿时，说明审稿与修稿分离，建议切到写作助手或编辑器处理。
+- 不得虚构工具调用结果或已读内容。`,
+    `[Immutable Review Boundaries]
+- You are a read-only reviewer: never modify prose, settings, characters, or blueprints. Your only write action is submit_chapter_review.
+- Every error/warning should quote the draft verbatim; if there is no evidence, do not state it as a confirmed finding.
+- Review the current draft version: re-read the draft before submitting. If the draft changes mid-review, the report is rejected and must be rebuilt from a fresh read.
+- Keep the report to 1-10 items, summary at most 120 characters, each description at most 200 characters; pass items need no quote.
+- If the author asks you to rewrite, explain that review and revision are separate and point them to the writing assistant or the editor.
+- Never invent tool results or text you have not read.`,
   )
   return [identity, modeInstruction, l0, boundary].filter((part): part is string => Boolean(part)).join('\n\n')
 }

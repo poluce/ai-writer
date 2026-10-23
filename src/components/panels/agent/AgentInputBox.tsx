@@ -24,6 +24,7 @@ import type { SlashCommand, MentionTarget } from '../../../services/agent/intent
 import { useLocaleStore } from '../../../stores/locale-store'
 import { cn } from '../../../lib/utils'
 import type { AssistantType } from '../../../shared/agent-conversation-archive'
+import { ASSISTANT_UI_COPY } from './assistant-ui-copy'
 
 /** 输入框最大高度（px），超出后框内滚动 */
 const MAX_HEIGHT = 200
@@ -43,9 +44,8 @@ export default function AgentInputBox({ assistantType = 'general' }: { assistant
   const executionMode = useAgentStore(s => s.executionMode)
   const generating = useAgentStore(selectIsGenerating)
   const models = useLLMStore(s => s.models)
-  const assistantConfiguredModelId = useLLMStore(s => s.resolveTaskModelId(
-    assistantType === 'architect' || assistantType === 'blueprint' ? 'planning' : 'assistant'
-  ))
+  const copy = ASSISTANT_UI_COPY[assistantType]
+  const assistantConfiguredModelId = useLLMStore(s => s.resolveTaskModelId(copy.modelTaskKey))
   const currentModelId = useAgentStore(s => {
     const active = s.getActiveConversation(assistantType)
     return active?.modelId ?? assistantConfiguredModelId
@@ -480,11 +480,7 @@ export default function AgentInputBox({ assistantType = 'general' }: { assistant
             disabled={!hasProject}
             placeholder={
               hasProject
-                ? (assistantType === 'blueprint'
-                    ? text('推演章节细纲、核心事件、角色登场与章末悬念...（Enter 发送）', 'Deduce chapter blueprint, events, characters, and cliffhangers... (Enter to send)')
-                    : assistantType === 'architect'
-                      ? text('探讨世界观、大纲、设定与冲突推演...（Enter 发送）', 'Discuss worldbuilding, outline, setting, and plot beats... (Enter to send)')
-                      : text('输入消息，@ 提及，/ 使用工作流...', 'Type a message, @ mention, or / use a workflow...'))
+                ? copy.placeholder(text)
                 : text('打开项目后可用', 'Open a project to chat')
             }
             title={hasProject ? undefined : text('打开项目后可用', 'Open a project to chat')}

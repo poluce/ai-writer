@@ -6,8 +6,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { setActiveProjectSessionContext } from '../../../shared/project-session-context'
 import { RefineDraftCommand } from '../../../services/workflows/commands/refine-draft.command'
-import { ReviewChapterCommand } from '../../../services/workflows/commands/review-chapter.command'
 import { useEditorStore } from '../../../stores/editor-store'
+import { useAgentStore } from '../../../stores/agent-store'
+import { useLayoutStore } from '../../../stores/layout-store'
 import { useProjectStore } from '../../../stores/project-store'
 import { useWorkflowStore, type WorkflowDefinition } from '../../../stores/workflow-store'
 import DraftEditor from '../DraftEditor'
@@ -54,14 +55,14 @@ async function defaultInvoke(channel: string, ...args: unknown[]): Promise<unkno
 let invoke: ReturnType<typeof vi.fn>
 let startWorkflow: ReturnType<typeof vi.fn>
 let refineExecute: ReturnType<typeof vi.spyOn>
-let reviewExecute: ReturnType<typeof vi.spyOn>
 const originalEditorState = useEditorStore.getState()
 const originalProjectState = useProjectStore.getState()
 const originalWorkflowState = useWorkflowStore.getState()
+const originalAgentState = useAgentStore.getState()
+const originalLayoutState = useLayoutStore.getState()
 
 beforeEach(async () => {
   refineExecute = vi.spyOn(RefineDraftCommand.prototype, 'execute').mockResolvedValue('')
-  reviewExecute = vi.spyOn(ReviewChapterCommand.prototype, 'execute').mockResolvedValue('')
   container = document.createElement('div')
   document.body.append(container)
   root = createRoot(container)
@@ -155,24 +156,22 @@ afterEach(async () => {
   useEditorStore.setState(originalEditorState)
   useProjectStore.setState(originalProjectState)
   useWorkflowStore.setState(originalWorkflowState)
+  useAgentStore.setState(originalAgentState)
+  useLayoutStore.setState(originalLayoutState)
   refineExecute.mockRestore()
-  reviewExecute.mockRestore()
   setActiveProjectSessionContext(null)
   Reflect.deleteProperty(window, 'velaAPI')
 })
 
 describe('DraftEditor AI source snapshot', () => {
-  it.each([
-    { action: 'AI 修稿', command: 'refine' },
-    { action: 'AI 审稿', command: 'review' },
-  ] as const)('freezes the dirty screen body before starting $action', async ({ action, command }) => {
-    await act(async () => page.getByRole('button', { name: action }).click())
+  it('freezes the dirty screen body before starting AI 修稿', async () => {
+    await act(async () => page.getByRole('button', { name: 'AI 修稿' }).click())
     await act(async () => page.getByRole('button', { name: '确认执行' }).click())
 
     await vi.waitFor(() => expect(startWorkflow).toHaveBeenCalled())
     const definition = startWorkflow.mock.calls[0]?.[0] as WorkflowDefinition
     await definition.steps[0].executor({} as never, {} as never, {} as never)
-    const instance = (command === 'refine' ? refineExecute : reviewExecute).mock.instances[0] as unknown as {
+    const instance = refineExecute.mock.instances[0] as unknown as {
       params: {
         draftContent: string
         sourceDraft: { id: number; chapterNumber: number; version: number; status: string; contentRevision: number }
@@ -197,9 +196,31 @@ describe('DraftEditor AI source snapshot', () => {
     expect(invoke.mock.calls.some(([channel]) => channel === 'db:draft-get-full')).toBe(false)
   })
 
-  it.each(['AI 修稿', 'AI 审稿'] as const)(
-    'does not start %s when the author keeps typing while the frozen source is being verified',
-    async (action) => {
+  it('hands AI 审稿 off to the review assistant after persisting the dirty body', async () => {
+    const sendMessage = vi.fn(async () => {})
+    useAgentStore.setState({ sendMessage })
+
+    await act(async () => page.getByRole('button', { name: 'AI 审稿' }).click())
+    await act(async () => page.getByRole('button', { name: '确认执行' }).click())
+
+    await vi.waitFor(() => expect(sendMessage).toHaveBeenCalled())
+    expect(useLayoutStore.getState().rightView).toBe('review')
+    const [prompt, assistantType] = sendMessage.mock.calls[0] as unknown as [string, string]
+    expect(assistantType).toBe('review')
+    expect(prompt).toContain('第 1 章')
+    expect(prompt).toContain('submit_chapter_review')
+    expect(invoke.mock.calls).toContainEqual([
+      'db:draft-update-content',
+      7,
+      SCREEN_BODY,
+      SCREEN_BODY.length,
+      PROJECT_PATH,
+      PROJECT_SESSION,
+    ])
+    expect(startWorkflow).not.toHaveBeenCalled()
+  })
+
+  it('does not start AI 修稿 when the author keeps typing while the frozen source is being verified', async () => {
       const originalInvoke = invoke.getMockImplementation() as
         | ((channel: string, ...args: unknown[]) => unknown)
         | undefined
@@ -213,7 +234,7 @@ describe('DraftEditor AI source snapshot', () => {
         return originalInvoke(channel, ...args)
       })
 
-      await act(async () => page.getByRole('button', { name: action }).click())
+      await act(async () => page.getByRole('button', { name: 'AI 修稿' }).click())
       await act(async () => page.getByRole('button', { name: '确认执行' }).click())
       await vi.waitFor(() => expect(
         invoke.mock.calls.some(([channel]) => channel === 'db:draft-update-content'),
@@ -237,8 +258,7 @@ describe('DraftEditor AI source snapshot', () => {
       })
 
       expect(startWorkflow).not.toHaveBeenCalled()
-    },
-  )
+  })
 
   it('keeps annotations with their own draft when the editor switches chapters', async () => {
     const annotation = {

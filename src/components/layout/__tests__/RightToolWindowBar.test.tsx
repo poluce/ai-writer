@@ -16,11 +16,12 @@ describe('RightToolWindowBar', () => {
     })
   })
 
-  it('renders buttons for AI Assistant, Architecture Assistant, Blueprint Assistant, and Structured Workflow Output', () => {
+  it('renders buttons for AI Assistant, Architecture Assistant, Blueprint Assistant, Review Assistant, and Structured Workflow Output', () => {
     const html = renderToString(<RightToolWindowBar />)
     expect(html).toContain('title="AI 助手"')
     expect(html).toContain('title="架构助手"')
     expect(html).toContain('title="蓝图助手"')
+    expect(html).toContain('title="审稿助手"')
     expect(html).toContain('title="结构化工作流输出"')
   })
 
@@ -40,7 +41,12 @@ describe('RightToolWindowBar', () => {
     html = renderToString(<RightToolWindowBar />)
     expect(html).toContain('var(--color-activity-icon-active)')
 
-    // 4. Workflow 激活
+    // 4. Review 激活
+    useLayoutStore.setState({ aiPanelOpen: true, rightView: 'review' })
+    html = renderToString(<RightToolWindowBar />)
+    expect(html).toContain('var(--color-activity-icon-active)')
+
+    // 5. Workflow 激活
     useLayoutStore.setState({ aiPanelOpen: true, rightView: 'ai-output' })
     html = renderToString(<RightToolWindowBar />)
     expect(html).toContain('var(--color-activity-icon-active)')
