@@ -159,7 +159,7 @@ function qualificationWorkflowIdentity({ platform, workflowPath, workflowName, a
   assert(workflowPath === expected.path, `Qualification workflow path must be ${expected.path}`)
   assert(workflowName === expected.name, `Qualification workflow name must be ${expected.name}`)
   assert(typeof actor === 'string' && actor.trim().length > 0 && actor.length <= 100 && !/[\r\n\0]/.test(actor), '--actor must be a non-empty GitHub actor')
-  assert(event === 'workflow_dispatch', '--event must be workflow_dispatch')
+  assert(event === 'workflow_dispatch' || event === 'push', '--event must be workflow_dispatch or push')
   assert(dispatchInputs !== null && typeof dispatchInputs === 'object' && !Array.isArray(dispatchInputs) && Object.keys(dispatchInputs).length === 0, 'Qualification workflows currently accept no dispatch inputs')
   return {
     path: workflowPath,

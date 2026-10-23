@@ -81,7 +81,7 @@ describe('Windows cloud build workflow contract', () => {
     expect(workflow).toContain('default: .release/release-profile.json')
 
     const checkout = namedStep(workflow, 'Check out source')
-    expect(checkout).toContain('ref: ${{ inputs.expected_sha }}')
+    expect(checkout).toContain('ref: ${{ inputs.expected_sha || github.ref }}')
     expect(checkout).toContain('fetch-depth: 0')
     expect(checkout).toContain('persist-credentials: false')
 
@@ -120,8 +120,9 @@ describe('Windows cloud build workflow contract', () => {
     const evidenceScript = readRequiredFile(evidenceScriptPath)
 
     const triggerBlock = workflow.match(/^on:\r?\n(?<triggers>(?: {2}.*(?:\r?\n|$))*)/m)?.groups?.triggers
-    expect(triggerBlock?.trim()).toMatch(/^workflow_dispatch:\r?\n\s+inputs:/)
-    expect(workflow).not.toMatch(/^\s{2}(?:push|pull_request|schedule):/m)
+    expect(triggerBlock?.trim()).toMatch(/push:\r?\n\s+tags:\r?\n\s+-\s+['"]v\*['"]/)
+    expect(triggerBlock?.trim()).toMatch(/workflow_dispatch:\r?\n\s+inputs:/)
+    expect(workflow).not.toMatch(/^\s{2}(?:pull_request|schedule):/m)
     expect(workflow).toMatch(/^permissions:\r?\n\s{2}contents:\s*read\s*$/m)
     expect(workflow).toContain('runs-on: windows-2022')
     expect(workflow).toContain('timeout-minutes: 120')
@@ -192,7 +193,7 @@ describe('Windows cloud build workflow contract', () => {
     const diagnostics = namedStep(workflow, 'Collect Windows build diagnostics')
     const upload = namedStep(workflow, 'Upload runtime-verified Windows package')
 
-    expect(checkout).toContain('ref: ${{ inputs.expected_sha }}')
+    expect(checkout).toContain('ref: ${{ inputs.expected_sha || github.ref }}')
     expect(checkout).toContain('persist-credentials: false')
     expect(workflow.indexOf('Initialize frozen Windows release evidence'))
       .toBeLessThan(workflow.indexOf('Install locked dependencies'))

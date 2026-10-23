@@ -1,23 +1,26 @@
 name: Windows cloud package qualification
 
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       expected_sha:
         description: Full immutable commit SHA to qualify
-        required: true
+        required: false
         type: string
       release_tag:
         description: Intended tag; qualification does not create it
-        required: true
+        required: false
         type: string
       release_version:
         description: Frozen application version
-        required: true
+        required: false
         type: string
       profile_path:
         description: Repository-relative frozen release profile
-        required: true
+        required: false
         default: .release/release-profile.json
         type: string
 
@@ -25,7 +28,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: windows-cloud-build-test-${{ inputs.expected_sha }}-${{ inputs.release_version }}
+  group: windows-cloud-build-test-${{ github.ref_name }}-${{ inputs.expected_sha || github.sha }}
   cancel-in-progress: false
 
 jobs:
@@ -36,7 +39,7 @@ jobs:
       - name: Check out source
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
-          ref: ${{ inputs.expected_sha }}
+          ref: ${{ inputs.expected_sha || github.ref }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -62,19 +65,58 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $checkedOutSha = (git rev-parse HEAD).Trim().ToLowerInvariant()
-          if ($env:EXPECTED_SHA -notmatch '^[a-f0-9]{40}$' -or $checkedOutSha -ne $env:EXPECTED_SHA) {
-            throw "Checked-out SHA mismatch: expected $env:EXPECTED_SHA, got $checkedOutSha"
+          $packageJson = Get-Content -LiteralPath 'package.json' -Raw | ConvertFrom-Json
+          $pkgVersion = [string]$packageJson.version
+
+          $releaseTag = if (-not [string]::IsNullOrWhiteSpace($env:RELEASE_TAG)) {
+            $env:RELEASE_TAG.Trim()
+          } elseif ($env:GITHUB_REF -match '^refs/tags/(v\d+\.\d+\.\d+.*)$') {
+            $Matches[1]
+          } else {
+            "v$pkgVersion"
           }
-          if ($env:RELEASE_TAG -ne "v$env:RELEASE_VERSION") { throw 'release_tag must equal v<release_version>' }
+
+          $releaseVersion = if (-not [string]::IsNullOrWhiteSpace($env:RELEASE_VERSION)) {
+            $env:RELEASE_VERSION.Trim()
+          } elseif ($releaseTag -match '^v(.+)$') {
+            $Matches[1]
+          } else {
+            $pkgVersion
+          }
+
+          $expectedSha = if (-not [string]::IsNullOrWhiteSpace($env:EXPECTED_SHA)) {
+            $env:EXPECTED_SHA.Trim().ToLowerInvariant()
+          } else {
+            $checkedOutSha
+          }
+
+          $profilePath = if (-not [string]::IsNullOrWhiteSpace($env:PROFILE_PATH)) {
+            $env:PROFILE_PATH.Trim()
+          } else {
+            '.release/release-profile.json'
+          }
+          $env:PROFILE_PATH = $profilePath
+
+          if ($expectedSha -notmatch '^[a-f0-9]{40}$' -or $checkedOutSha -ne $expectedSha) {
+            throw "Checked-out SHA mismatch: expected $expectedSha, got $checkedOutSha"
+          }
+          if ($releaseTag -ne "v$releaseVersion") { throw 'release_tag must equal v<release_version>' }
+          if ($releaseVersion -ne $pkgVersion) {
+            throw "release_version ($releaseVersion) does not match package.json version ($pkgVersion)"
+          }
           if ($env:PROFILE_PATH -ne '.release/release-profile.json') { throw 'profile_path must use the project release profile' }
           & git ls-files --error-unmatch -- $env:PROFILE_PATH | Out-Null
           if ($LASTEXITCODE -ne 0) { throw 'release profile must be committed at the qualified SHA' }
           $evidenceRoot = Join-Path $env:RUNNER_TEMP "ai-novel-release-evidence-$env:GITHUB_RUN_ID"
-          node scripts/release-evidence-v2.mjs init --platform windows --evidence-root "$evidenceRoot" --repository "$env:GITHUB_REPOSITORY" --commit "$env:EXPECTED_SHA" --run-id "$env:GITHUB_RUN_ID" --run-attempt "$env:GITHUB_RUN_ATTEMPT" --runner-label 'windows-2022' --image-os "$env:ImageOS" --image-version "$env:ImageVersion" --expected-node-version 22.23.1 --expected-pnpm-version 11.21.0 --workflow-path '.github/workflows/windows-cloud-build-test.yml' --workflow-name 'Windows cloud package qualification' --actor "$env:GITHUB_ACTOR" --event "$env:GITHUB_EVENT_NAME" --dispatch-inputs-json '{}'
+          node scripts/release-evidence-v2.mjs init --platform windows --evidence-root "$evidenceRoot" --repository "$env:GITHUB_REPOSITORY" --commit "$expectedSha" --run-id "$env:GITHUB_RUN_ID" --run-attempt "$env:GITHUB_RUN_ATTEMPT" --runner-label 'windows-2022' --image-os "$env:ImageOS" --image-version "$env:ImageVersion" --expected-node-version 22.23.1 --expected-pnpm-version 11.21.0 --workflow-path '.github/workflows/windows-cloud-build-test.yml' --workflow-name 'Windows cloud package qualification' --actor "$env:GITHUB_ACTOR" --event "$env:GITHUB_EVENT_NAME" --dispatch-inputs-json '{}'
           $commonRoot = Join-Path $env:RUNNER_TEMP 'windows-qualified'
-          node .release/scripts/freeze-release-contract.mjs --repository "$env:GITHUB_REPOSITORY" --expected-sha "$env:EXPECTED_SHA" --tag "$env:RELEASE_TAG" --version "$env:RELEASE_VERSION" --profile "$env:PROFILE_PATH" --output-root "$commonRoot" --platform windows --run-id "$env:GITHUB_RUN_ID" --run-attempt "$env:GITHUB_RUN_ATTEMPT" --workflow '.github/workflows/windows-cloud-build-test.yml' --actor "$env:GITHUB_ACTOR" --event "$env:GITHUB_EVENT_NAME"
+          node .release/scripts/freeze-release-contract.mjs --repository "$env:GITHUB_REPOSITORY" --expected-sha "$expectedSha" --tag "$releaseTag" --version "$releaseVersion" --profile "$profilePath" --output-root "$commonRoot" --platform windows --run-id "$env:GITHUB_RUN_ID" --run-attempt "$env:GITHUB_RUN_ATTEMPT" --workflow '.github/workflows/windows-cloud-build-test.yml' --actor "$env:GITHUB_ACTOR" --event "$env:GITHUB_EVENT_NAME"
           "AI_NOVEL_RELEASE_EVIDENCE_ROOT=$evidenceRoot" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "AI_NOVEL_COMMON_EVIDENCE_ROOT=$commonRoot" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "RELEASE_TAG=$releaseTag" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "RELEASE_VERSION=$releaseVersion" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "EXPECTED_SHA=$expectedSha" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "PROFILE_PATH=$profilePath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Install locked dependencies
         shell: pwsh
@@ -98,12 +140,14 @@ jobs:
         if: ${{ success() }}
         shell: pwsh
         run: |
-          $version = '${{ inputs.release_version }}'
+          $version = if (-not [string]::IsNullOrWhiteSpace($env:RELEASE_VERSION)) { $env:RELEASE_VERSION } else { '${{ inputs.release_version }}' }
+          $sha = if (-not [string]::IsNullOrWhiteSpace($env:EXPECTED_SHA)) { $env:EXPECTED_SHA } else { '${{ inputs.expected_sha }}' }
+          $profile = if (-not [string]::IsNullOrWhiteSpace($env:PROFILE_PATH)) { $env:PROFILE_PATH } else { '${{ inputs.profile_path }}' }
           node scripts/release-evidence-v2.mjs finalize --platform windows --evidence-root "$env:AI_NOVEL_RELEASE_EVIDENCE_ROOT" --release-root "release/$version"
           $rawHash = (Get-FileHash -LiteralPath pnpm-lock.yaml -Algorithm SHA256).Hash.ToLowerInvariant()
           $canonicalHash = node --input-type=module -e "import{canonicalPnpmLockfileSha256}from'./scripts/canonical-pnpm-lockfile-hash.mjs';process.stdout.write(canonicalPnpmLockfileSha256('./pnpm-lock.yaml'))"
-          node scripts/release-evidence-v2.mjs verify-bundle --platform windows --bundle-root "release/$version" --expected-commit '${{ inputs.expected_sha }}' --expected-lockfile-sha256 "$canonicalHash" --expected-lockfile-raw-sha256 "$rawHash" --version "$version" --repository "$env:GITHUB_REPOSITORY" --run-id "$env:GITHUB_RUN_ID" --run-attempt "$env:GITHUB_RUN_ATTEMPT" --expected-workflow-path '.github/workflows/windows-cloud-build-test.yml' --expected-workflow-name 'Windows cloud package qualification' --expected-actor "$env:GITHUB_ACTOR" --expected-event "$env:GITHUB_EVENT_NAME"
-          node .release/scripts/finalize-legacy-qualification.mjs --platform windows --legacy-root "release/$version" --output-root "$env:AI_NOVEL_COMMON_EVIDENCE_ROOT" --profile '${{ inputs.profile_path }}' --expected-sha '${{ inputs.expected_sha }}' --version "$version"
+          node scripts/release-evidence-v2.mjs verify-bundle --platform windows --bundle-root "release/$version" --expected-commit "$sha" --expected-lockfile-sha256 "$canonicalHash" --expected-lockfile-raw-sha256 "$rawHash" --version "$version" --repository "$env:GITHUB_REPOSITORY" --run-id "$env:GITHUB_RUN_ID" --run-attempt "$env:GITHUB_RUN_ATTEMPT" --expected-workflow-path '.github/workflows/windows-cloud-build-test.yml' --expected-workflow-name 'Windows cloud package qualification' --expected-actor "$env:GITHUB_ACTOR" --expected-event "$env:GITHUB_EVENT_NAME"
+          node .release/scripts/finalize-legacy-qualification.mjs --platform windows --legacy-root "release/$version" --output-root "$env:AI_NOVEL_COMMON_EVIDENCE_ROOT" --profile "$profile" --expected-sha "$sha" --version "$version"
 
       - name: Upload runtime-verified Windows package
         if: ${{ success() }}

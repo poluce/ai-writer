@@ -33,7 +33,7 @@ function main() {
   assert(/^[a-f0-9]{40}$/.test(options['expected-sha']), 'expected SHA must be lowercase and full length')
   assert(options.tag === `v${options.version}`, 'tag must equal v<version>')
   assert(options.platform === 'windows' || options.platform === 'macos-arm64' || options.platform === 'macos-x64', 'platform must name a supported qualification entity')
-  assert(options.event === 'workflow_dispatch', 'event must equal workflow_dispatch')
+  assert(options.event === 'workflow_dispatch' || options.event === 'push', 'event must equal workflow_dispatch or push')
 
   const profilePath = path.resolve(options.profile)
   const profileRaw = readFileSync(profilePath)
