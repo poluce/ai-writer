@@ -186,7 +186,8 @@ function createWindow(): void {
     icon: appIcon as never,
     // 使用应用内自绘标题栏，避免 Windows 原生标题栏与棕色标题栏重复显示。
     frame: false,
-    backgroundColor: '#1e1e1e',
+    // 与 index.html 预加载背景一致：浅色为默认主题，避免启动瞬时的暗色闪跳
+    backgroundColor: '#F7F8FA',
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
       // 安全性设置

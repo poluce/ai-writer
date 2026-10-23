@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>协作模型二 · 共创画布（Co-creation Canvas）</title>
+<link rel="stylesheet" href="collab.css">
+<style>
+  /* ============ 协作模型二：共创画布 ============ */
+  .doc-view { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; }
+
+  .tabbar {
+    height: 38px; flex: none;
+    display: flex; align-items: center; gap: 2px;
+    padding: 0 12px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+  }
+  .tab {
+    height: 28px;
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 0 9px 0 11px;
+    border-radius: 7px 7px 0 0;
+    background: var(--canvas);
+    border: 1px solid var(--line);
+    border-bottom-color: var(--canvas);
+    font-size: 12px; color: var(--text);
+    position: relative; top: 1px;
+  }
+  .tab .i { width: 13px; height: 13px; color: var(--accent); }
+  .tab .x { width: 12px; height: 12px; color: var(--muted); margin-left: 2px; }
+  .collabs { margin-left: auto; display: flex; align-items: center; }
+  .collabs .av { margin-left: -6px; border: 2px solid var(--panel); }
+  .collabs .av:first-child { margin-left: 0; }
+  .collabs .more { width: 24px; height: 24px; border-radius: 50%; background: var(--card); border: 2px solid var(--panel); display: grid; place-items: center; font-size: 9.5px; color: var(--muted); margin-left: -6px; }
+  .tabbar > .icon-only { margin-left: 6px; width: 24px; height: 24px; }
+
+  .doc-scroll { flex: 1; min-height: 0; overflow: hidden; padding: 22px 30px 0; }
+  .doc-body { max-width: 600px; margin: 0 auto; position: relative; }
+  .doc-head { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 16px; }
+  .doc-head h1 { margin: 0; font-family: var(--font-head); font-size: 20px; font-weight: 600; letter-spacing: 0.01em; }
+  .doc-head p { margin: 5px 0 0; font-size: 11px; color: var(--muted); }
+  .doc-head .right { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none; }
+
+  .sect { margin-top: 18px; }
+  .sect-label { display: flex; align-items: center; gap: 8px; font-size: 10.5px; color: var(--muted); letter-spacing: 0.04em; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+  .sect-label .line { flex: 1; }
+
+  .beat { display: flex; gap: 10px; padding: 11px 4px; border-bottom: 1px solid var(--line); }
+  .beat > .no { width: 20px; flex: none; font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; padding-top: 2px; }
+  .beat .main { flex: 1; min-width: 0; }
+  .beat .t { font-size: 13px; color: var(--text); font-weight: 500; }
+  .beat .d { margin: 3px 0 0; font-size: 11px; color: var(--muted); line-height: 1.6; }
+  .beat .state { flex: none; display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; color: var(--sage); padding-top: 2px; }
+  .beat .state .i { width: 12px; height: 12px; }
+  .beat.ghost { background: var(--accent-soft); border-radius: 8px; border-bottom-color: transparent; margin: 8px 0; }
+  .beat.ghost .t { color: var(--accent-text); }
+  .beat .who { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; color: var(--muted); margin-top: 6px; }
+  .beat .who .av { width: 16px; height: 16px; font-size: 8px; }
+  .beat .acts { display: flex; align-items: center; gap: 10px; margin-top: 7px; font-size: 10.5px; }
+  .beat .acts .ok { color: var(--accent-text); font-weight: 500; }
+  .beat .acts .no { color: var(--muted); }
+  .beat .acts .kbd { height: 16px; font-size: 9px; }
+
+  /* 双助手冲突 */
+  .conflict {
+    margin: 12px 0;
+    padding: 12px;
+    background: color-mix(in srgb, var(--amber-soft) 45%, var(--card));
+    border: 1px solid var(--line);
+    border-left: 2px solid var(--amber);
+    border-radius: 9px;
+  }
+  .conflict-h { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text2); }
+  .conflict-h .i { width: 13px; height: 13px; color: var(--amber); }
+  .conflict-h b { font-weight: 600; color: var(--text); }
+  .conflict-h .tag { margin-left: auto; }
+  .sug-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+  .sug { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px 11px; box-shadow: var(--shadow-card); }
+  .sug-h { display: flex; align-items: center; gap: 6px; font-size: 10.5px; color: var(--muted); }
+  .sug-h .av { width: 18px; height: 18px; font-size: 8.5px; }
+  .sug p { margin: 7px 0 0; font-size: 11.5px; line-height: 1.65; color: var(--text2); }
+  .sug .pick { margin-top: 9px; display: flex; align-items: center; gap: 8px; }
+  .sug .pick .btn { height: 24px; font-size: 10.5px; padding: 0 9px; }
+  .conflict-actions { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 11px; color: var(--muted); }
+  .conflict-actions .keep { color: var(--text2); }
+
+  /* 正文段落与行内建议 */
+  .para { margin: 14px 0 0; font-family: var(--font-writing); font-size: 15.5px; line-height: 1.95; color: #2B2620; text-indent: 2em; }
+  .inline-ghost {
+    background: var(--sage-soft);
+    border-radius: 4px;
+    padding: 1px 3px;
+    color: #33573C;
+    text-indent: 0;
+    border-bottom: 1px dashed var(--sage);
+  }
+  .inline-tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: var(--sage-soft);
+    color: var(--sage);
+    font-family: var(--font-ui);
+    font-size: 9.5px;
+    vertical-align: 2px;
+    text-indent: 0;
+  }
+  .inline-tag .i { width: 10px; height: 10px; }
+
+  .margin-note {
+    position: absolute;
+    left: calc(100% + 18px);
+    top: 250px;
+    width: 176px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-left: 2px solid var(--arch, #54666E);
+    border-radius: 8px;
+    padding: 10px 11px;
+    box-shadow: var(--shadow-card);
+  }
+  .margin-note .mn-h { display: flex; align-items: center; gap: 5px; font-size: 10px; color: #3E5563; font-weight: 600; }
+  .margin-note .mn-h .av { width: 16px; height: 16px; font-size: 8px; }
+  .margin-note p { margin: 6px 0 0; font-size: 11px; line-height: 1.6; color: var(--text2); }
+  .margin-note .mn-a { display: flex; gap: 8px; margin-top: 7px; font-size: 10px; }
+  .margin-note .mn-a .ok { color: var(--accent-text); }
+  .margin-note .mn-a .no { color: var(--muted); }
+
+  /* 选区工具条 */
+  .sel-bar {
+    position: absolute;
+    left: 50%; bottom: 56px;
+    transform: translateX(-50%);
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 9px;
+    background: var(--card);
+    border: 1px solid var(--line2);
+    border-radius: 9px;
+    box-shadow: var(--shadow-pop);
+    font-size: 11px; color: var(--muted);
+    white-space: nowrap;
+  }
+  .sel-bar .btn { height: 25px; font-size: 10.5px; padding: 0 9px; }
+  .sel-bar .sep { width: 1px; height: 14px; background: var(--line); }
+
+  /* 右侧协作动态 */
+  .side {
+    width: 306px; flex: none;
+    background: var(--panel);
+    border-left: 1px solid var(--line);
+    display: flex; flex-direction: column;
+    padding: 13px 12px;
+    gap: 10px;
+    min-height: 0;
+  }
+  .feed { display: flex; gap: 8px; padding: 8px 2px; border-bottom: 1px dashed var(--line); }
+  .feed:last-of-type { border-bottom: 0; }
+  .feed .fm { flex: 1; min-width: 0; font-size: 11px; color: var(--text2); line-height: 1.55; }
+  .feed .fm b { color: var(--text); font-weight: 600; }
+  .feed .ft { font-size: 9.5px; color: var(--muted); margin-top: 2px; }
+  .summon { display: flex; flex-wrap: wrap; gap: 6px; }
+  .summon .chip { height: 25px; font-size: 10.5px; background: var(--card); }
+  .side .composer { margin: 0; margin-top: auto; }
+</style>
+</head>
+<body>
+<script src="../concepts/icons.js"></script>
+
+<div class="window">
+  <header class="titlebar">
+    <div class="brand">
+      <span class="brand-mark"><img src="../../../public/logo.svg" alt="AI Writer"></span>
+      <button class="icon-only"><svg class="i"><use href="#i-menu"/></svg></button>
+    </div>
+    <div class="tb-project"><span style="color:var(--text2)">当前项目：</span><b style="font-weight:500">雾城档案</b></div>
+    <span class="meta" style="margin-left:10px"><svg class="i" style="width:12px;height:12px;display:inline-block;vertical-align:-2px;color:var(--sage)"><use href="#i-circle-check"/></svg> 已保存 14:32</span>
+    <div class="tb-right">
+      <span class="zoom">− 100% +</span>
+      <button class="icon-only"><svg class="i"><use href="#i-moon"/></svg></button>
+      <button class="icon-only"><svg class="i"><use href="#i-settings"/></svg></button>
+      <span class="win-controls">
+        <button class="icon-only"><svg class="i"><use href="#i-minus"/></svg></button>
+        <button class="icon-only"><svg class="i"><use href="#i-square"/></svg></button>
+        <button class="icon-only"><svg class="i"><use href="#i-x"/></svg></button>
+      </span>
+    </div>
+  </header>
+
+  <div class="body">
+    <nav class="rail">
+      <button class="rail-item"><svg class="i"><use href="#i-home"/></svg><span>首页</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-folder"/></svg><span>项目</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-layers"/></svg><span>架构</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-list"/></svg><span>情节</span></button>
+      <button class="rail-item on"><svg class="i"><use href="#i-branch"/></svg><span>蓝图</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-thread"/></svg><span>剧情</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-users"/></svg><span>人物</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-book-open"/></svg><span>知识库</span></button>
+      <span class="rail-sp"></span>
+      <button class="rail-item"><svg class="i"><use href="#i-sparkles"/></svg><span>协作</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-checks"/></svg><span>任务</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-settings"/></svg><span>设置</span></button>
+    </nav>
+
+    <main class="doc-view">
+      <div class="tabbar">
+        <div class="tab"><svg class="i"><use href="#i-file"/></svg>第 3 章蓝图 · 共创中<svg class="i x"><use href="#i-x"/></svg></div>
+        <div class="collabs">
+          <span class="av sm arch" title="架构助手">架</span>
+          <span class="av sm blue" title="章节蓝图助手">蓝</span>
+          <span class="av sm pm" title="项目助手">项</span>
+          <span class="more">+1</span>
+        </div>
+        <button class="icon-only"><svg class="i"><use href="#i-more"/></svg></button>
+      </div>
+
+      <div class="doc-scroll">
+        <div class="doc-body">
+          <div class="doc-head">
+            <div>
+              <h1>第 3 章 · 记忆修复师</h1>
+              <p>共创中 · 3 位协作者 · 更新于 14:32 · 共 4 个节拍</p>
+            </div>
+            <div class="right">
+              <span class="seg"><span class="on">计划</span><span>写作</span></span>
+              <button class="btn btn-secondary btn-sm"><svg class="i"><use href="#i-history"/></svg>版本</button>
+            </div>
+          </div>
+
+          <div class="sect">
+            <div class="sect-label">节拍<span class="line"></span><span>2 已确认 · 1 冲突 · 1 建议</span></div>
+
+            <div class="beat">
+              <span class="no">01</span>
+              <div class="main"><div class="t">档案室断电</div><p class="d">主角在修复过程中遭遇断电，第一次看到纸质痕迹。</p></div>
+              <span class="state"><svg class="i"><use href="#i-circle-check"/></svg>已确认</span>
+            </div>
+
+            <div class="beat">
+              <span class="no">02</span>
+              <div class="main"><div class="t">发现纸质痕迹</div><p class="d">痕迹上的日期是明天，暗示记忆被提前篡改。</p></div>
+              <span class="state"><svg class="i"><use href="#i-circle-check"/></svg>已确认</span>
+            </div>
+
+            <div class="conflict">
+              <div class="conflict-h">
+                <svg class="i"><use href="#i-alert"/></svg>
+                两位助手对第 3 个节拍给出不同方案<b>，需要你裁决</b>
+                <span class="tag wait">冲突</span>
+              </div>
+              <div class="sug-pair">
+                <div class="sug">
+                  <div class="sug-h"><span class="av arch">架</span>架构助手 · 世界观优先</div>
+                  <p>钟表匠是记忆局前员工，这条记忆是他刻意留下的证据。</p>
+                  <div class="pick"><button class="btn btn-primary btn-sm">采纳 A</button><span style="font-size:10px;color:var(--muted)">与主线强相关</span></div>
+                </div>
+                <div class="sug">
+                  <div class="sug-h"><span class="av blue">蓝</span>章节蓝图助手 · 节奏优先</div>
+                  <p>钟表匠的女儿是第一个被修复者，用亲情钩子收束本章。</p>
+                  <div class="pick"><button class="btn btn-secondary btn-sm">采纳 B</button><span style="font-size:10px;color:var(--muted)">情绪更强</span></div>
+                </div>
+              </div>
+              <div class="conflict-actions"><span class="keep">都保留（先 A 后 B）</span><span>让我手写</span><span style="margin-left:auto">两位助手都在等待</span></div>
+            </div>
+
+            <div class="beat ghost">
+              <span class="no">04</span>
+              <div class="main">
+                <div class="t">章末钩子：她发现纸痕的日期是明天</div>
+                <div class="who"><span class="av blue">蓝</span>章节蓝图助手 建议新增</div>
+                <div class="acts"><span class="ok">采纳</span><span class="no">忽略</span><span class="kbd">Tab</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sect">
+            <div class="sect-label">正文开头<span class="line"></span><span>蓝图助手 建议 1 处</span></div>
+            <p class="para">凌晨四点，雾城的记忆修复局还亮着三盏灯。林见夏把最后一张纸页压进扫描台，指尖沾上了墨。<span class="inline-ghost">墨色在纸纤维里散开，像一小片正在愈合的伤口。</span><span class="inline-tag"><svg class="i"><use href="#i-sparkles"/></svg>蓝图助手 · Tab 采纳</span></p>
+            <p class="para">她想起妹妹失踪那天，档案室的门也是开着的。地上同样落着一张纸，正面是空白，背面写着两个字：别回头。</p>
+          </div>
+
+          <div class="margin-note">
+            <div class="mn-h"><span class="av arch">架</span>架构助手 · 批注</div>
+            <p>「凌晨四点」与第 2 章白天的时间线冲突，建议改为「天亮前四十分钟」。</p>
+            <div class="mn-a"><span class="ok">应用修改</span><span class="no">忽略</span><span class="no" style="margin-left:auto">跳转</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sel-bar">
+        <span>已选中 86 字</span>
+        <span class="sep"></span>
+        <button class="btn btn-secondary"><svg class="i"><use href="#i-pen"/></svg>润色</button>
+        <button class="btn btn-secondary"><svg class="i"><use href="#i-layers"/></svg>检查设定</button>
+        <button class="btn btn-secondary"><svg class="i"><use href="#i-broadcast"/></svg>让助手重写</button>
+      </div>
+    </main>
+
+    <aside class="side">
+      <div class="sec-h"><b>协作动态</b><span>实时</span></div>
+      <div class="feed"><span class="av sm blue">蓝</span><div class="fm"><b>章节蓝图助手</b> 改写节拍 3「钟表匠」<div class="ft">2 分钟前 · 你的版本可随时恢复</div></div></div>
+      <div class="feed"><span class="av sm arch">架</span><div class="fm"><b>架构助手</b> 在第 2 段留下批注<div class="ft">3 分钟前 · 时间线冲突</div></div></div>
+      <div class="feed"><span class="av sm me">你</span><div class="fm">你确认了节拍 2「发现纸质痕迹」<div class="ft">8 分钟前</div></div></div>
+      <div class="feed"><span class="av sm pm">项</span><div class="fm"><b>项目助手</b> 建议先处理冲突再写正文<div class="ft">9 分钟前</div></div></div>
+
+      <div class="sec-h" style="padding-top:4px"><b>召唤助手</b><span>@ 提及</span></div>
+      <div class="summon">
+        <span class="chip"><svg class="i"><use href="#i-users"/></svg>@ 架构助手</span>
+        <span class="chip"><svg class="i"><use href="#i-users"/></svg>@ 蓝图助手</span>
+        <span class="chip"><svg class="i"><use href="#i-users"/></svg>@ 项目助手</span>
+      </div>
+
+      <div class="composer">
+        <div class="ph">对选中的 86 字说点什么，或 @ 助手…</div>
+        <div class="composer-row">
+          <span class="chip">深度 中</span>
+          <span class="chip">Qwen3 14B</span>
+          <span class="send"><svg class="i"><use href="#i-send"/></svg></span>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <footer class="statusbar">
+    <span class="st">共创中 · 3 位协作者</span>
+    <span class="sep"></span>
+    <span class="st">1 处待裁决</span>
+    <span class="st">3 条批注</span>
+    <span class="right">
+      <span class="st"><svg class="i"><use href="#i-circle-check"/></svg>自动保存 14:32</span>
+      <span class="st strong">v0.1.4</span>
+    </span>
+  </footer>
+</div>
+</body>
+</html>

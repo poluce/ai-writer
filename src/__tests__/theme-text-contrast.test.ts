@@ -105,9 +105,9 @@ describe('readable theme text contrast contract', () => {
   })
 
   it.each([
-    ['default light', ':root', '#525866'],
+    ['default light', ':root', '#5F6773'],
     ['paper', '.paper', '#655F55'],
-    ['explicit light', '.light', '#525866'],
+    ['explicit light', '.light', '#5F6773'],
   ] as const)('keeps %s information-bearing muted text at WCAG AA on content surfaces', (_theme, selector, expectedMuted) => {
     const declarations = declarationsFor(selector)
     const mutedText = declarations.get('--color-text-muted')

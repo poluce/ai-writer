@@ -77,6 +77,8 @@ export default defineConfig({
     exclude: [
       ...configDefaults.exclude,
       '**/.worktrees/**',
+      // 本仓库把历史分支 worktree 放在 .agents/worktrees 下，同样不是当前源码。
+      '**/.agents/**',
       '**/.pnpm-store/**',
       '**/.workbuddy/**',
       '**/.runtime/**',

@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>UI 设计 v2 · 小说配置（按 0.1.4 真实结构）</title>
+<link rel="stylesheet" href="design.css">
+<style>
+  /* —— 小说配置页：真实结构（基本信息卡片 + 文档式分区） —— */
+  .cfg-head {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 20px;
+    margin-bottom: 18px;
+  }
+  .cfg-head h2 { margin: 0; font-size: var(--fs-lg); font-weight: 600; letter-spacing: -0.01em; }
+  .cfg-head p { margin: 5px 0 0; font-size: var(--fs-cap); color: var(--muted); }
+
+  .info-card {
+    background: #F7F9FB;
+    border: 1px solid var(--border);
+    border-radius: var(--r3);
+    padding: 16px 18px 18px;
+    margin-bottom: 20px;
+  }
+  .info-card h3 { margin: 0 0 14px; font-size: 14px; font-weight: 600; }
+  .row-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  .row-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 14px; }
+  .row-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 14px; max-width: 66.6%; }
+  .field label { display: flex; align-items: center; gap: 4px; font-size: var(--fs-cap); font-weight: 500; color: var(--text2); margin-bottom: 6px; }
+  .field label .inf { width: 12px; height: 12px; color: var(--muted); }
+  .ctl {
+    height: 32px; display: flex; align-items: center; gap: 8px; padding: 0 10px;
+    background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--r1);
+    font-size: var(--fs-md); color: var(--text); white-space: nowrap;
+  }
+  .ctl.ph { color: #9AA1AE; }
+  .ctl .i { width: 13px; height: 13px; color: var(--muted); }
+  .ctl.sel { justify-content: space-between; }
+  .ctl.sel > span { display: inline-flex; align-items: center; }
+  .ctl-with-reset { display: flex; align-items: center; gap: 8px; }
+  .reset-btn { width: 26px; height: 26px; display: grid; place-items: center; border-radius: var(--r1); color: var(--muted); flex: none; }
+  .reset-btn .i { width: 14px; height: 14px; }
+
+  /* 文档式分区：细分割线 + 行内动作，不是一张张卡片 */
+  .doc-section { padding: 2px 0 14px; }
+  .doc-head {
+    display: flex; align-items: center; gap: 7px;
+    padding: 10px 0; margin-bottom: 2px;
+    border-bottom: 1px solid var(--border);
+  }
+  .doc-head .chev { width: 15px; height: 15px; color: var(--muted); }
+  .doc-head h3 { margin: 0; font-size: 14px; font-weight: 600; }
+  .doc-head .acts { margin-left: auto; display: flex; align-items: center; gap: 6px; flex: none; }
+  .doc-body {
+    padding: 10px 2px 0;
+    font-family: var(--font-ui);
+    font-size: var(--fs-md);
+    line-height: 1.75;
+    color: var(--text);
+    min-height: 72px;
+    white-space: pre-wrap;
+  }
+  .doc-body.empty { font-family: var(--font-ui); font-size: var(--fs-sm); color: #9AA1AE; line-height: 1.7; }
+
+  /* 标签页右侧的溢出控制（真实界面有） */
+  .tab-ctrl { margin-left: auto; display: flex; align-items: center; gap: 1px; padding-right: 4px; }
+  .tab-ctrl .icon-btn { width: 22px; height: 22px; }
+  .tab-ctrl .icon-btn .i { width: 13px; height: 13px; }
+</style>
+</head>
+<body>
+<script src="../concepts/icons.js"></script>
+<script src="../light/icons-extra.js"></script>
+
+<div class="window">
+  <header class="titlebar">
+    <span class="brand"><img src="../../../public/logo.svg" alt="AI Writer"></span>
+    <button class="icon-btn"><svg class="i"><use href="#i-menu"/></svg></button>
+    <div class="project">
+      <span class="label">当前项目</span>
+      <button class="name">雾城档案<svg class="i"><use href="#i-chev-down"/></svg></button>
+      <span class="save"><svg class="i"><use href="#i-circle-check"/></svg>已保存</span>
+    </div>
+    <div class="tb-actions">
+      <button class="btn btn-outline btn-sm"><svg class="i"><use href="#i-file-plus"/></svg>新建</button>
+      <button class="btn btn-ghost btn-sm"><svg class="i"><use href="#i-folder"/></svg>打开</button>
+      <button class="btn btn-quiet btn-sm"><svg class="i"><use href="#i-more"/></svg>更多</button>
+    </div>
+    <div class="tb-right">
+      <span class="zoom">
+        <button><svg class="i"><use href="#i-minus"/></svg></button>
+        <span class="val">100%</span>
+        <button><svg class="i"><use href="#i-plus"/></svg></button>
+      </span>
+      <button class="theme-btn"><svg class="i"><use href="#i-palette"/></svg>浅色<svg class="i caret"><use href="#i-chev-down"/></svg></button>
+      <button class="icon-btn" style="font-size:11px;font-weight:600">EN</button>
+      <button class="icon-btn"><svg class="i"><use href="#i-settings"/></svg></button>
+      <span class="win-controls">
+        <button class="icon-btn"><svg class="i"><use href="#i-minus"/></svg></button>
+        <button class="icon-btn"><svg class="i"><use href="#i-square"/></svg></button>
+        <button class="icon-btn"><svg class="i"><use href="#i-x"/></svg></button>
+      </span>
+    </div>
+  </header>
+
+  <div class="body">
+    <nav class="rail">
+      <button class="rail-item"><svg class="i"><use href="#i-home"/></svg><span>首页</span></button>
+      <button class="rail-item on"><svg class="i"><use href="#i-folder"/></svg><span>项目</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-globe"/></svg><span>架构</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-map"/></svg><span>情节</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-branch"/></svg><span>蓝图</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-thread"/></svg><span>剧情</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-users"/></svg><span>人物</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-book-open"/></svg><span>知识库</span></button>
+      <span class="rail-sp"></span>
+      <span class="rail-div"></span>
+      <button class="rail-item"><svg class="i"><use href="#i-settings"/></svg><span>设置</span></button>
+    </nav>
+
+    <aside class="sidebar">
+      <div class="side-head">
+        <span class="t">项目结构</span>
+        <div class="acts"><button class="icon-btn"><svg class="i"><use href="#i-chevrons-left"/></svg></button></div>
+      </div>
+      <div class="project-row">
+        <span class="pn">雾城档案</span>
+        <div class="acts">
+          <button class="mini-btn"><svg class="i"><use href="#i-trash"/></svg>清除全部</button>
+          <button class="icon-btn"><svg class="i"><use href="#i-refresh"/></svg></button>
+        </div>
+      </div>
+      <div class="tree">
+        <div class="tree-item on"><svg class="i"><use href="#i-book-open"/></svg>小说配置<span class="meta">已完成</span></div>
+        <div class="tree-group"><svg class="i chev"><use href="#i-chev-down"/></svg>故事架构<span class="meta">2 / 4</span></div>
+        <div class="tree-sub">
+          <div class="tree-item"><svg class="i"><use href="#i-target"/></svg>前提概要<span class="meta" style="color:var(--success)">已完成</span></div>
+          <div class="tree-item"><svg class="i"><use href="#i-globe"/></svg>环境<span class="meta" style="color:var(--success)">已完成</span></div>
+          <div class="tree-item"><svg class="i"><use href="#i-map"/></svg>情节<span class="meta">待生成</span></div>
+          <div class="tree-item"><svg class="i"><use href="#i-users"/></svg>人物<span class="meta">待生成</span></div>
+        </div>
+        <div class="tree-item"><svg class="i"><use href="#i-list"/></svg>章节蓝图<span class="meta">3 / 36 章</span></div>
+        <div class="tree-item"><svg class="i"><use href="#i-branch"/></svg>伏笔与叙事线索</div>
+        <div class="tree-group"><svg class="i chev"><use href="#i-chev-down"/></svg>草稿箱<span class="meta">1 章</span></div>
+        <div class="tree-group"><svg class="i chev"><use href="#i-chev-down"/></svg>正文章节<span class="meta">3 章</span></div>
+        <div class="tree-sub">
+          <div class="tree-item"><svg class="i"><use href="#i-file"/></svg>第 1 章 楔子<span class="meta">2,100</span></div>
+          <div class="tree-item"><svg class="i"><use href="#i-file"/></svg>第 2 章 入城<span class="meta">3,050</span></div>
+          <div class="tree-item"><svg class="i"><use href="#i-file"/></svg>第 3 章 记忆修复师<span class="meta">3,240</span></div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="center">
+      <div class="tabbar">
+        <div class="tab on"><svg class="i"><use href="#i-file"/></svg>小说配置<svg class="i x"><use href="#i-x"/></svg></div>
+        <div class="tab"><svg class="i"><use href="#i-file"/></svg>第 3 章 · 记忆修复师</div>
+        <span class="tab-ctrl">
+          <button class="icon-btn"><svg class="i"><use href="#i-chev-right" style="transform:rotate(180deg)"/></svg></button>
+          <button class="icon-btn"><svg class="i"><use href="#i-chev-right"/></svg></button>
+          <button class="icon-btn"><svg class="i"><use href="#i-more"/></svg></button>
+        </span>
+      </div>
+
+      <div class="content">
+        <div style="height:100%;overflow:hidden;padding:22px 28px">
+          <div class="cfg-head">
+            <div>
+              <h2>小说配置</h2>
+              <p>定义你的小说基本信息和写作参数</p>
+            </div>
+            <button class="btn btn-outline btn-sm"><svg class="i"><use href="#i-save"/></svg>保存</button>
+          </div>
+
+          <!-- 基本信息：一张分组卡 -->
+          <div class="info-card">
+            <h3>基本信息</h3>
+            <div class="row-3">
+              <div class="field"><label>类型</label><div class="ctl sel">悬疑<span><svg class="i"><use href="#i-chev-down"/></svg></span></div></div>
+              <div class="field"><label>细分类型</label><div class="ctl">近未来悬疑 / 城市记忆</div></div>
+              <div class="field"><label>目标受众</label><div class="ctl sel">全龄<span><svg class="i"><use href="#i-chev-down"/></svg></span></div></div>
+            </div>
+            <div class="row-4">
+              <div class="field"><label>故事结构<svg class="i inf"><use href="#i-info"/></svg></label><div class="ctl sel">三幕结构<span><svg class="i"><use href="#i-chev-down"/></svg></span></div></div>
+              <div class="field"><label>叙事视角<svg class="i inf"><use href="#i-info"/></svg></label><div class="ctl sel">第三人称有限视角<span><svg class="i"><use href="#i-chev-down"/></svg></span></div></div>
+              <div class="field"><label>总章数</label><div class="ctl">36</div></div>
+              <div class="field"><label>每章字数</label><div class="ctl">3,200</div></div>
+            </div>
+            <div class="row-2">
+              <div class="field"><label>写作语言<svg class="i inf"><use href="#i-info"/></svg></label><div class="ctl sel">简体中文<span><svg class="i"><use href="#i-chev-down"/></svg></span></div></div>
+              <div class="field">
+                <label>沉寂提醒阈值（章）<svg class="i inf"><use href="#i-info"/></svg></label>
+                <div class="ctl-with-reset">
+                  <div class="ctl" style="flex:1">3</div>
+                  <button class="reset-btn"><svg class="i"><use href="#i-rotate"/></svg></button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 文档式分区 -->
+          <div class="doc-section">
+            <div class="doc-head">
+              <svg class="i chev"><use href="#i-chev-down"/></svg>
+              <h3>核心大纲</h3>
+              <div class="acts">
+                <button class="btn btn-outline btn-sm"><svg class="i"><use href="#i-trash"/></svg>清除</button>
+                <button class="btn btn-outline btn-sm"><svg class="i"><use href="#i-sparkles"/></svg>AI 生成</button>
+              </div>
+            </div>
+            <div class="doc-body">一座会在凌晨重写居民记忆的城市里，一名档案修复师必须在七天内找回被抹去的妹妹，并决定是否公开城市运行的真相。</div>
+          </div>
+
+          <div class="doc-section">
+            <div class="doc-head">
+              <svg class="i chev"><use href="#i-chev-down"/></svg>
+              <h3>世界观 / 初始设定</h3>
+              <div class="acts">
+                <button class="btn btn-outline btn-sm"><svg class="i"><use href="#i-trash"/></svg>清除</button>
+                <button class="btn btn-outline btn-sm"><svg class="i"><use href="#i-sparkles"/></svg>AI 生成</button>
+              </div>
+            </div>
+            <div class="doc-body">近未来海港城。记忆可被公共系统存档与修复，但每次修复都会留下无法伪造的纸质痕迹；痕迹由城市档案局集中封存，普通人无权调阅。</div>
+          </div>
+
+          <div class="doc-section">
+            <div class="doc-head">
+              <svg class="i chev"><use href="#i-chev-down"/></svg>
+              <h3>金手指 / 核心卖点</h3>
+              <div class="acts">
+                <button class="btn btn-outline btn-sm"><svg class="i"><use href="#i-trash"/></svg>清除</button>
+                <button class="btn btn-outline btn-sm"><svg class="i"><use href="#i-sparkles"/></svg>AI 生成</button>
+              </div>
+            </div>
+            <div class="doc-body">档案修复师能看见纸张被修复过的痕迹，并据此还原被删改的记忆顺序。</div>
+          </div>
+
+          <div class="doc-section">
+            <div class="doc-head">
+              <svg class="i chev"><use href="#i-chev-down"/></svg>
+              <h3>主角人设</h3>
+              <div class="acts">
+                <button class="btn btn-outline btn-sm"><svg class="i"><use href="#i-trash"/></svg>清除</button>
+                <button class="btn btn-outline btn-sm"><svg class="i"><use href="#i-sparkles"/></svg>AI 生成</button>
+              </div>
+            </div>
+            <div class="doc-body empty">性格、背景、目标、弱点……</div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="assistant">
+      <div class="asst-head">
+        <span class="title">AI 助手</span>
+        <div class="acts">
+          <button class="icon-btn"><svg class="i"><use href="#i-plus"/></svg></button>
+          <button class="icon-btn"><svg class="i"><use href="#i-history"/></svg></button>
+          <button class="icon-btn"><svg class="i"><use href="#i-more"/></svg></button>
+        </div>
+      </div>
+
+      <div class="switch">
+        <span class="seg on"><svg class="i"><use href="#i-bot"/></svg><span>写作</span></span>
+        <span class="seg"><svg class="i"><use href="#i-compass"/></svg><span>架构</span></span>
+        <span class="seg"><svg class="i"><use href="#i-list"/></svg><span>蓝图</span></span>
+        <span class="seg"><svg class="i"><use href="#i-clipboard-check"/></svg><span>审稿</span></span>
+        <span class="seg"><svg class="i"><use href="#i-workflow"/></svg><span>输出</span></span>
+      </div>
+
+      <div class="asst-body">
+        <div class="msg user"><div class="bubble">把类型改成悬疑，总章数改成 36，再帮我看看核心大纲和世界观是否一致。</div></div>
+
+        <div class="tool-group">
+          <div class="tool-bar">
+            <svg class="i" style="color:var(--success)"><use href="#i-circle-check"/></svg>
+            <span>已执行 2 个操作</span>
+            <span class="nm">· read_project_state · read_architecture</span>
+          </div>
+        </div>
+
+        <div class="msg asst">类型与总章数属于小说配置写入，按计划模式需要你批准后才会落盘。大纲和世界观我读过了，主线一致。</div>
+
+        <div class="confirm">
+          <div class="confirm-h">
+            <svg class="i"><use href="#i-shield"/></svg>需要确认操作
+            <span class="tag warn">计划模式</span>
+          </div>
+          <div class="diff">
+            <div class="row"><span class="k">类型</span><span class="old">都市</span><span class="new">悬疑</span></div>
+            <div class="row"><span class="k">总章数</span><span class="old">24</span><span class="new">36</span></div>
+          </div>
+          <div class="confirm-acts">
+            <button class="btn btn-outline btn-sm">拒绝</button>
+            <button class="btn btn-primary btn-sm">批准执行</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="composer">
+        <div class="ph">输入消息，@ 提及，/ 使用工作流</div>
+        <div class="row">
+          <button class="round-btn"><svg class="i"><use href="#i-plus"/></svg></button>
+          <button class="chip-btn">计划<svg class="i"><use href="#i-chev-down"/></svg></button>
+          <button class="model-btn"><span class="name">gemini-3.8-flash</span><span class="think">思考 关</span><svg class="i"><use href="#i-chev-down"/></svg></button>
+          <button class="send"><svg class="i"><use href="#i-arrow-right"/></svg></button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <section class="bottom">
+    <div class="btabs">
+      <span class="btab on"><svg class="i"><use href="#i-checks"/></svg>任务</span>
+      <span class="btab"><svg class="i"><use href="#i-file"/></svg>日志</span>
+      <span class="btab"><svg class="i"><use href="#i-cpu"/></svg>模型调用</span>
+      <span class="right"><button class="icon-btn"><svg class="i"><use href="#i-chev-down"/></svg></button></span>
+    </div>
+    <div class="bcontent">
+      <div class="task-row">
+        <div class="task-head">
+          <svg class="i" style="color:var(--accent)"><use href="#i-loader"/></svg>
+          <b>批量创作 · 第 3–5 章</b>
+          <span class="tag ok">运行中</span>
+          <span class="pct">62%</span>
+        </div>
+        <div class="progress"><i style="width:62%"></i></div>
+        <div class="task-sub">
+          <span>正在生成第 4 章草稿 · 第 2 / 5 步</span>
+          <span class="acts"><button>暂停</button><button>取消</button></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="statusbar">
+    <span class="st">雾城档案</span>
+    <span class="sep"></span>
+    <span class="st">12,480 字</span>
+    <span class="st">已保存 14:32</span>
+    <span class="right">
+      <span class="st">gemini-3.8-flash</span>
+      <span class="sep"></span>
+      <span class="st">UTF-8</span>
+    </span>
+  </footer>
+</div>
+</body>
+</html>

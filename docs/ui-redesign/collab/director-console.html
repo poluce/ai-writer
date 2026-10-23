@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>协作模型一 · 指挥台（Director Console）</title>
+<link rel="stylesheet" href="collab.css">
+<style>
+  /* ============ 协作模型一：指挥台 ============ */
+  .console { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .console-head {
+    flex: none;
+    display: flex; align-items: center; gap: 14px;
+    padding: 13px 20px;
+    border-bottom: 1px solid var(--line);
+    background: color-mix(in srgb, var(--canvas) 88%, var(--panel));
+  }
+  .console-head h1 { margin: 0; font-family: var(--font-head); font-size: 18px; font-weight: 600; letter-spacing: 0.01em; }
+  .console-head p { margin: 4px 0 0; font-size: 11px; color: var(--muted); }
+  .head-status { display: flex; align-items: center; gap: 6px; margin-left: 8px; }
+  .head-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+  .cols { flex: 1; min-height: 0; display: flex; }
+
+  /* 左：团队 */
+  .team {
+    width: 268px; flex: none;
+    background: var(--panel);
+    border-right: 1px solid var(--line);
+    padding: 13px 12px;
+    display: flex; flex-direction: column;
+    gap: 9px;
+    min-height: 0;
+  }
+  .agent { display: flex; gap: 9px; padding: 9px; border-radius: 9px; border: 1px solid transparent; }
+  .agent.on { background: var(--card); border-color: var(--line); box-shadow: var(--shadow-card); }
+  .agent-main { flex: 1; min-width: 0; }
+  .agent-name { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text); }
+  .agent-name .tag { font-weight: 500; }
+  .agent-state { display: flex; align-items: center; gap: 5px; margin-top: 3px; }
+  .agent-task { margin-top: 3px; font-size: 10.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .divider { height: 1px; background: var(--line); margin: 4px 2px; }
+  .queue-h { display: flex; align-items: center; justify-content: space-between; font-size: 10.5px; color: var(--muted); padding: 0 2px; }
+  .queue-item { display: flex; align-items: center; gap: 8px; padding: 7px 4px; border-bottom: 1px dashed var(--line); font-size: 11px; color: var(--text2); }
+  .queue-item:last-child { border-bottom: 0; }
+  .queue-item .pos { width: 15px; height: 15px; border-radius: 4px; background: var(--panel); display: grid; place-items: center; font-size: 9px; color: var(--muted); flex: none; }
+  .queue-item .q-main { flex: 1; min-width: 0; }
+  .queue-item .q-task { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .queue-item .q-agent { font-size: 10px; color: var(--muted); margin-top: 1px; }
+  .scope-note { margin-top: auto; font-size: 10px; color: var(--muted); line-height: 1.6; padding: 8px 2px 0; border-top: 1px solid var(--line); }
+
+  /* 中：时间线 */
+  .stream { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .stream-head {
+    height: 40px; flex: none;
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 18px;
+    border-bottom: 1px solid var(--line);
+  }
+  .stream-head .st-title { display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; color: var(--text2); }
+  .stream-head .st-title .i { width: 13px; height: 13px; color: var(--muted); }
+  .stream-head .chip { height: 20px; font-size: 10px; }
+  .stream-head .chip.on { background: var(--card); color: var(--text); border-color: var(--line2); }
+  .stream-body { flex: 1; min-height: 0; overflow: hidden; padding: 13px 18px 0; display: flex; flex-direction: column; gap: 11px; }
+
+  .msg { display: flex; gap: 9px; }
+  .msg-main { flex: 1; min-width: 0; }
+  .msg-head { display: flex; align-items: center; gap: 7px; font-size: 10.5px; color: var(--muted); margin-bottom: 4px; }
+  .msg-head b { font-size: 11.5px; font-weight: 600; color: var(--text); }
+  .bubble { background: var(--card); border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; font-size: 12px; line-height: 1.65; color: var(--text2); box-shadow: var(--shadow-card); }
+  .msg.me .bubble { background: var(--accent-soft); border-color: transparent; color: var(--text); }
+
+  .handoff {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 11px;
+    border: 1px dashed var(--line2);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--card) 55%, transparent);
+    font-size: 11px; color: var(--muted);
+  }
+  .handoff .i { width: 13px; height: 13px; color: var(--accent); }
+  .handoff b { color: var(--text); font-weight: 500; }
+  .handoff .tag { margin-left: auto; }
+
+  .proposal { background: var(--card); border: 1px solid var(--line); border-left: 2px solid var(--amber); border-radius: 9px; padding: 10px 12px; box-shadow: var(--shadow-card); margin-top: 6px; }
+  .proposal-h { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--text2); margin-bottom: 6px; }
+  .proposal-h .i { width: 13px; height: 13px; color: var(--amber); }
+  .proposal-h .tag { margin-left: auto; }
+  .diff-line { display: flex; gap: 7px; font-size: 11px; line-height: 1.65; padding: 3px 5px; border-radius: 4px; color: var(--text2); }
+  .diff-line.add { background: var(--sage-soft); color: #33573C; }
+  .diff-line.mod { background: var(--amber-soft); color: #6B4A15; }
+  .diff-line .mk { width: 9px; flex: none; font-weight: 600; font-size: 10px; }
+  .proposal-actions { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+  .proposal-actions .btn { height: 25px; font-size: 10.5px; padding: 0 9px; }
+  .proposal-actions .no { margin-left: auto; font-size: 10.5px; color: var(--muted); }
+
+  .tool-card { background: var(--card); border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; box-shadow: var(--shadow-card); display: flex; gap: 9px; }
+  .tool-icon { width: 27px; height: 27px; border-radius: 7px; background: var(--accent-soft); color: var(--accent-text); display: grid; place-items: center; flex: none; }
+  .tool-icon .i { width: 14px; height: 14px; }
+  .tool-main { flex: 1; min-width: 0; }
+  .tool-h { display: flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 600; color: var(--text); }
+  .tool-h .tag { font-weight: 500; }
+  .tool-body { margin: 3px 0 0; font-size: 11px; color: var(--muted); line-height: 1.6; }
+  .tool-actions { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+  .tool-actions .btn { height: 25px; font-size: 10.5px; padding: 0 9px; }
+  .tool-actions .no { margin-left: auto; font-size: 10.5px; color: var(--muted); }
+
+  .working { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--muted); padding: 2px 0 0 35px; }
+  .working .dot { animation: pulse 1.4s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+
+  /* 右：待确认与产物 */
+  .review {
+    width: 300px; flex: none;
+    background: var(--panel);
+    border-left: 1px solid var(--line);
+    padding: 13px 12px;
+    display: flex; flex-direction: column;
+    gap: 10px;
+    min-height: 0;
+  }
+  .ap-agent { display: flex; align-items: center; gap: 6px; font-size: 10.5px; color: var(--muted); margin-bottom: 7px; }
+  .ap-agent .tag { margin-left: auto; }
+  .artifact { display: flex; align-items: center; gap: 8px; padding: 7px 3px; font-size: 11px; color: var(--text2); border-bottom: 1px dashed var(--line); }
+  .artifact .i { width: 13px; height: 13px; color: var(--muted); }
+  .artifact .tag { margin-left: auto; }
+  .artifact:last-child { border-bottom: 0; }
+  .review-foot { margin-top: auto; display: flex; align-items: center; justify-content: space-between; font-size: 10px; color: var(--muted); padding-top: 8px; border-top: 1px solid var(--line); }
+</style>
+</head>
+<body>
+<script src="../concepts/icons.js"></script>
+
+<div class="window">
+  <header class="titlebar">
+    <div class="brand">
+      <span class="brand-mark"><img src="../../../public/logo.svg" alt="AI Writer"></span>
+      <button class="icon-only"><svg class="i"><use href="#i-menu"/></svg></button>
+    </div>
+    <div class="tb-project"><span style="color:var(--text2)">当前项目：</span><b style="font-weight:500">雾城档案</b></div>
+    <span class="meta" style="margin-left:10px"><svg class="i" style="width:12px;height:12px;display:inline-block;vertical-align:-2px;color:var(--sage)"><use href="#i-circle-check"/></svg> 已保存 14:32</span>
+    <div class="tb-right">
+      <span class="zoom">− 100% +</span>
+      <button class="icon-only"><svg class="i"><use href="#i-moon"/></svg></button>
+      <button class="icon-only"><svg class="i"><use href="#i-settings"/></svg></button>
+      <span class="win-controls">
+        <button class="icon-only"><svg class="i"><use href="#i-minus"/></svg></button>
+        <button class="icon-only"><svg class="i"><use href="#i-square"/></svg></button>
+        <button class="icon-only"><svg class="i"><use href="#i-x"/></svg></button>
+      </span>
+    </div>
+  </header>
+
+  <div class="body">
+    <nav class="rail">
+      <button class="rail-item"><svg class="i"><use href="#i-home"/></svg><span>首页</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-folder"/></svg><span>项目</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-layers"/></svg><span>架构</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-list"/></svg><span>情节</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-branch"/></svg><span>蓝图</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-thread"/></svg><span>剧情</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-users"/></svg><span>人物</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-book-open"/></svg><span>知识库</span></button>
+      <span class="rail-sp"></span>
+      <button class="rail-item on"><svg class="i"><use href="#i-sparkles"/></svg><span>协作</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-checks"/></svg><span>任务</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-settings"/></svg><span>设置</span></button>
+    </nav>
+
+    <main class="console">
+      <div class="console-head">
+        <div>
+          <h1>协作台</h1>
+          <p>第 3 章 · 记忆修复师 · 目标 3,200 字 · 你定方向，助手分工执行</p>
+        </div>
+        <div class="head-status">
+          <span class="tag run">3 位助手在线</span>
+          <span class="tag wait">2 项待你确认</span>
+        </div>
+        <div class="head-actions">
+          <button class="btn btn-secondary btn-sm"><svg class="i"><use href="#i-pause"/></svg>全部暂停</button>
+          <button class="btn btn-primary btn-sm"><svg class="i"><use href="#i-plus"/></svg>新建任务</button>
+        </div>
+      </div>
+
+      <div class="cols">
+        <!-- 团队 -->
+        <aside class="team">
+          <div class="sec-h"><b>助手团队</b><span>项目作用域 · 3</span></div>
+
+          <div class="agent on">
+            <span class="av pm">项</span>
+            <div class="agent-main">
+              <div class="agent-name">项目助手<span class="tag accent">主控</span></div>
+              <div class="agent-state"><span class="dot run"></span><span class="status-text run">运行中</span></div>
+              <div class="agent-task">正在编排：第 3 章写作流程</div>
+            </div>
+          </div>
+
+          <div class="agent">
+            <span class="av arch">架</span>
+            <div class="agent-main">
+              <div class="agent-name">架构助手</div>
+              <div class="agent-state"><span class="dot wait"></span><span class="status-text wait">等待确认</span></div>
+              <div class="agent-task">世界观一致性检查 · 2 处冲突</div>
+            </div>
+          </div>
+
+          <div class="agent">
+            <span class="av blue">蓝</span>
+            <div class="agent-main">
+              <div class="agent-name">章节蓝图助手</div>
+              <div class="agent-state"><span class="dot queue"></span><span class="status-text">排队中</span></div>
+              <div class="agent-task">重排第 3 章节拍 · 等待空位</div>
+            </div>
+          </div>
+
+          <div class="agent">
+            <span class="av ui">界</span>
+            <div class="agent-main">
+              <div class="agent-name">界面助手<span class="tag">全局</span></div>
+              <div class="agent-state"><span class="dot idle"></span><span class="status-text">空闲</span></div>
+              <div class="agent-task">不携带项目上下文</div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+          <div class="queue-h"><span>任务队列</span><span>2 项</span></div>
+          <div class="queue-item"><span class="pos">1</span><div class="q-main"><div class="q-task">重排第 3 章节拍</div><div class="q-agent">章节蓝图助手 · 等待架构助手让出</div></div></div>
+          <div class="queue-item"><span class="pos">2</span><div class="q-main"><div class="q-task">汇总并起草正文</div><div class="q-agent">项目助手 · 依赖蓝图确认</div></div></div>
+
+          <div class="scope-note">会话按作用域隔离：项目助手与架构/蓝图助手共享项目上下文，界面助手使用全局工作目录。</div>
+        </aside>
+
+        <!-- 时间线 -->
+        <section class="stream">
+          <div class="stream-head">
+            <span class="st-title"><svg class="i"><use href="#i-thread"/></svg>协作时间线</span>
+            <span class="chip on">全部</span>
+            <span class="chip">需要你</span>
+            <span class="chip">仅委派</span>
+            <span class="meta" style="margin-left:auto">自动滚动</span>
+          </div>
+
+          <div class="stream-body">
+            <div class="msg me">
+              <span class="av me">你</span>
+              <div class="msg-main">
+                <div class="msg-head"><b>你</b><span>14:20</span></div>
+                <div class="bubble">把第三章的节拍重排一下，先给方案，别直接写正文。</div>
+              </div>
+            </div>
+
+            <div class="handoff">
+              <svg class="i"><use href="#i-handoff"/></svg>
+              <span><b>项目助手</b> 委派给 <b>章节蓝图助手</b>：重排第 3 章节拍</span>
+              <span class="tag">已移交 14:21</span>
+            </div>
+
+            <div class="msg">
+              <span class="av blue">蓝</span>
+              <div class="msg-main">
+                <div class="msg-head"><b>章节蓝图助手</b><span>14:22</span><span class="tag">计划模式</span></div>
+                <div class="bubble">我按「断电 → 纸痕 → 钟表匠」重排，并加一个章末钩子；没有写入任何文件，等你确认。</div>
+                <div class="proposal">
+                  <div class="proposal-h"><svg class="i"><use href="#i-sparkles"/></svg>第 3 章节拍 · 提议 v3<span class="tag wait">待确认</span></div>
+                  <div class="diff-line mod"><span class="mk">~</span><span>调整：把「妹妹的声音」从章中移到章末，制造钩子</span></div>
+                  <div class="diff-line add"><span class="mk">+</span><span>新增节拍：档案室断电，主角第一次看到纸质痕迹</span></div>
+                  <div class="diff-line add"><span class="mk">+</span><span>新增节拍：钟表匠的记忆反复出现，暗示他不是普通人</span></div>
+                  <div class="proposal-actions">
+                    <button class="btn btn-primary btn-sm">采纳</button>
+                    <button class="btn btn-secondary btn-sm">在画布中修改</button>
+                    <span class="no">否决并说明</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="msg">
+              <span class="av arch">架</span>
+              <div class="msg-main">
+                <div class="msg-head"><b>架构助手</b><span>14:23</span><span class="tag wait">等待确认</span></div>
+                <div class="bubble">提醒一处冲突：第 2 章写的是白天，这里「凌晨四点」会与时间线打架。我建议改到天亮前 40 分钟。</div>
+                <button class="btn btn-secondary btn-sm" style="margin-top:7px"><svg class="i"><use href="#i-eye"/></svg>查看冲突位置</button>
+              </div>
+            </div>
+
+            <div class="tool-card">
+              <span class="tool-icon"><svg class="i"><use href="#i-shield"/></svg></span>
+              <div class="tool-main">
+                <div class="tool-h">运行工作流「写作此章」<span class="tag wait">需批准</span></div>
+                <p class="tool-body">将写入草稿箱：第 3 章草稿（1 个文件），并创建审稿任务。写入前会做原子校验。</p>
+                <div class="tool-actions">
+                  <button class="btn btn-primary btn-sm">批准执行</button>
+                  <button class="btn btn-secondary btn-sm">查看变更</button>
+                  <span class="no">稍后</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="working"><span class="dot wait"></span>项目助手正在汇总两位助手的输出…</div>
+          </div>
+
+          <div class="composer">
+            <div class="ph">对项目助手说，@ 指定助手，/ 调用工作流…</div>
+            <div class="composer-row">
+              <span class="seg"><span class="on">计划</span><span>写作</span></span>
+              <span class="chip"><svg class="i"><use href="#i-users"/></svg>@ 架构助手</span>
+              <span class="chip">深度 中</span>
+              <span class="chip">Qwen3 14B</span>
+              <span class="send"><svg class="i"><use href="#i-send"/></svg></span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 待确认 -->
+        <aside class="review">
+          <div class="sec-h"><b>待你确认</b><span><span class="tag wait">2</span> 全部批准</span></div>
+
+          <div class="approval">
+            <div class="ap-agent"><span class="av sm blue">蓝</span>章节蓝图助手<span class="tag">14:22</span></div>
+            <div class="ap-h"><b>第 3 章节拍 v3</b></div>
+            <p class="ap-body">新增 2 个节拍、调整 1 处顺序，未写入文件。</p>
+            <div class="ap-actions">
+              <button class="btn btn-primary btn-sm">采纳</button>
+              <button class="btn btn-secondary btn-sm">修改</button>
+              <span class="no">否决</span>
+            </div>
+          </div>
+
+          <div class="approval">
+            <div class="ap-agent"><span class="av sm pm">项</span>项目助手<span class="tag">14:24</span></div>
+            <div class="ap-h"><b>工作流：写作此章</b></div>
+            <p class="ap-body">写入 1 个草稿文件，并创建审稿任务；可撤销。</p>
+            <div class="ap-actions">
+              <button class="btn btn-primary btn-sm">批准执行</button>
+              <button class="btn btn-secondary btn-sm">查看</button>
+              <span class="no">稍后</span>
+            </div>
+          </div>
+
+          <div class="divider" style="margin-top:2px"></div>
+          <div class="sec-h" style="padding-top:2px"><b>本次产物</b><span>4</span></div>
+          <div class="artifact"><svg class="i"><use href="#i-file"/></svg>第 3 章蓝图 v3<span class="tag wait">待确认</span></div>
+          <div class="artifact"><svg class="i"><use href="#i-layers"/></svg>世界观补丁 · 纸质痕迹<span class="tag wait">待确认</span></div>
+          <div class="artifact"><svg class="i"><use href="#i-note"/></svg>第 3 章草稿<span class="tag">未开始</span></div>
+          <div class="artifact"><svg class="i"><use href="#i-shield"/></svg>审稿任务<span class="tag">未创建</span></div>
+
+          <div class="review-foot"><span>本次会话 12,480 tokens</span><span>项目会话</span></div>
+        </aside>
+      </div>
+    </main>
+  </div>
+
+  <footer class="statusbar">
+    <span class="st">协作模式 · 计划优先</span>
+    <span class="sep"></span>
+    <span class="st">3 位助手 · 1 运行中 · 1 排队</span>
+    <span class="st">待确认 2</span>
+    <span class="right">
+      <span class="st"><svg class="i"><use href="#i-circle-check"/></svg>自动保存 14:32</span>
+      <span class="st strong">v0.1.4</span>
+    </span>
+  </footer>
+</div>
+</body>
+</html>

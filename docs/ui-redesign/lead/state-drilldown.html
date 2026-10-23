@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>主助手架构三 · 下钻到子助手</title>
+<link rel="stylesheet" href="lead.css">
+<style>
+  .main-preview { padding: 7px 12px 9px; font-size: 10.5px; color: var(--muted); line-height: 1.55; }
+  .main-preview b { color: var(--text2); font-weight: 600; }
+  .thread-sub .thread-body { padding-bottom: 2px; }
+  .thread-sub .chat-composer { margin: 8px 12px 12px; }
+  .drill-tag { display: inline-flex; align-items: center; gap: 4px; font-size: 9.5px; color: var(--accent-text); background: var(--accent-soft); padding: 2px 7px; border-radius: 999px; }
+</style>
+</head>
+<body>
+<script src="../concepts/icons.js"></script>
+
+<div class="window">
+  <header class="titlebar">
+    <div class="brand">
+      <span class="brand-mark"><img src="../../../public/logo.svg" alt="AI Writer"></span>
+      <button class="icon-only"><svg class="i"><use href="#i-menu"/></svg></button>
+    </div>
+    <div class="tb-project"><span style="color:var(--text2)">当前项目：</span><b style="font-weight:500">雾城档案</b></div>
+    <span class="meta" style="margin-left:10px"><svg class="i" style="width:12px;height:12px;display:inline-block;vertical-align:-2px;color:var(--sage)"><use href="#i-circle-check"/></svg> 已保存 14:34</span>
+    <div class="tb-right">
+      <span class="zoom">− 100% +</span>
+      <button class="icon-only"><svg class="i"><use href="#i-moon"/></svg></button>
+      <button class="icon-only"><svg class="i"><use href="#i-settings"/></svg></button>
+      <span class="win-controls">
+        <button class="icon-only"><svg class="i"><use href="#i-minus"/></svg></button>
+        <button class="icon-only"><svg class="i"><use href="#i-square"/></svg></button>
+        <button class="icon-only"><svg class="i"><use href="#i-x"/></svg></button>
+      </span>
+    </div>
+  </header>
+
+  <div class="body">
+    <nav class="rail">
+      <button class="rail-item"><svg class="i"><use href="#i-home"/></svg><span>首页</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-folder"/></svg><span>项目</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-layers"/></svg><span>架构</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-list"/></svg><span>情节</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-branch"/></svg><span>蓝图</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-thread"/></svg><span>剧情</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-users"/></svg><span>人物</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-book-open"/></svg><span>知识库</span></button>
+      <span class="rail-sp"></span>
+      <button class="rail-item on"><svg class="i"><use href="#i-book"/></svg><span>写作</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-checks"/></svg><span>任务</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-settings"/></svg><span>设置</span></button>
+    </nav>
+
+    <main class="doc">
+      <div class="change-bar">
+        <span class="drill-tag"><svg class="i" style="width:10px;height:10px"><use href="#i-message"/></svg>直接对话中：架构助手</span>
+        <span>2 处精细修改待应用</span>
+        <span class="sep"></span>
+        <span>主助手已暂停</span>
+        <span class="actions">
+          <button class="btn btn-ghost btn-sm">回到主助手</button>
+          <button class="btn btn-primary btn-sm">应用 2 处</button>
+        </span>
+      </div>
+
+      <div class="doc-scroll">
+        <article class="paper">
+          <h1>第三章　记忆修复师</h1>
+          <div class="paper-meta">
+            <span>3,240 字</span><span class="sep"></span>
+            <span>下钻修改 · 架构助手</span><span class="sep"></span>
+            <span>14:34</span>
+          </div>
+
+          <p class="paper-para proposed">
+            <span class="para-tag arch">架构助手 · 直接修改</span>
+            <span class="p-marker"><span class="auth" style="color:#3E5563"><span class="dot" style="background:#54666E"></span>架构助手</span></span>
+            <span class="inline-proposal">天亮前四十分钟</span>，雾城的记忆修复局还亮着三盏灯。林见夏把最后一张纸页压进扫描台，指尖沾上了墨，黑得很不自然，像是从纸里渗出来的。
+            <div class="take-acts">
+              <span class="meta">与第 2 章 10:40 对齐</span>
+              <span class="no" style="margin-left:auto">应用</span>
+              <span class="no">忽略</span>
+            </div>
+          </p>
+
+          <p class="paper-para">
+            <span class="p-marker"><span class="auth"><span class="dot" style="background:var(--line2)"></span>你</span></span>
+            系统显示这条记忆属于一位七十三岁的钟表匠，内容是一段从未发生过的婚礼。可修复记录里，这张纸已经被调阅过两次，时间戳都是明天。
+          </p>
+
+          <p class="paper-para">
+            <span class="p-marker"><span class="auth"><span class="dot" style="background:var(--line2)"></span>你</span></span>
+            林见夏把纸翻过来。三个字，笔画很深，像刻的。她把纸压平，像压住一句没说完的话。
+          </p>
+
+          <p class="paper-para proposed">
+            <span class="para-tag arch">架构助手 · 直接修改</span>
+            <span class="p-marker"><span class="auth" style="color:#3E5563"><span class="dot" style="background:#54666E"></span>架构助手</span></span>
+            她想起妹妹失踪那天，档案室的门也是开着的。地上同样落着一张纸，正面是空白，背面写着两个字：别回头。<span class="inline-proposal">走廊尽头传来一声很轻的钟响，像有人在等她下班。</span>她知道，这张纸明天还会出现在这里。
+            <div class="take-acts">
+              <span class="meta">把妹妹出场埋成环境暗示</span>
+              <span class="no" style="margin-left:auto">应用</span>
+              <span class="no">忽略</span>
+            </div>
+          </p>
+        </article>
+      </div>
+    </main>
+
+    <aside class="chat">
+      <div class="chat-head">
+        <span class="av arch">架</span>
+        <span class="name">架构助手</span>
+        <span class="tag">由主助手委派</span>
+        <span class="tag wait">直接对话中</span>
+        <button class="btn btn-ghost btn-sm" style="margin-left:auto">返回主对话</button>
+        <button class="icon-only"><svg class="i"><use href="#i-more"/></svg></button>
+      </div>
+
+      <div class="stack">
+        <div class="thread-main collapsed">
+          <div class="thread-header">
+            <span class="av pm" style="width:22px;height:22px;font-size:9px">主</span>
+            <span class="name">主助手</span>
+            <span class="tag wait">已暂停 · 观察中</span>
+          </div>
+          <div class="main-preview"><b>主助手：</b>我先暂停。你们聊完把结论带回来，我继续往下写。</div>
+        </div>
+
+        <div class="sub-note">
+          <svg class="i"><use href="#i-info"/></svg>
+          <span>你现在直接和架构助手对话；消息会同步给主助手，退出后自动回到主对话。</span>
+        </div>
+
+        <div class="thread-sub">
+          <div class="thread-body">
+            <div class="msg me">
+              <span class="av me" style="width:22px;height:22px;font-size:9px">你</span>
+              <div class="msg-main">
+                <div class="msg-head"><b>你</b><span>14:33</span></div>
+                <div class="bubble me">第 2 章白天具体是几点？</div>
+              </div>
+            </div>
+
+            <div class="msg">
+              <span class="av arch" style="width:22px;height:22px;font-size:9px">架</span>
+              <div class="msg-main">
+                <div class="msg-head"><b>架构助手</b><span>14:34</span></div>
+                <div class="bubble">第 2 章是 10:40。这里「凌晨四点」太早，建议改成「天亮前四十分钟」——保住凌晨质感，也不与第 2 章撞。</div>
+                <div class="bubble">第 4 段再加一句钟响，把妹妹的出场埋成环境暗示，第 6 章相认时会更顺。</div>
+              </div>
+            </div>
+
+            <div class="change">
+              <div class="change-h">
+                <svg class="i"><use href="#i-pen"/></svg><b>2 处精细修改</b>
+                <span class="tag wait">待应用</span>
+              </div>
+              <div class="change-diff">
+                <span class="del">凌晨四点，雾城的记忆修复局…</span>
+                <span class="add">天亮前四十分钟，雾城的记忆修复局…</span>
+                <span class="add">第 4 段 + 钟响一句</span>
+              </div>
+              <div class="change-acts">
+                <button class="btn btn-primary">应用并返回主助手</button>
+                <button class="btn btn-secondary">只应用第 1 处</button>
+                <span class="no">忽略</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="chat-composer">
+            <div class="ph">直接对架构助手说：第 4 段那句再轻一点…</div>
+            <div class="row">
+              <span class="chip"><svg class="i"><use href="#i-message"/></svg>同步给主助手</span>
+              <span class="send"><svg class="i"><use href="#i-send"/></svg></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <footer class="statusbar">
+    <span class="st">下钻模式 · 架构助手</span>
+    <span class="sep"></span>
+    <span class="st">主助手已暂停</span>
+    <span class="st">修改应用后回到主对话</span>
+    <span class="right">
+      <span class="st"><svg class="i"><use href="#i-circle-check"/></svg>自动保存 14:34</span>
+      <span class="st strong">v0.1.4</span>
+    </span>
+  </footer>
+</div>
+</body>
+</html>

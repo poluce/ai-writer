@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>概念二 · 创作总览台（Studio Dashboard）</title>
+<link rel="stylesheet" href="base.css">
+<style>
+  /* ============ 概念二：创作总览台 ============ */
+  .titlebar { height: 44px; }
+  .tb-project { display: flex; align-items: center; gap: 8px; padding-left: 12px; border-left: 1px solid var(--line); }
+  .project-name { font-size: 12.5px; font-weight: 500; }
+  .tb-right { margin-left: auto; display: flex; align-items: center; gap: 2px; }
+  .win-controls { display: flex; align-items: center; gap: 2px; margin-left: 8px; padding-left: 8px; border-left: 1px solid var(--line); }
+  .win-controls .icon-only { width: 26px; height: 24px; }
+  .win-controls .icon-only .i { width: 13px; height: 13px; }
+
+  .body { flex: 1; min-height: 0; display: flex; }
+
+  /* 左栏 */
+  .rail {
+    width: 64px; flex: none;
+    background: var(--panel);
+    border-right: 1px solid var(--line);
+    display: flex; flex-direction: column; align-items: stretch;
+    gap: 2px; padding: 7px 6px;
+  }
+  .rail-item {
+    height: 53px; border-radius: 8px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    color: var(--text2);
+  }
+  .rail-item .i { width: 19px; height: 19px; stroke-width: 1.7; }
+  .rail-item span { font-size: 10px; color: var(--muted); letter-spacing: 0.03em; }
+  .rail-item.on { background: var(--accent-soft); color: var(--accent-text); }
+  .rail-item.on span { color: var(--accent-text); }
+  .rail-sp { flex: 1; }
+  .rail-div { height: 1px; background: var(--line); margin: 6px 8px; }
+
+  /* 主区 */
+  .dash { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .dash-scroll { flex: 1; min-height: 0; overflow: hidden; padding: 22px 28px 16px; }
+  .dash-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 16px; }
+  .dash-head h1 { margin: 0; font-family: var(--font-head); font-size: 21px; font-weight: 600; letter-spacing: 0.01em; }
+  .dash-head p { margin: 5px 0 0; font-size: 11.5px; color: var(--muted); }
+  .dash-head .hl { color: var(--accent-text); font-weight: 500; }
+  .head-actions { display: flex; align-items: center; gap: 8px; }
+
+  .grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+    padding: 14px 16px 15px;
+    min-width: 0;
+  }
+  .card-h { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+  .card-t { display: flex; align-items: center; gap: 7px; font-family: var(--font-head); font-size: 14px; font-weight: 600; }
+  .card-t .i { width: 14px; height: 14px; color: var(--accent); }
+  .card-sub { font-size: 10.5px; color: var(--muted); }
+  .card-link { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--accent-text); }
+  .card-link .i { width: 12px; height: 12px; }
+
+  .span-4 { grid-column: span 4; }
+  .span-8 { grid-column: span 8; }
+  .span-12 { grid-column: span 12; }
+
+  /* 继续写作 */
+  .continue-body { display: flex; align-items: center; gap: 18px; }
+  .continue-main { flex: 1; min-width: 0; }
+  .continue-chapter { display: flex; align-items: baseline; gap: 10px; }
+  .continue-chapter .no { font-family: var(--font-head); font-size: 18px; font-weight: 600; }
+  .continue-chapter .nm { font-family: var(--font-head); font-size: 18px; font-weight: 600; }
+  .continue-chapter .meta { margin-left: auto; }
+  .excerpt {
+    margin: 10px 0 0;
+    font-family: var(--font-writing);
+    font-size: 13px; line-height: 1.8;
+    color: var(--text2);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .continue-actions { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+  .continue-actions .last { font-size: 10.5px; color: var(--muted); }
+
+  /* 目标环 */
+  .goal-body { display: flex; align-items: center; gap: 16px; }
+  .ring {
+    width: 74px; height: 74px; flex: none;
+    border-radius: 50%;
+    background: conic-gradient(var(--accent) 0 62%, var(--line) 62% 100%);
+    display: grid; place-items: center;
+    position: relative;
+  }
+  .ring::before {
+    content: '';
+    position: absolute; inset: 7px;
+    border-radius: 50%;
+    background: var(--card);
+  }
+  .ring b { position: relative; font-size: 15px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+  .goal-nums { font-size: 12px; color: var(--text2); font-variant-numeric: tabular-nums; }
+  .goal-nums b { font-size: 15px; color: var(--text); font-weight: 600; }
+  .goal-nums .sub { font-size: 10.5px; color: var(--muted); margin-top: 3px; }
+  .goal-bar { margin-top: 10px; height: 5px; border-radius: 999px; background: var(--line); overflow: hidden; }
+  .goal-bar i { display: block; height: 100%; width: 41%; background: var(--accent); border-radius: 999px; }
+  .goal-today { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-top: 6px; }
+
+  /* 章节网格 */
+  .chapter-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 5px; }
+  .ch-cell {
+    height: 26px; border-radius: 5px;
+    display: grid; place-items: center;
+    font-size: 9.5px; color: var(--muted);
+    border: 1px solid var(--line);
+    font-variant-numeric: tabular-nums;
+  }
+  .ch-cell.done { background: var(--sage-soft); border-color: transparent; color: var(--sage); }
+  .ch-cell.now { background: var(--accent); border-color: transparent; color: var(--on-accent); font-weight: 600; box-shadow: var(--shadow-accent); }
+  .ch-cell.writing { background: var(--amber-soft); border-color: transparent; color: #8A5A1B; }
+  .legend { display: flex; align-items: center; gap: 12px; margin-top: 11px; font-size: 10px; color: var(--muted); }
+  .legend i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; margin-right: 4px; vertical-align: -1px; }
+  .legend .d { background: var(--sage-soft); }
+  .legend .w { background: var(--amber-soft); }
+  .legend .n { background: var(--accent); }
+
+  /* 伏笔 */
+  .thread { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px dashed var(--line); }
+  .thread:last-child { border-bottom: 0; padding-bottom: 0; }
+  .thread .tdot { width: 6px; height: 6px; border-radius: 50%; background: var(--amber); margin-top: 6px; flex: none; }
+  .thread.done .tdot { background: var(--sage); }
+  .thread-main { flex: 1; min-width: 0; }
+  .thread-t { font-size: 12px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .thread-m { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .thread .chip { height: 18px; font-size: 9.5px; padding: 0 6px; }
+
+  /* 角色 */
+  .chars { display: flex; gap: 10px; }
+  .char {
+    flex: 1; min-width: 0;
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 11px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--card) 70%, var(--panel));
+  }
+  .avatar {
+    width: 34px; height: 34px; border-radius: 50%; flex: none;
+    display: grid; place-items: center;
+    font-family: var(--font-head);
+    font-size: 14px; font-weight: 600;
+    background: var(--accent-soft); color: var(--accent-text);
+  }
+  .avatar.s2 { background: var(--sage-soft); color: var(--sage); }
+  .avatar.s3 { background: var(--amber-soft); color: #8A5A1B; }
+  .char-main { min-width: 0; }
+  .char-name { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .char-role { font-size: 10px; color: var(--muted); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* 节奏 */
+  .rhythm-bars { display: flex; align-items: flex-end; gap: 8px; height: 58px; padding: 0 2px; }
+  .rhythm-bars .bar { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; }
+  .rhythm-bars .bar i { display: block; border-radius: 3px 3px 2px 2px; background: var(--line2); }
+  .rhythm-bars .bar.on i { background: var(--amber); }
+  .rhythm-bars .bar span { font-size: 9px; color: var(--muted); text-align: center; font-variant-numeric: tabular-nums; }
+  .rhythm-note { margin-top: 10px; font-size: 10.5px; color: var(--muted); }
+  .rhythm-note b { color: var(--amber); font-weight: 500; }
+
+  /* 灵感速记 */
+  .idea-input {
+    height: 52px;
+    display: flex; align-items: flex-start;
+    padding: 9px 11px;
+    border: 1px solid var(--line2);
+    border-radius: 7px;
+    background: var(--field-bg, #FBF8EF);
+    font-size: 12px; color: var(--muted);
+    line-height: 1.6;
+  }
+  .idea-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .idea-row .chip { cursor: default; }
+  .idea-row .btn { margin-left: auto; }
+
+  /* 待办 */
+  .todo { display: flex; align-items: center; gap: 9px; padding: 7px 0; font-size: 11.5px; color: var(--text2); }
+  .todo .box { width: 14px; height: 14px; border-radius: 4px; border: 1px solid var(--line2); flex: none; display: grid; place-items: center; }
+  .todo.done .box { background: var(--sage-soft); border-color: transparent; color: var(--sage); }
+  .todo.done .box .i { width: 10px; height: 10px; stroke-width: 2.4; }
+  .todo.done span { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--line2); }
+
+  /* 右栏 AI 观察 */
+  .feed {
+    width: 300px; flex: none;
+    background: var(--panel);
+    border-left: 1px solid var(--line);
+    display: flex; flex-direction: column;
+    min-height: 0;
+  }
+  .feed-head {
+    height: 44px; flex: none;
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 12px 0 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  .feed-title { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; }
+  .feed-title .i { width: 14px; height: 14px; color: var(--accent); }
+  .feed-head .icon-only { margin-left: auto; width: 24px; height: 24px; }
+  .feed-head .icon-only .i { width: 13px; height: 13px; }
+  .feed-scroll { flex: 1; min-height: 0; overflow: hidden; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+  .insight {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    padding: 11px 12px;
+    box-shadow: var(--shadow-card);
+  }
+  .insight-head { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--muted); }
+  .insight-head .tag { font-size: 9.5px; padding: 2px 6px; border-radius: 999px; }
+  .tag.slow { background: var(--amber-soft); color: #8A5A1B; }
+  .tag.thread { background: var(--accent-soft); color: var(--accent-text); }
+  .tag.conflict { background: var(--sage-soft); color: var(--sage); }
+  .insight p { margin: 7px 0 0; font-size: 11.5px; line-height: 1.65; color: var(--text2); }
+  .insight p b { color: var(--text); font-weight: 500; }
+  .insight-actions { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 10.5px; }
+  .insight-actions .ok { color: var(--accent-text); font-weight: 500; }
+  .insight-actions .no { color: var(--muted); }
+  .feed-input {
+    margin: 0 12px 12px;
+    flex: none;
+    display: flex; align-items: center; gap: 8px;
+    height: 38px; padding: 0 6px 0 11px;
+    background: var(--card);
+    border: 1px solid var(--line2);
+    border-radius: 9px;
+    box-shadow: var(--shadow-card);
+  }
+  .feed-input .ph { flex: 1; font-size: 11.5px; color: var(--muted); }
+  .feed-input .send { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; background: var(--accent); color: var(--on-accent); }
+  .feed-input .send .i { width: 13px; height: 13px; stroke-width: 2; }
+</style>
+</head>
+<body>
+<script src="icons.js"></script>
+
+<div class="window">
+  <header class="titlebar">
+    <div class="brand">
+      <span class="brand-mark"><img src="../../../public/logo.svg" alt="AI Writer"></span>
+      <span class="brand-name">AI Writer</span>
+    </div>
+    <span class="tb-divider"></span>
+    <div class="tb-project"><span class="project-name">雾城档案</span></div>
+    <div class="tb-right">
+      <button class="icon-only"><svg class="i"><use href="#i-search"/></svg></button>
+      <button class="icon-only"><svg class="i"><use href="#i-moon"/></svg></button>
+      <button class="icon-only"><svg class="i"><use href="#i-settings"/></svg></button>
+      <span class="win-controls">
+        <button class="icon-only"><svg class="i"><use href="#i-minus"/></svg></button>
+        <button class="icon-only"><svg class="i"><use href="#i-square"/></svg></button>
+        <button class="icon-only"><svg class="i"><use href="#i-x"/></svg></button>
+      </span>
+    </div>
+  </header>
+
+  <div class="body">
+    <!-- 左栏 -->
+    <nav class="rail">
+      <button class="rail-item on"><svg class="i"><use href="#i-home"/></svg><span>总览</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-book-open"/></svg><span>写作</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-branch"/></svg><span>架构</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-users"/></svg><span>角色</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-globe"/></svg><span>世界</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-sparkles"/></svg><span>AI</span></button>
+      <span class="rail-sp"></span>
+      <button class="rail-item"><svg class="i"><use href="#i-checks"/></svg><span>任务</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-settings"/></svg><span>设置</span></button>
+    </nav>
+
+    <!-- 主看板 -->
+    <main class="dash">
+      <div class="dash-scroll">
+        <div class="dash-head">
+          <div>
+            <h1>下午好，今天继续写第三章</h1>
+            <p>已写 <span class="hl">1,240 字</span>，距离今日目标还差 1,760 字 · 最近编辑 14:32</p>
+          </div>
+          <div class="head-actions">
+            <button class="btn btn-secondary"><svg class="i"><use href="#i-map"/></svg>查看大纲</button>
+            <button class="btn btn-primary"><svg class="i"><use href="#i-pen"/></svg>继续写作</button>
+          </div>
+        </div>
+
+        <div class="grid">
+          <!-- 继续写作 -->
+          <section class="card span-8">
+            <div class="continue-body">
+              <div class="continue-main">
+                <div class="continue-chapter">
+                  <span class="no">03</span>
+                  <span class="nm">记忆修复师</span>
+                  <span class="meta">3,240 字 · 目标 3,000</span>
+                </div>
+                <p class="excerpt">她想起妹妹失踪那天，档案室的门也是开着的。地上同样落着一张纸，正面是空白，背面写着两个字：别回头。</p>
+                <div class="continue-actions">
+                  <button class="btn btn-primary btn-sm"><svg class="i"><use href="#i-play"/></svg>继续写</button>
+                  <span class="last">上次编辑 14:32</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 目标 -->
+          <section class="card span-4">
+            <div class="goal-body">
+              <div class="ring"><b>62%</b></div>
+              <div>
+                <div class="goal-nums"><b>12,480</b> / 20,000 字</div>
+                <div class="goal-nums sub">全书目标 · 36 章</div>
+              </div>
+            </div>
+            <div class="goal-bar"><i></i></div>
+            <div class="goal-today"><span>今日 1,240</span><span>目标 3,000</span></div>
+          </section>
+
+          <!-- 章节 -->
+          <section class="card span-8">
+            <div class="card-h">
+              <div class="card-t"><svg class="i"><use href="#i-layers"/></svg>章节进度</div>
+              <span class="card-link">全部章节<svg class="i"><use href="#i-arrow-right"/></svg></span>
+            </div>
+            <div class="chapter-grid">
+              <span class="ch-cell done">01</span><span class="ch-cell done">02</span><span class="ch-cell now">03</span><span class="ch-cell writing">04</span><span class="ch-cell">05</span><span class="ch-cell">06</span><span class="ch-cell">07</span><span class="ch-cell">08</span><span class="ch-cell">09</span><span class="ch-cell">10</span><span class="ch-cell">11</span><span class="ch-cell">12</span>
+              <span class="ch-cell">13</span><span class="ch-cell">14</span><span class="ch-cell">15</span><span class="ch-cell">16</span><span class="ch-cell">17</span><span class="ch-cell">18</span><span class="ch-cell">19</span><span class="ch-cell">20</span><span class="ch-cell">21</span><span class="ch-cell">22</span><span class="ch-cell">23</span><span class="ch-cell">24</span>
+              <span class="ch-cell">25</span><span class="ch-cell">26</span><span class="ch-cell">27</span><span class="ch-cell">28</span><span class="ch-cell">29</span><span class="ch-cell">30</span><span class="ch-cell">31</span><span class="ch-cell">32</span><span class="ch-cell">33</span><span class="ch-cell">34</span><span class="ch-cell">35</span><span class="ch-cell">36</span>
+            </div>
+            <div class="legend">
+              <span><i class="d"></i>已完成</span>
+              <span><i class="w"></i>草稿中</span>
+              <span><i class="n"></i>当前</span>
+              <span style="margin-left:auto">本周新增 3 章</span>
+            </div>
+          </section>
+
+          <!-- 伏笔 -->
+          <section class="card span-4">
+            <div class="card-h">
+              <div class="card-t"><svg class="i"><use href="#i-thread"/></svg>伏笔与线索</div>
+              <span class="card-sub">3 条未回收</span>
+            </div>
+            <div class="thread">
+              <span class="tdot"></span>
+              <div class="thread-main">
+                <div class="thread-t">「别回头」的字迹来源</div>
+                <div class="thread-m">第 1 章埋下 · 已隔 2 章</div>
+              </div>
+              <span class="chip amber">未回收</span>
+            </div>
+            <div class="thread">
+              <span class="tdot"></span>
+              <div class="thread-main">
+                <div class="thread-t">钟表匠的婚礼记忆</div>
+                <div class="thread-m">第 3 章埋下 · 待展开</div>
+              </div>
+              <span class="chip amber">未回收</span>
+            </div>
+            <div class="thread done">
+              <span class="tdot"></span>
+              <div class="thread-main">
+                <div class="thread-t">档案室的备用钥匙</div>
+                <div class="thread-m">第 2 章埋下 · 第 2 章回收</div>
+              </div>
+              <span class="chip sage">已回收</span>
+            </div>
+          </section>
+
+          <!-- 角色 -->
+          <section class="card span-8">
+            <div class="card-h">
+              <div class="card-t"><svg class="i"><use href="#i-users"/></svg>核心角色</div>
+              <span class="card-link">角色图谱<svg class="i"><use href="#i-arrow-right"/></svg></span>
+            </div>
+            <div class="chars">
+              <div class="char">
+                <span class="avatar">夏</span>
+                <div class="char-main"><div class="char-name">林见夏</div><div class="char-role">主角 · 档案修复师</div></div>
+              </div>
+              <div class="char">
+                <span class="avatar s2">陈</span>
+                <div class="char-main"><div class="char-name">陈默</div><div class="char-role">对手 · 记忆局主管</div></div>
+              </div>
+              <div class="char">
+                <span class="avatar s3">妹</span>
+                <div class="char-main"><div class="char-name">林见秋</div><div class="char-role">失踪者 · 妹妹</div></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 节奏 -->
+          <section class="card span-4">
+            <div class="card-h">
+              <div class="card-t"><svg class="i"><use href="#i-activity"/></svg>节奏</div>
+              <span class="card-sub">近 7 章</span>
+            </div>
+            <div class="rhythm-bars">
+              <div class="bar"><i style="height:34px"></i><span>01</span></div>
+              <div class="bar"><i style="height:48px"></i><span>02</span></div>
+              <div class="bar on"><i style="height:26px"></i><span>03</span></div>
+              <div class="bar"><i style="height:20px"></i><span>04</span></div>
+              <div class="bar"><i style="height:20px"></i><span>05</span></div>
+              <div class="bar"><i style="height:20px"></i><span>06</span></div>
+              <div class="bar"><i style="height:20px"></i><span>07</span></div>
+            </div>
+            <div class="rhythm-note">第三章对话密度偏低，<b>建议压缩 200 字</b></div>
+          </section>
+
+          <!-- 灵感速记 -->
+          <section class="card span-8">
+            <div class="card-h">
+              <div class="card-t"><svg class="i"><use href="#i-note"/></svg>灵感速记</div>
+              <span class="card-sub">随手记下，AI 会归档到设定</span>
+            </div>
+            <div class="idea-input">如果记忆修复的代价是被修复者失去一年的时间感，主角会怎么选？</div>
+            <div class="idea-row">
+              <span class="chip"><svg class="i"><use href="#i-target"/></svg>归档到设定</span>
+              <span class="chip"><svg class="i"><use href="#i-sparkles"/></svg>让 AI 展开</span>
+              <button class="btn btn-secondary btn-sm">保存</button>
+            </div>
+          </section>
+
+          <!-- 待办 -->
+          <section class="card span-4">
+            <div class="card-h">
+              <div class="card-t"><svg class="i"><use href="#i-checks"/></svg>今日待办</div>
+              <span class="card-sub">2 / 4</span>
+            </div>
+            <div class="todo done"><span class="box"><svg class="i"><use href="#i-check"/></svg></span><span>补写第二章的环境描写</span></div>
+            <div class="todo done"><span class="box"><svg class="i"><use href="#i-check"/></svg></span><span>确认钟表匠的年龄设定</span></div>
+            <div class="todo"><span class="box"></span><span>写出第三章结尾反转</span></div>
+            <div class="todo"><span class="box"></span><span>回收「备用钥匙」伏笔</span></div>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <!-- 右栏 AI -->
+    <aside class="feed">
+      <div class="feed-head">
+        <span class="feed-title"><svg class="i"><use href="#i-sparkles"/></svg>AI 观察</span>
+        <button class="icon-only"><svg class="i"><use href="#i-rotate"/></svg></button>
+      </div>
+      <div class="feed-scroll">
+        <div class="insight">
+          <div class="insight-head"><span class="tag slow">节奏</span>第 3 章</div>
+          <p>本章前 800 字只有动作描写，<b>缺少一次对话</b>。建议让陈默提前登场，顺势交代记忆局的规则。</p>
+          <div class="insight-actions"><span class="ok">生成一段对话</span><span class="no">忽略</span></div>
+        </div>
+        <div class="insight">
+          <div class="insight-head"><span class="tag thread">伏笔</span>跨 2 章</div>
+          <p>「别回头」自第 1 章埋下后尚未回收，<b>读者可能已经遗忘</b>。可在本章用一句环境描写轻触一次。</p>
+          <div class="insight-actions"><span class="ok">插入一句</span><span class="no">忽略</span></div>
+        </div>
+        <div class="insight">
+          <div class="insight-head"><span class="tag conflict">一致性</span>角色</div>
+          <p>林见夏在第 2 章说过「从不迟到」，但本章 14:32 的设定与她 13:40 到岗冲突。</p>
+          <div class="insight-actions"><span class="ok">查看冲突</span><span class="no">忽略</span></div>
+        </div>
+      </div>
+      <div class="feed-input">
+        <span class="ph">问 AI：第三章节奏怎么调？</span>
+        <span class="send"><svg class="i"><use href="#i-send"/></svg></span>
+      </div>
+    </aside>
+  </div>
+
+  <footer class="statusbar">
+    <span class="st">雾城档案</span>
+    <span class="sep"></span>
+    <span class="st">12,480 字</span>
+    <span class="st">目标 200,000 字</span>
+    <span class="st">最近保存 14:32</span>
+    <span class="right">
+      <span class="st"><svg class="i"><use href="#i-circle-check"/></svg>AI 在线</span>
+      <span class="st strong">v0.1.4</span>
+    </span>
+  </footer>
+</div>
+</body>
+</html>

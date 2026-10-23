@@ -167,33 +167,34 @@
      薰衣草紫 #9B8EC8 · 星辰金 #C9A76C */
   :root,
   .light {
-    /* 现代浅色主题 — 纯白与冷灰简约科技风格（与 DSH 默认亮色主题一致） */
+    /* 浅色主题 — 浅灰白页面底 + 纯白内容面，默认主题 */
 
-    /* 背景层次（纯白底 → 模块底 → 侧栏/面板底） */
-    --color-bg: #FFFFFF;
+    /* 背景层次：页面底(灰) → 内容面(白) → 侧栏/面板(极浅灰) → 左导航(稍深)，四档拉开，
+       否则浅色下分区只能靠 1px 描边，界面会显得很平。 */
+    --color-bg: #F4F6F9;
     --color-raised: #FFFFFF;
-    --color-sidebar: #F9FAFB;
-    --color-panel: #F9FAFB;
+    --color-sidebar: #FAFBFC;
+    --color-panel: #FAFBFC;
     --color-titlebar: #FFFFFF;
-    --color-activity-bar: #F3F4F6;
-    --color-hover: #F3F4F6;
-    --color-active: #E5E7EB;
+    --color-activity-bar: #EDF0F4;
+    --color-hover: #EDF0F5;
+    --color-active: #E3E7EE;
 
-    /* 文字层次（深邃炭黑 → 次级深灰 → 弱化中灰） */
-    --color-text: #0F1115;
-    --color-text-secondary: #4B5563;
-    --color-text-muted: #525866;
+    /* 文字层次（近黑 → 次级 → 弱化） */
+    --color-text: #12141A;
+    --color-text-secondary: #4A5160;
+    --color-text-muted: #5F6773;
 
-    /* 边框（细致灰阶） */
-    --color-border: #E5E7EB;
+    /* 边框（页面分割与控件描边同源，避免浅色下出现双重灰线） */
+    --color-border: #E3E7EE;
 
-    /* 强调色（DeepSeek 科技蓝） */
-    --color-accent: #4176E6;
-    --color-accent-hover: #3364CB;
-    --color-accent-rgb: 65, 118, 230;
+    /* 强调色（科技蓝，浅色下压深一档保证正文可比） */
+    --color-accent: #3B6FE0;
+    --color-accent-hover: #2F5FCC;
+    --color-accent-rgb: 59, 111, 224;
 
     /* 品牌金色 → 科技蓝 */
-    --color-gold: #4176E6;
+    --color-gold: #3B6FE0;
 
     /* 语义色（清新绿 / 琥珀橙 / 警示红 / 信息蓝） */
     --color-success: #15803D;
@@ -204,7 +205,7 @@
     --color-error: #EF4444;
     --color-error-text: #B91C1C;
     --color-error-foreground: #FFFFFF;
-    --color-info: #4176E6;
+    --color-info: #3B6FE0;
 
     /* 类别标签文字 */
     --color-category-progress-text: #1D4ED8;
@@ -214,40 +215,40 @@
     --color-tab-bg: transparent;
     --color-tab-active: #FFFFFF;
     --color-tab-border: transparent;
-    --color-tab-indicator: #4176E6;
+    --color-tab-indicator: #3B6FE0;
 
     /* 状态栏 */
-    --color-statusbar: #F9FAFB;
-    --color-statusbar-text: #4B5563;
+    --color-statusbar: #FAFBFC;
+    --color-statusbar-text: #4A5160;
 
     /* 标题栏文字 */
-    --color-titlebar-text: #0F1115;
+    --color-titlebar-text: #12141A;
 
     /* 活动栏图标颜色 */
     --color-activity-icon: #6B7280;
-    --color-activity-icon-active: #4176E6;
-    --color-activity-indicator: #4176E6;
+    --color-activity-icon-active: #3B6FE0;
+    --color-activity-indicator: #3B6FE0;
 
     /* 编辑器 */
     --color-editor-bg: #FFFFFF;
     /* 光标不跟强调色走：强调蓝在白底只有 4.2:1，1px 细线会明显发飘。
        取调色板里已有的深蓝，6.7:1，与纸色皮肤的朱砂（9.3:1）同为高对比一档。 */
     --color-editor-caret: #1D4ED8;
-    --color-editor-line-highlight: rgba(65, 118, 230, 0.04);
-    --color-editor-selection: rgba(65, 118, 230, 0.15);
+    --color-editor-line-highlight: rgba(59, 111, 224, 0.045);
+    --color-editor-selection: rgba(59, 111, 224, 0.16);
 
     /* 分割条 Sash */
     --color-sash: transparent;
-    --color-sash-hover: rgba(65, 118, 230, 0.2);
+    --color-sash-hover: rgba(59, 111, 224, 0.22);
 
     /* ===== 语义令牌 ===== */
-    --color-focus-ring: rgba(65, 118, 230, 0.35);
-    --color-backdrop: rgba(15, 17, 21, 0.4);
-    --color-tooltip-bg: #0F1115;
+    --color-focus-ring: rgba(59, 111, 224, 0.38);
+    --color-backdrop: rgba(18, 20, 26, 0.42);
+    --color-tooltip-bg: #12141A;
     --color-tooltip-text: #FFFFFF;
-    --color-skeleton: rgba(15, 17, 21, 0.06);
-    --color-badge-bg: rgba(65, 118, 230, 0.1);
-    --color-badge-text: #4176E6;
+    --color-skeleton: rgba(18, 20, 26, 0.06);
+    --color-badge-bg: rgba(59, 111, 224, 0.1);
+    --color-badge-text: #2557C7;
 
     /* ===== 尺寸规范 ===== */
     --height-titlebar: 40px;
@@ -259,18 +260,18 @@
     --width-bottom-bar: 32px;
 
     /* 圆角 */
-    --radius-sm: 4px;
-    --radius-md: 6px;
-    --radius-lg: 8px;
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 10px;
     --radius-xl: 12px;
     --radius-2xl: 16px;
 
-    /* 阴影 */
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
-    --shadow-popover: 0 4px 20px rgba(0, 0, 0, 0.1);
-    --shadow-tooltip: 0 2px 8px rgba(0, 0, 0, 0.15);
+    /* 阴影：浅色下只用极轻的冷调投影区分「面」，不做厚重浮起 */
+    --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
+    --shadow-md: 0 1px 2px rgba(16, 24, 40, 0.05), 0 10px 24px -18px rgba(16, 24, 40, 0.35);
+    --shadow-lg: 0 2px 4px rgba(16, 24, 40, 0.06), 0 18px 44px -20px rgba(16, 24, 40, 0.28);
+    --shadow-popover: 0 18px 44px -20px rgba(16, 24, 40, 0.28), 0 2px 8px rgba(16, 24, 40, 0.06);
+    --shadow-tooltip: 0 2px 8px rgba(16, 24, 40, 0.14);
 
     /* 过渡 */
     --transition-fast: 0.12s cubic-bezier(0.16, 1, 0.3, 1);
@@ -884,10 +885,11 @@
   .writer-left-rail .left-nav-button {
     flex-direction: column;
     justify-content: center;
-    gap: 5px;
-    min-height: 66px;
-    padding: 8px 5px;
-    border-radius: 0;
+    gap: 4px;
+    min-height: 54px;
+    padding: 6px 5px;
+    border-radius: var(--radius-md);
+    margin: 1px 4px;
     color: var(--writer-left-rail-text);
   }
 
@@ -917,8 +919,9 @@
   }
 
   .writer-left-rail .left-nav-label {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 500;
+    line-height: 1.2;
   }
 
   .writer-left-rail .writer-nav-divider {
@@ -981,7 +984,7 @@
   /* ===== 树节点 — 舒适的 26px 行高，带增强悬停效果 ===== */
   .tree-item {
     @apply flex items-center gap-1.5 px-2 cursor-pointer;
-    height: 26px;
+    height: 30px;
     font-size: 13px;
     color: var(--color-text);
     transition: background var(--transition-fast),
