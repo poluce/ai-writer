@@ -809,9 +809,13 @@
     opacity: 0.45;
   }
 
+  /* 品牌标记：logo 自带浅底与圆角，外面不再套强调色板。
+     蓝底 + 内部白色圆角 = 双层圆角，视觉上像一枚"应用图标"，与克制的标题栏不搭。 */
   .writer-brand-mark {
-    background: var(--writer-brand-mark-surface);
-    border: 1px solid var(--writer-brand-mark-border);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
     color: var(--writer-brand-mark-text);
   }
 
