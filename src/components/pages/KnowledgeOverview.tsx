@@ -165,7 +165,7 @@ export default function KnowledgeOverview() {
   const rebuildPresentation = getVectorRebuildPresentation(vectorRebuildStatus)
 
   if (!currentProject) {
-    return <OpenProjectFirstPage title={text('知识库', 'Knowledge base')} />
+    return <OpenProjectFirstPage mode="workspace" title={text('知识库', 'Knowledge base')} />
   }
 
   /** 语义检索 */

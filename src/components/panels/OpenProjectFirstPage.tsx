@@ -9,12 +9,20 @@ import { formatRelativeTime } from '../../utils/time'
 import type { Locale } from '../../i18n/types'
 
 /**
- * 未打开项目时的主区引导。
+ * 未打开项目时的主区空态。
  *
- * 空态只在这里收口：主区给出「新建 / 打开 + 最近项目」，
- * 侧栏与助手面板不再重复同一组按钮，避免首屏出现三处同义空状态。
+ * - launcher：项目工作区的启动页（新建 / 打开 / 拆解 / 最近项目）；
+ * - workspace：其它工作区（知识库、蓝图…）的空态，由正文自己说明"这是哪儿"。
+ *
+ * 两种情况都不再有顶部标题条：工作区名已由左栏与侧栏表达，重复一遍只是噪音。
  */
-export function OpenProjectFirstPage({ title }: { title: string }) {
+export function OpenProjectFirstPage({
+  title,
+  mode = 'launcher',
+}: {
+  title?: string
+  mode?: 'launcher' | 'workspace'
+}) {
   const text = useLocaleStore(s => s.text)
   const recentProjects = useProjectStore(s => s.recentProjects)
   const locale = useLocaleStore(s => s.locale)
@@ -42,22 +50,32 @@ export function OpenProjectFirstPage({ title }: { title: string }) {
     if (folder) await useProjectStore.getState().openProject(folder)
   }
 
-  return (
-    <div className="skin-workspace-page h-full flex flex-col overflow-hidden bg-[var(--color-bg)]">
-      <div
-        className="flex items-center justify-between gap-2 px-3 h-9 flex-shrink-0"
-        style={{
-          borderBottom: '1px solid var(--color-border)',
-          backgroundColor: 'var(--color-editor-bg)',
-        }}
-      >
-        <div className="flex items-center gap-1.5 min-w-0">
-          <span className="text-xs font-medium truncate text-[var(--color-text-secondary)]">
-            {title}
-          </span>
+  // 其它工作区：上下文由正文承担，不再有标题条，也不再重复侧栏已经给过的按钮
+  if (mode === 'workspace') {
+    return (
+      <div className="skin-workspace-page h-full flex flex-col overflow-hidden bg-[var(--color-bg)]">
+        <div className="flex flex-1 items-center justify-center px-6">
+          <div className="flex w-full max-w-[420px] flex-col items-center text-center">
+            <span
+              className="flex h-14 w-14 items-center justify-center rounded-2xl"
+              style={{ backgroundColor: 'rgba(var(--color-accent-rgb), 0.1)', color: 'var(--color-accent)' }}
+            >
+              <BookOpen size={26} strokeWidth={1.6} />
+            </span>
+            <h2 className="mt-4 font-semibold" style={{ color: 'var(--color-text)', fontSize: 20 }}>
+              {title}
+            </h2>
+            <p className="mt-1.5" style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>
+              {text('打开项目后可查看这里的内容', 'Open a project to see this workspace')}
+            </p>
+          </div>
         </div>
       </div>
+    )
+  }
 
+  return (
+    <div className="skin-workspace-page h-full flex flex-col overflow-hidden bg-[var(--color-bg)]">
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full max-w-[560px] flex-col items-center px-6 py-14">
           <span

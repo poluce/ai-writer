@@ -167,6 +167,15 @@ function ProseEditorWrapper({
 }
 
 /** 中间主编辑区 */
+/** 无项目时，各内容工作区的空态标题（项目工作区走启动页，不在表里）。 */
+const EMPTY_WORKSPACE_TITLES: Record<string, readonly [string, string]> = {
+  blueprint: ['章节蓝图', 'Chapter blueprint'],
+  characters: ['角色', 'Cast'],
+  world: ['故事架构', 'Story architecture'],
+  'plot-tree': ['剧情树', 'Plot tree'],
+  knowledge: ['知识库', 'Knowledge base'],
+}
+
 export default function EditorArea() {
   const text = useLocaleStore(s => s.text)
   const currentProject = useProjectStore((s) => s.currentProject)
@@ -431,20 +440,12 @@ export default function EditorArea() {
 
   // ===== 条件渲染 =====
 
-  // 未打开项目时：蓝图与小说用同一套「请先打开项目」页。
+  // 未打开项目时：项目工作区给启动页，其它工作区给自己的空态说明。
   if (!currentProject) {
-    const emptyTitle = activeRailItem === 'blueprint'
-      ? text('章节蓝图', 'Chapter blueprint')
-      : activeRailItem === 'characters'
-        ? text('角色', 'Cast')
-        : activeRailItem === 'world'
-          ? text('故事架构', 'Story architecture')
-          : activeRailItem === 'plot-tree'
-            ? text('剧情树', 'Plot tree')
-            : activeRailItem === 'project'
-              ? text('项目', 'Project')
-              : text('知识库', 'Knowledge base')
-    return <OpenProjectFirstPage title={emptyTitle} />
+    const workspace = EMPTY_WORKSPACE_TITLES[activeRailItem]
+    return workspace
+      ? <OpenProjectFirstPage mode="workspace" title={text(workspace[0], workspace[1])} />
+      : <OpenProjectFirstPage mode="launcher" />
   }
 
   // 侧栏为「角色管理」时，中间区域固定展示角色编辑器（跳过 Tab 系统）
