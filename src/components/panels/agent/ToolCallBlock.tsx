@@ -104,21 +104,22 @@ function statusLabel(
 
 export default function ToolCallBlock({ toolCall }: Props) {
   const text = useLocaleStore(s => s.text)
+  const tabs = useEditorStore(s => s.tabs)
   const [expanded, setExpanded] = useState(false)
   const { toolName, arguments: args, status, result, error, source } = toolCall
 
   const isReviewAction = toolName === 'submit_chapter_review' || (toolName === 'delegate_to_assistant' && args.assistant === 'review')
   const reviewTab = isReviewAction && status === 'completed'
-    ? useEditorStore(s => s.tabs.find(t => t.type === 'review-report'))
+    ? (tabs.find(t => t.type === 'review-report') ?? null)
     : null
 
   const targetTab = status === 'completed'
-    ? useEditorStore(s => s.tabs.find(t => {
+    ? (tabs.find(t => {
         if (toolName === 'open_editor' && args.target === 'draft' && typeof args.chapter_number === 'number') {
           return t.type === 'chapter' && t.chapterNumber === args.chapter_number
         }
         return false
-      }))
+      }) ?? null)
     : null
 
   const actionableTab = reviewTab ?? targetTab

@@ -192,10 +192,38 @@ function generateDescription(
 ): string {
   switch (toolName) {
     case 'open_editor':
+      if (args.target === 'draft' && typeof args.chapter_number === 'number') {
+        return text(
+          `将在主工作区打开第 ${args.chapter_number} 章草稿`,
+          `Will open Chapter ${args.chapter_number} draft in main workspace`,
+        )
+      }
       return text(
-        `将在编辑器中打开：${args.file_path ?? '未知文件'}`,
-        `Will open in the editor: ${args.file_path ?? 'Unknown file'}`,
+        `将在编辑器中打开：${args.file_path ?? args.target ?? '未知文件'}`,
+        `Will open in the editor: ${args.file_path ?? args.target ?? 'Unknown file'}`,
       )
+    case 'delegate_to_assistant': {
+      const assistant = args.assistant
+      const label = assistant === 'review'
+        ? text('审稿助手', 'Review Assistant')
+        : assistant === 'blueprint'
+          ? text('蓝图助手', 'Blueprint Assistant')
+          : assistant === 'architect'
+            ? text('架构助手', 'Architecture Assistant')
+            : text('专门助手', 'Specialized Assistant')
+      const task = typeof args.task === 'string' ? preview(args.task, 60) : ''
+      return text(
+        `向${label}委派任务：${task}`,
+        `Delegate task to ${label}: ${task}`,
+      )
+    }
+    case 'submit_chapter_review': {
+      const ch = args.chapter_number
+      return text(
+        `提交第 ${ch ?? '？'} 章审稿报告并在主工作区打开`,
+        `Submit Chapter ${ch ?? '?'} review report and open in main workspace`,
+      )
+    }
     case 'bash':
       // Pi harness 的执行工具：命令原文必须出现在确认卡上。
       return text(
