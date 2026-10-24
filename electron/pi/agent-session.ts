@@ -544,16 +544,27 @@ export class AgentSession {
     this.fullText = ''
     this.busy = true
     try {
-      const result = await this.lane.prompt(input, undefined, BACKGROUND_CONTEXT)
+      let result = await this.lane.prompt(input, undefined, BACKGROUND_CONTEXT)
+      if (!result.ok && result.error.message?.includes('already has an active operation')) {
+        logInfo('Agent', 'lane has stale active operation, auto-aborting before retry', {
+          conversationId: this.conversationId,
+        })
+        try {
+          await this.lane.abort(BACKGROUND_CONTEXT)
+        } catch {
+          // ignore abort failure
+        }
+        result = await this.lane.prompt(input, undefined, BACKGROUND_CONTEXT)
+      }
       if (!result.ok) {
         const message = result.error.message || String(result.error)
         recordAgentFailure(this.modelIdentity, message)
         logFailure('Agent', 'prompt rejected', undefined, {
           conversationId: this.conversationId,
-
           error: message,
         })
         this.emit({ type: 'error', message })
+        throw new Error(message)
       }
     } finally {
       this.busy = false
