@@ -138,6 +138,7 @@ export function buildBlueprintAgentTools(
   return [
     createProposeChapterBlueprintTool(language),
     createReadBlueprintTool(language),
+    createReadContinuityFactsTool(language),
     createReadProjectStateTool(language),
     createReadArchitectureTool(language),
     createManageCharactersTool(language, rendererAction),

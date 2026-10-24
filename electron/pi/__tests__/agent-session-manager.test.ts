@@ -341,7 +341,7 @@ describe('AgentSessionManager', () => {
     const result = await manager.delegateTask({
       target: 'architect',
       task: '完善千机阁设定',
-      context: '暗夜渊势力',
+      instructions: '暗夜渊势力',
     }, 'parent-conv-1')
 
     expect(result.success).toBe(true)
@@ -458,8 +458,9 @@ describe('AgentSessionManager', () => {
 
     const result = await manager.delegateTask({
       target: 'review',
-      task: '审查第1章草稿',
-      context: '检查逻辑漏洞',
+      task: '审查草稿',
+      chapter_number: 1,
+      instructions: '检查逻辑漏洞',
     }, 'parent-conv-1')
 
     expect(result.success).toBe(true)

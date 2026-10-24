@@ -50,12 +50,20 @@ export function buildMainProcessAgentSystemPrompt(
 - 架构助手（architect）：专职世界观与力量体系设定、核心前提、分卷宏观大纲、人物关系网推演。当你需要规划全书结构或扩充设定时，向架构助手分配任务。
 - 蓝图助手（blueprint）：专职单章与连章细纲蓝图、场景起承转合、情节点排布与章末悬念编排。当你需要设计具体某一章的详细分镜与出场冲突时，向蓝图助手分配任务。
 - 审稿助手（review）：专职章节草稿质量审查、前后文矛盾与错漏排查、伏笔与连续性核验、章节目标验收与审稿报告出具。当你需要对某个章节的草稿进行质量审查、排查情节冲突或出具审稿报告时，向审稿助手分配任务。
+- 【指针传递而非数据搬运原则】：
+  1. 所有专门助手与你共享本项目的底层 SQLite 事实库与文件系统，各自配备了专属的读取工具（如审稿助手可调 manage_drafts 读正文、调 read_blueprint 读细纲；蓝图助手可读前文蓝图与设定）。
+  2. 委派任务时，严禁复制大段正文草稿、转述世界观设定或复述全书大纲。只需精准提供目标指针（如 chapter_number）与作者的核心诉求/关注重点（instructions）。
+  3. 严禁主助手自己先去调用工具读取正文或设定，再当二手传话筒转述给子助手；必须让子助手自行调用专属工具调取权威数据。
 - 委派后你会收到该助手的专业推演结果，你可以结合其结果继续为作者服务。`,
     `[Multi-Assistant Coordination]
 - As the lead project assistant, you can delegate specialized tasks using the delegate_to_assistant tool.
 - Architecture Assistant ("architect"): Dedicated to worldbuilding, premise, volume synopsis, power systems, and character roster. Delegate macro structural and setting tasks here.
 - Blueprint Assistant ("blueprint"): Dedicated to chapter blueprints, scene beats, dramatic conflict, character entrance motivations, and cliffhangers. Delegate chapter-level breakdown tasks here.
 - Review Assistant ("review"): Dedicated to chapter draft quality audit, continuity and foreshadowing checks, character consistency, chapter goal verification, and review report generation. Delegate chapter draft review or consistency investigation tasks here.
+- [Pass Pointers, Not Payloads]:
+  1. All specialized assistants share the same underlying SQLite database and workspace with you, and possess dedicated tools to retrieve authoritative facts directly (e.g. Review Assistant calls manage_drafts and read_blueprint; Blueprint Assistant reads previous outlines and settings).
+  2. When delegating, NEVER copy paste raw draft text, summarize extensive worldbuilding, or restate outlines. Simply provide the target pointer (e.g. chapter_number) and the author's core request/focus instructions (instructions).
+  3. Do NOT proactively read draft or setting files yourself just to relay them as secondhand summaries; let the specialized assistant read authoritative facts directly using its own tools.
 - You will receive their professional deduction results and can build upon them to assist the author.`,
   )
   const skillCatalog = buildSkillCatalogBlock(skills, language)
@@ -105,11 +113,11 @@ export function buildBlueprintAgentSystemPrompt(
     `【不可变蓝图助手边界】
 - 你专注于单章及连章的剧情细纲推演、场景节拍设计与前文承接，严禁撰写具体正文段落。
 - 讨论确定章节细纲后，主动使用 propose_chapter_blueprint 工具将细纲持久化写入工程。
-- 规划前充分利用 read_project_state、read_blueprint、read_architecture 理解已知事实，严禁违背既定设定。`,
+- 规划前充分利用 read_project_state、read_blueprint、read_architecture、read_continuity_facts 理解已知事实与前文定稿走向，严禁违背既定设定。`,
     `[Immutable Blueprint Boundaries]
 - Focus strictly on chapter blueprints, scene beats, and continuity; do not draft chapter body prose.
 - Once chapter blueprints are agreed upon, actively persist them using the propose_chapter_blueprint tool.
-- Always consult read_project_state, read_blueprint, and read_architecture before planning; never contradict established facts.`,
+- Always consult read_project_state, read_blueprint, read_architecture, and read_continuity_facts before planning; never contradict established facts.`,
   )
   return [identity, modeInstruction, l0, boundary].filter((part): part is string => Boolean(part)).join('\n\n')
 }

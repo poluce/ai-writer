@@ -21,13 +21,14 @@ describe('createDelegateToAssistantTool', () => {
     const result = await tool.execute('call-1', {
       assistant: 'architect',
       task: '梳理千机阁设定',
-      context: '主角第10章潜入',
+      instructions: '主角第10章潜入',
     })
 
     expect(handler).toHaveBeenCalledWith({
       target: 'architect',
       task: '梳理千机阁设定',
-      context: '主角第10章潜入',
+      chapter_number: undefined,
+      instructions: '主角第10章潜入',
     })
     const textContent = result.content[0] as { type: 'text'; text: string }
     expect(textContent.text).toContain('【架构助手已完成任务】')
@@ -39,7 +40,7 @@ describe('createDelegateToAssistantTool', () => {
     })
   })
 
-  it('delegates task to blueprint in English locale', async () => {
+  it('delegates task to blueprint in English locale with chapter_number', async () => {
     const handler = vi.fn().mockResolvedValue({
       success: true,
       result: 'Chapter 10 blueprint designed with cliffhanger.',
@@ -49,20 +50,22 @@ describe('createDelegateToAssistantTool', () => {
     const tool = createDelegateToAssistantTool('en-US', handler)
     const result = await tool.execute('call-2', {
       assistant: 'blueprint',
-      task: 'Plan chapter 10 scene beats',
+      task: 'Plan chapter scene beats',
+      chapter_number: 10,
     })
 
     expect(handler).toHaveBeenCalledWith({
       target: 'blueprint',
-      task: 'Plan chapter 10 scene beats',
-      context: undefined,
+      task: 'Plan chapter scene beats',
+      chapter_number: 10,
+      instructions: undefined,
     })
     const textContent = result.content[0] as { type: 'text'; text: string }
     expect(textContent.text).toContain('[Chapter Blueprint Assistant completed the task]')
     expect(textContent.text).toContain('Chapter 10 blueprint designed with cliffhanger.')
   })
 
-  it('delegates task to review assistant and returns structured response', async () => {
+  it('delegates task to review assistant with chapter_number and instructions', async () => {
     const handler = vi.fn().mockResolvedValue({
       success: true,
       result: '第1章审稿完成，已生成审稿报告。发现2处伏笔遗漏。',
@@ -72,14 +75,16 @@ describe('createDelegateToAssistantTool', () => {
     const tool = createDelegateToAssistantTool('zh-CN', handler)
     const result = await tool.execute('call-3', {
       assistant: 'review',
-      task: '审查第1章草稿并提交审稿报告',
-      context: '重点关注开篇节奏',
+      task: '审查草稿并提交审稿报告',
+      chapter_number: 1,
+      instructions: '重点关注开篇节奏',
     })
 
     expect(handler).toHaveBeenCalledWith({
       target: 'review',
-      task: '审查第1章草稿并提交审稿报告',
-      context: '重点关注开篇节奏',
+      task: '审查草稿并提交审稿报告',
+      chapter_number: 1,
+      instructions: '重点关注开篇节奏',
     })
     const textContent = result.content[0] as { type: 'text'; text: string }
     expect(textContent.text).toContain('【审稿助手已完成任务】')

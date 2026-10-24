@@ -7,7 +7,8 @@ export type DelegatableAssistantType = 'architect' | 'blueprint' | 'review'
 export type AssistantDelegateHandler = (params: {
   target: DelegatableAssistantType
   task: string
-  context?: string
+  chapter_number?: number
+  instructions?: string
 }) => Promise<{
   success: boolean
   result?: string
@@ -26,10 +27,14 @@ const AssistantEnum = StringEnum([
 const Schema = Type.Object({
   assistant: AssistantEnum,
   task: Type.String({
-    description: '分配给目标助手的具体任务内容与推演目标（例如让架构助手完善某门派设定，让蓝图助手规划第N章细纲，或让审稿助手审查第N章草稿）',
+    description: '分配给目标助手的核心指令或推演目标（例如：审查草稿、规划细纲、扩充魔道宗门体系）。传递核心意图即可，严禁在此复制草稿正文、大纲或世界观设定；所有助手共享底层数据库，目标助手会自动调用其专属工具读取最新事实。',
   }),
-  context: Type.Optional(Type.String({
-    description: '可选的补充背景信息、前文事实或对该任务的具体要求',
+  chapter_number: Type.Optional(Type.Integer({
+    minimum: 1,
+    description: '目标章节号（可选）。当任务针对具体章节时提供（例如审查第N章草稿、规划第N章细纲）。目标助手将以此指针直接查取草稿、蓝图与连续性事实。',
+  })),
+  instructions: Type.Optional(Type.String({
+    description: '作者提出的额外特殊要求、重点侧重维度或风格约束（可选，例如"重点关注打斗节奏"、"排查玉佩设定的前后矛盾"）。仅传递指示与关注点，严禁复制大段前文背景。',
   })),
 })
 
@@ -43,8 +48,8 @@ export function createDelegateToAssistantTool(
     label: isEn ? 'Delegate to Assistant' : '委派助手任务',
     description: writingLanguageText(
       language,
-      '向专门领域助手（架构助手、章节蓝图助手或审稿助手）委派专门任务并获取执行结果。当你需要推演宏观世界观、主线大纲、设定与战力体系时，委派给架构助手（assistant: "architect"）；当你需要规划具体章节细纲、场景节拍、出场人物与章末悬念时，委派给蓝图助手（assistant: "blueprint"）；当你需要对某一章节草稿进行质量审查、排查前后文矛盾、验收章节目标或出具审稿报告时，委派给审稿助手（assistant: "review"）。目标助手在收到任务后会以其专业角色进行深入推演，并可主动调用其专属工具（如修改设定、写入章节细纲或提交审稿报告）。',
-      'Delegate a dedicated task to the Architecture Assistant, Chapter Blueprint Assistant, or Review Assistant and retrieve their response. Delegate to "architect" for macro premise, synopsis, worldbuilding, and power systems; delegate to "blueprint" for concrete chapter blueprints, scene beats, and cliffhangers; delegate to "review" for chapter draft quality audit, continuity and foreshadowing checks, chapter goal verification, or review reports. The target assistant will deduce thoroughly using its specialized domain tools.',
+      '向专门领域助手（架构助手、章节蓝图助手或审稿助手）委派专门任务并获取执行结果。所有助手共享项目权威数据库并自带专属读取工具。委派时遵守【指针传递】原则：仅需指定目标助手、核心任务、目标章节（chapter_number，如适用）以及作者的关注重点（instructions）。严禁在此复制大段正文或设定，目标助手会以专业角色自行调用工具精准调取事实并深入推演。',
+      'Delegate a dedicated task to the Architecture Assistant, Chapter Blueprint Assistant, or Review Assistant and retrieve their response. All assistants share the project authoritative database and possess dedicated tools. Follow the "Pass Pointers, Not Payloads" principle: supply only the target assistant, core task, chapter_number (if applicable), and author focus instructions. Never copy draft text or settings into the parameters; the target assistant will query the database directly using its own tools.',
     ),
     parameters: Schema,
     isWriteOperation: () => true,
@@ -59,7 +64,8 @@ export function createDelegateToAssistantTool(
       const response = await handler({
         target,
         task: params.task,
-        context: params.context,
+        chapter_number: params.chapter_number,
+        instructions: params.instructions,
       })
 
       if (!response.success || !response.result) {

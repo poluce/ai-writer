@@ -190,6 +190,8 @@ export class AgentSessionManager {
     params: {
       target: DelegatableAssistantType
       task: string
+      chapter_number?: number
+      instructions?: string
       context?: string
     },
     parentConversationId?: string,
@@ -241,10 +243,18 @@ export class AgentSessionManager {
       // 2. 将委派任务推入消息接收队列（FIFO 保证顺序与排队执行，杜绝并发冲突与多开会话）
       return await queue.enqueue(async () => {
         const language = this.options.resolveLanguage(targetConvId)
+        const chapterPart = typeof params.chapter_number === 'number'
+          ? writingLanguageText(language, `\n目标章节：第 ${params.chapter_number} 章`, `\nTarget Chapter: Chapter ${params.chapter_number}`)
+          : ''
+        const instructionText = params.instructions || params.context
+        const instructionPart = instructionText
+          ? writingLanguageText(language, `\n关注重点与指示：\n${instructionText}`, `\nSpecific Instructions & Focus:\n${instructionText}`)
+          : ''
+
         const input = writingLanguageText(
           language,
-          `【来自项目助手的任务委派】\n\n任务内容：\n${params.task}${params.context ? `\n\n补充背景：\n${params.context}` : ''}\n\n请以你的专业角色全力完成此项推演。如有需要固化到项目的设定、蓝图或审稿报告，请直接调用相关工具写入项目，并给出清晰详尽的回复。`,
-          `[Task Delegated from Project Assistant]\n\nTask:\n${params.task}${params.context ? `\n\nAdditional Context:\n${params.context}` : ''}\n\nPlease complete this task thoroughly within your professional role. If settings, blueprints, or review reports need to be persisted to the project, invoke your tools directly and provide a comprehensive response.`,
+          `【来自项目助手的任务委派】\n\n核心任务：\n${params.task}${chapterPart}${instructionPart}\n\n你拥有专属的项目读取与推演工具，请直接调用工具（如读取草稿、蓝图、连续性事实或设定）获取权威事实，切勿依赖外部二手转述。推演完成后，如有需要固化到项目的成果（如审稿报告、细纲蓝图或设定），请直接调用专属工具写入项目，并给出清晰详尽的回复。`,
+          `[Task Delegated from Project Assistant]\n\nTask:\n${params.task}${chapterPart}${instructionPart}\n\nYou possess dedicated project tools. Call them directly (e.g., read drafts, blueprints, continuity facts, or settings) to retrieve authoritative facts rather than relying on secondhand summary. After completing your deduction, persist any deliverables (such as review reports, blueprints, or settings) directly via your tools, and provide a comprehensive response.`,
         )
 
         // 获取或创建目标助手会话

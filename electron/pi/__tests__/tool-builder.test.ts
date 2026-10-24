@@ -174,6 +174,7 @@ describe('buildBlueprintAgentTools', () => {
     // 包含的核心工具
     expect(names).toContain('propose_chapter_blueprint')
     expect(names).toContain('read_blueprint')
+    expect(names).toContain('read_continuity_facts')
     expect(names).toContain('read_project_state')
     expect(names).toContain('read_architecture')
     expect(names).toContain('manage_characters')
