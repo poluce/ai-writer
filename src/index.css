@@ -211,8 +211,8 @@
     --color-category-progress-text: #1D4ED8;
     --color-category-review-text: #6D28D9;
 
-    /* Tab 系统 */
-    --color-tab-bg: transparent;
+    /* Tab 系统：tab 条用面板底色，与纯白内容面形成一档表面层级 */
+    --color-tab-bg: var(--color-panel);
     --color-tab-active: #FFFFFF;
     --color-tab-border: transparent;
     --color-tab-indicator: #3B6FE0;
@@ -251,19 +251,18 @@
     --color-badge-text: #2557C7;
 
     /* ===== 尺寸规范 ===== */
-    --height-titlebar: 40px;
+    --height-titlebar: 44px;
     --height-statusbar: 28px;
     --height-tab: 36px;
-    --height-panel-header: 36px;
-    --width-left-bar: 72px;
-    --width-right-bar: 44px;
-    --width-bottom-bar: 32px;
+    --height-panel-header: 44px;
+    --width-left-bar: 64px;
+    --width-bottom-bar: 34px;
 
     /* 圆角 */
     --radius-sm: 6px;
     --radius-md: 8px;
     --radius-lg: 10px;
-    --radius-xl: 12px;
+    --radius-xl: 14px;
     --radius-2xl: 16px;
 
     /* 阴影：浅色下只用极轻的冷调投影区分「面」，不做厚重浮起 */
@@ -372,13 +371,12 @@
     --color-badge-text: #B5402C;
 
     /* ===== 尺寸规范 ===== */
-    --height-titlebar: 40px;
+    --height-titlebar: 44px;
     --height-statusbar: 28px;
     --height-tab: 36px;
-    --height-panel-header: 36px;
-    --width-left-bar: 72px;
-    --width-right-bar: 44px;
-    --width-bottom-bar: 32px;
+    --height-panel-header: 44px;
+    --width-left-bar: 64px;
+    --width-bottom-bar: 34px;
 
     /* 圆角（纸感收平） */
     --radius-sm: 4px;
@@ -757,12 +755,13 @@
 
   /* ===== 面板标题栏 — JetBrains 风格：紧凑、全大写、弱化 ===== */
   .panel-header {
-    @apply flex items-center px-3 gap-2;
+    @apply flex items-center gap-2;
     height: var(--height-panel-header);
+    padding: 0 8px 0 14px;
     font-size: 11px;
     font-weight: 600;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    text-transform: none;
     color: var(--color-text-muted);
     border-bottom: 1px solid var(--color-border);
     background: transparent;
@@ -881,6 +880,7 @@
   }
 
   .writer-left-rail {
+    padding: 6px 6px 8px;
     background: var(--writer-surface-left-rail);
     border-right: 1px solid var(--writer-left-rail-border);
     color: var(--writer-left-rail-text);
@@ -891,9 +891,9 @@
     justify-content: center;
     gap: 4px;
     min-height: 54px;
-    padding: 6px 5px;
+    padding: 6px 4px;
     border-radius: var(--radius-md);
-    margin: 1px 4px;
+    margin: 0;
     color: var(--writer-left-rail-text);
   }
 
@@ -923,9 +923,15 @@
   }
 
   .writer-left-rail .left-nav-label {
-    font-size: 12px;
+    font-size: 10.5px;
     font-weight: 500;
     line-height: 1.2;
+    letter-spacing: 0.01em;
+    color: var(--color-text-muted);
+  }
+
+  .writer-left-rail .left-nav-button.is-active .left-nav-label {
+    color: var(--writer-left-rail-active-text);
   }
 
   .writer-left-rail .writer-nav-divider {

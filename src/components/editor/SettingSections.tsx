@@ -78,7 +78,7 @@ export function SettingSection({
         >
           <ChevronDown size={15} style={{ transform: collapsed ? 'rotate(-90deg)' : 'none', transition: 'transform 120ms' }} />
         </button>
-        <h3 className="text-base font-bold m-0" style={{ color: 'var(--color-text)' }}>{title}</h3>
+        <h3 className="m-0 font-semibold" style={{ color: 'var(--color-text)', fontSize: 14 }}>{title}</h3>
         {(Boolean(onClear && !clearHidden) || Boolean(onGenerate && !generateHidden) || Boolean(extraActions)) && (
           <div className="ml-auto flex items-center gap-2 shrink-0">
             {extraActions}
@@ -142,11 +142,12 @@ export function DocumentBody({
       placeholder={placeholder}
       rows={3}
       readOnly={readOnly}
-      className="w-full resize-none bg-transparent px-1 py-2 text-sm outline-none"
+      className="w-full resize-none bg-transparent px-1 py-2 outline-none"
       style={{
         color: 'var(--color-text)',
         minHeight: 72,
-        lineHeight: 1.7,
+        fontSize: 13,
+        lineHeight: 1.75,
       }}
     />
   )

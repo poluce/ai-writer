@@ -1,12 +1,18 @@
+import { Cpu, ListChecks, ScrollText } from 'lucide-react'
 import { useLayoutStore, type BottomTab } from '../../stores/layout-store'
 import { useWorkflowStore } from '../../stores/workflow-store'
 import { useLocaleStore } from '../../stores/locale-store'
 
 /** 底部面板的三个页签；顺序即展示顺序。 */
-const BOTTOM_TABS: ReadonlyArray<{ id: BottomTab; zh: string; en: string }> = [
-  { id: 'tasks', zh: '任务', en: 'Tasks' },
-  { id: 'log', zh: '日志', en: 'Logs' },
-  { id: 'models', zh: '模型调用', en: 'Model calls' },
+const BOTTOM_TABS: ReadonlyArray<{
+  id: BottomTab
+  zh: string
+  en: string
+  Icon: typeof ListChecks
+}> = [
+  { id: 'tasks', zh: '任务', en: 'Tasks', Icon: ListChecks },
+  { id: 'log', zh: '日志', en: 'Logs', Icon: ScrollText },
+  { id: 'models', zh: '模型调用', en: 'Model calls', Icon: Cpu },
 ]
 
 /** 任务页签上的运行中数量：只统计正在跑或等待中的任务。 */
@@ -33,25 +39,40 @@ export function BottomPanelTabs() {
 
   return (
     <div
-      className="no-select flex items-center gap-4 px-3 flex-shrink-0"
-      style={{ height: 'var(--width-bottom-bar)', borderBottom: bottomPanelOpen ? '1px solid var(--color-border)' : 'none' }}
+      className="no-select flex items-center flex-shrink-0"
+      style={{
+        height: 'var(--width-bottom-bar)',
+        gap: 14,
+        padding: '0 12px',
+        borderBottom: bottomPanelOpen ? '1px solid var(--color-border)' : 'none',
+      }}
     >
-      {BOTTOM_TABS.map(tab => {
-        const active = bottomPanelOpen && bottomTab === tab.id
+      {BOTTOM_TABS.map(({ id, zh, en, Icon }) => {
+        const active = bottomPanelOpen && bottomTab === id
         return (
           <button
-            key={tab.id}
+            key={id}
             type="button"
-            onClick={() => selectBottomTab(tab.id)}
+            onClick={() => selectBottomTab(id)}
             aria-expanded={active}
-            className="relative flex h-full items-center gap-1.5 text-[0.7rem] transition-colors"
-            style={{ color: active ? 'var(--color-text)' : 'var(--color-text-muted)', fontWeight: active ? 600 : 400 }}
+            className="relative flex h-full items-center transition-colors"
+            style={{
+              gap: 5,
+              fontSize: 11,
+              color: active ? 'var(--color-text)' : 'var(--color-text-muted)',
+              fontWeight: active ? 600 : 400,
+            }}
           >
-            {text(tab.zh, tab.en)}
-            {tab.id === 'tasks' && runningCount > 0 && (
+            <Icon size={13} strokeWidth={active ? 1.9 : 1.6} />
+            {text(zh, en)}
+            {id === 'tasks' && runningCount > 0 && (
               <span
-                className="rounded px-1 font-mono text-[0.62rem]"
-                style={{ backgroundColor: 'rgba(var(--color-accent-rgb), 0.12)', color: 'var(--color-accent)' }}
+                className="rounded px-1 font-mono"
+                style={{
+                  fontSize: 10,
+                  backgroundColor: 'rgba(var(--color-accent-rgb), 0.12)',
+                  color: 'var(--color-accent)',
+                }}
               >
                 {runningCount}
               </span>

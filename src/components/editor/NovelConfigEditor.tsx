@@ -197,14 +197,14 @@ function NovelConfigEditorSession({ projectKey }: { projectKey: string }) {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="w-full px-8 py-6">
+      <div className="mx-auto w-full max-w-[940px] px-[26px] py-[22px]">
         {/* 头部 */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-lg font-bold" style={{ color: 'var(--color-text)' }}>
+            <h2 className="font-semibold" style={{ color: 'var(--color-text)', fontSize: 20 }}>
               {text('小说配置', 'Novel configuration')}
             </h2>
-            <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
+            <p className="mt-1" style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>
               {text('定义你的小说基本信息和写作参数', 'Define the novel’s core information and writing parameters.')}
             </p>
           </div>
@@ -216,7 +216,7 @@ function NovelConfigEditorSession({ projectKey }: { projectKey: string }) {
         </div>
 
         {/* 配置表单 */}
-        <div className="space-y-5">
+        <div className="space-y-[18px]">
           {/* 基本信息 */}
           <Section title={text('基本信息', 'Basic information')}>
             <div className="grid grid-cols-3 gap-4">
@@ -517,10 +517,10 @@ function Section({
   children: React.ReactNode
 }) {
   return (
-    <div className="p-4 rounded-xl bg-[var(--color-sidebar)] border border-[var(--color-border)]">
+    <div className="rounded-[10px] border border-[var(--color-border)] bg-[var(--color-sidebar)] px-[18px] pb-[18px] pt-4">
       <div className="flex items-start justify-between mb-3">
         <div className="min-w-0 flex-1">
-          <h3 className="text-base font-bold text-[var(--color-text)]">{title}</h3>
+          <h3 style={{ color: 'var(--color-text)', fontSize: 14, fontWeight: 600 }}>{title}</h3>
           {desc && <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{desc}</p>}
         </div>
       </div>
@@ -555,7 +555,7 @@ function Field({
 
   return (
     <div>
-      <label htmlFor={htmlFor} className="text-xs mb-1 flex items-center gap-1 font-medium text-[var(--color-text-muted)]">
+      <label htmlFor={htmlFor} className="mb-1 flex items-center gap-1 font-medium text-[var(--color-text-muted)]" style={{ fontSize: 11 }}>
         {label}
         {tipItems && tipItems.length > 0 && (
           <span

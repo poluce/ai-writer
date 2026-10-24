@@ -291,7 +291,7 @@ export default function App() {
                 {/* 左侧边栏 */}
                 {sidebarOpen && (
                   <>
-                    <Panel id="sidebar" defaultSize={20} minSize={10}>
+                    <Panel id="sidebar" defaultSize={18} minSize={10}>
                       <ErrorBoundary fallbackLabel={text('侧边栏渲染失败', 'Sidebar failed to render')}>
                         <Sidebar />
                       </ErrorBoundary>
@@ -301,7 +301,7 @@ export default function App() {
                 )}
 
                 {/* 编辑区 */}
-                <Panel id="editor" defaultSize={60} minSize={10}>
+                <Panel id="editor" defaultSize={57} minSize={10}>
                   <ErrorBoundary fallbackLabel={text('编辑区渲染失败', 'Editor failed to render')}>
                     <EditorArea />
                   </ErrorBoundary>
@@ -311,7 +311,7 @@ export default function App() {
                 {aiPanelOpen && (
                   <>
                     <PanelResizeHandle />
-                    <Panel id="ai-panel" defaultSize={20} minSize={10}>
+                    <Panel id="ai-panel" defaultSize={25} minSize={10}>
                       <ErrorBoundary fallbackLabel={text('AI 面板渲染失败', 'AI panel failed to render')}>
                         <div className="flex h-full w-full flex-col overflow-hidden">
                           {/* 五个助手视图的切换器：并入面板头部，取代原来的 30px 右侧图标栏 */}

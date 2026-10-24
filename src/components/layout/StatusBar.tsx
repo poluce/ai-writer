@@ -24,14 +24,14 @@ export default function StatusBar() {
       className="writer-statusbar no-select flex items-center justify-between"
       style={{
         height: 'var(--height-statusbar)',
-        fontSize: "0.75rem",
+        fontSize: 10.5,
         flexShrink: 0,
       }}
     >
       {/* 左侧 */}
       <div className="flex items-center h-full">
         <StatusBarSegment title={text(APP_BRAND.zhName, APP_BRAND.enName)}>
-          <img src={publicAssetUrl('logo.svg')} alt="logo" className="w-3.5 h-3.5 object-contain" />
+          <img src={publicAssetUrl('logo.svg')} alt="logo" className="w-[11px] h-[11px] object-contain" />
           <span className="opacity-90 font-medium">{text(APP_BRAND.shortName, APP_BRAND.enName)}</span>
         </StatusBarSegment>
 

@@ -60,8 +60,13 @@ export function AssistantSwitcher() {
   return (
     <div
       ref={rootRef}
-      className="no-select flex items-center gap-0.5 px-2 py-1 flex-shrink-0"
-      style={{ borderBottom: '1px solid var(--color-border)' }}
+      className="no-select flex items-center flex-shrink-0"
+      style={{
+        height: 34,
+        gap: 2,
+        padding: '4px 8px',
+        borderBottom: '1px solid var(--color-border)',
+      }}
       role="tablist"
     >
       {VIEWS.map(({ id, zh, en, Icon }) => {
@@ -75,8 +80,12 @@ export function AssistantSwitcher() {
             title={text(zh, en)}
             aria-label={text(zh, en)}
             onClick={() => openRightPanel(id)}
-            className="relative flex h-6 flex-1 items-center justify-center gap-1 rounded-md transition-colors text-[0.68rem]"
+            className="relative flex flex-1 items-center justify-center rounded-md transition-colors"
             style={{
+              height: 26,
+              gap: 5,
+              fontSize: 10.5,
+              minWidth: 0,
               backgroundColor: active ? 'var(--color-raised)' : 'transparent',
               color: active ? 'var(--color-accent)' : 'var(--color-text-muted)',
               boxShadow: active ? 'var(--shadow-sm)' : 'none',

@@ -598,7 +598,7 @@ export default function AgentInputBox({ assistantType = 'general' }: { assistant
         </div>
 
         {/* 右侧：模型与思考（紧贴） + 发送按钮 */}
-        <div className="flex items-center gap-1.5 min-w-0 shrink-0 ml-auto">
+        <div className="flex min-w-0 items-center gap-1.5 ml-auto">
           {/* DSH 风格模型与思考选择器：紧凑触发器 + 二级面板联动 */}
           <div ref={modelSelectRef} className="relative min-w-0 max-w-full">
             <button
@@ -608,10 +608,14 @@ export default function AgentInputBox({ assistantType = 'general' }: { assistant
                 setShowModelSelectMenu(open => !open)
                 setSelectPane('root')
               }}
-              className="flex items-center gap-1.5 py-1 px-1.5 rounded-md text-xs min-w-0 transition-colors cursor-pointer max-w-full"
+              className="flex items-center rounded-md min-w-0 cursor-pointer max-w-full transition-colors"
               style={{
                 color: 'var(--color-text-secondary)',
                 opacity: 0.85,
+                gap: 5,
+                height: 24,
+                padding: '0 6px',
+                fontSize: 11.5,
               }}
               onMouseEnter={e => {
                 e.currentTarget.style.backgroundColor = 'var(--color-hover)'
@@ -623,14 +627,19 @@ export default function AgentInputBox({ assistantType = 'general' }: { assistant
               }}
               title={`${selectedModelLabel ?? text('选择模型', 'Select model')} · ${thinkingLevelLabel(text, currentThinkingLevel)}`}
             >
-              <span className="truncate select-none font-medium min-w-0">
+              <span className="min-w-0 flex-1 truncate text-left select-none font-medium">
                 {modelTriggerLabel}
               </span>
               <span
-                className="text-[0.68rem] px-1 rounded shrink-0 select-none font-normal"
-                style={{ backgroundColor: 'var(--color-border)', color: 'var(--color-text-muted)' }}
+                className="shrink-0 select-none rounded font-normal"
+                style={{
+                  backgroundColor: 'var(--color-border)',
+                  color: 'var(--color-text-muted)',
+                  fontSize: 10,
+                  padding: '0 4px',
+                }}
               >
-                {thinkingLevelLabel(text, currentThinkingLevel)}
+                {`${text('思考', 'Think')} ${thinkingLevelLabel(text, currentThinkingLevel)}`}
               </span>
               <ChevronDown size={13} strokeWidth={1.5} className="shrink-0 text-[var(--color-text-muted)]" />
             </button>

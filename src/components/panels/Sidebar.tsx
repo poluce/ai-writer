@@ -58,6 +58,19 @@ export default function Sidebar() {
     >
       <div className="panel-header">
         <span>{headerTitle}</span>
+        <button
+          type="button"
+          onClick={() => useLayoutStore.getState().toggleSidebar()}
+          title={text('收起侧边栏', 'Collapse sidebar')}
+          aria-label={text('收起侧边栏', 'Collapse sidebar')}
+          className="ml-auto flex h-6 w-6 items-center justify-center rounded transition-colors hover:bg-[var(--color-hover)]"
+          style={{ color: 'var(--color-text-muted)' }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="m11 17-5-5 5-5" />
+            <path d="m18 17-5-5 5-5" />
+          </svg>
+        </button>
       </div>
       <div className="flex-1 overflow-y-auto py-1">
         {/* 空态收口：动作只在主区出现一次，这里只说明「打开项目后有什么」 */}

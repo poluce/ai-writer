@@ -133,11 +133,11 @@ export const useLayoutStore = create<LayoutState>()((set) => ({
   // 默认值
   sidebarOpen: true,
   sidebarView: 'project',
-  sidebarWidth: 260,
+  sidebarWidth: 248,
   activeRailItem: 'project',
 
   aiPanelOpen: true,
-  aiPanelWidth: 320,
+  aiPanelWidth: 344,
   rightView: 'agent',
 
   bottomPanelOpen: false,

@@ -520,8 +520,14 @@ export default function EditorArea() {
             <div
               key={tab.id}
               ref={tab.id === activeTabId ? activeTabRef : undefined}
-              className="flex items-center gap-1.5 px-3 h-full text-sm cursor-pointer group flex-shrink-0 relative transition-colors"
+              className="group relative flex flex-shrink-0 cursor-pointer items-center transition-colors"
               style={{
+                height: 28,
+                gap: 7,
+                padding: '0 10px',
+                marginTop: 1,
+                fontSize: 12,
+                borderRadius: '6px 6px 0 0',
                 backgroundColor: activeTabId === tab.id
                   ? 'var(--color-tab-active)'
                   : 'transparent',

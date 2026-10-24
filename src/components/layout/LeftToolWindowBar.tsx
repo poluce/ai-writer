@@ -48,14 +48,14 @@ function LeftNavButton({
     : (title ?? label)
 
   return (
-    <div className="relative w-full px-1">
+    <div className="relative w-full">
       <button
         onClick={onClick}
         disabled={disabled}
         title={resolvedTitle}
         className={leftNavButtonClassName(active, disabled)}
       >
-        <Icon size={22} strokeWidth={active ? 2 : 1.75} />
+        <Icon size={19} strokeWidth={active ? 2 : 1.65} />
         <span className="left-nav-label">{label}</span>
       </button>
       {pulse && !disabled && (

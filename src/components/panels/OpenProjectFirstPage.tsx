@@ -1,4 +1,4 @@
-import { BookOpen, FolderOpen, Plus, X } from 'lucide-react'
+import { BookOpen, FileUp, FolderOpen, Plus, X } from 'lucide-react'
 import { useLocaleStore } from '../../stores/locale-store'
 import { useLayoutStore } from '../../stores/layout-store'
 import { useProjectStore } from '../../stores/project-store'
@@ -66,54 +66,66 @@ export function OpenProjectFirstPage({ title }: { title: string }) {
           >
             <BookOpen size={26} strokeWidth={1.6} />
           </span>
-          <h2 className="mt-4 text-lg font-semibold" style={{ color: 'var(--color-text)' }}>
+          <h2 className="mt-4 font-semibold" style={{ color: 'var(--color-text)', fontSize: 20 }}>
             {text('开始一部长篇', 'Start a long-form project')}
           </h2>
-          <p className="mt-1.5 text-xs text-center" style={{ color: 'var(--color-text-muted)' }}>
+          <p className="mt-1.5 text-center" style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>
             {text(
               '从设定到定稿都在本地完成，模型由你自行配置',
               'Everything from premise to final draft stays local; you bring the model.',
             )}
           </p>
 
-          <div className="mt-6 grid w-full grid-cols-2 gap-3">
-            <button
-              onClick={openNewProject}
-              className="flex flex-col items-start gap-1.5 rounded-lg border p-3.5 text-left transition-colors hover:border-[var(--color-accent)]"
-              style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-raised)' }}
-            >
-              <span
-                className="flex h-7 w-7 items-center justify-center rounded-md"
-                style={{ backgroundColor: 'rgba(var(--color-accent-rgb), 0.1)', color: 'var(--color-accent)' }}
+          <div className="mt-6 grid w-full grid-cols-3 gap-3">
+            {[
+              {
+                key: 'new',
+                Icon: Plus,
+                titleZh: '新建项目',
+                titleEn: 'New project',
+                descZh: '从空白开始，配置题材与篇幅',
+                descEn: 'Start empty and set genre and length',
+                onClick: openNewProject,
+              },
+              {
+                key: 'open',
+                Icon: FolderOpen,
+                titleZh: '打开项目',
+                titleEn: 'Open project',
+                descZh: '继续已有工程，恢复上次会话',
+                descEn: 'Continue an existing project',
+                onClick: () => void pickProject(),
+              },
+              {
+                key: 'deconstruct',
+                Icon: FileUp,
+                titleZh: '拆解仿写',
+                titleEn: 'Style study',
+                descZh: '导入参考小说，建立文风与结构约束',
+                descEn: 'Import a reference novel to derive style and structure',
+                onClick: () => useLayoutStore.getState().openNovelDeconstruction(),
+              },
+            ].map(({ key, Icon, titleZh, titleEn, descZh, descEn, onClick }) => (
+              <button
+                key={key}
+                onClick={onClick}
+                className="flex flex-col items-start gap-2 rounded-lg border p-3.5 text-left transition-colors hover:border-[var(--color-accent)]"
+                style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-raised)' }}
               >
-                <Plus size={15} strokeWidth={2} />
-              </span>
-              <span className="text-xs font-semibold" style={{ color: 'var(--color-text)' }}>
-                {text('新建项目', 'New project')}
-              </span>
-              <span className="text-[0.7rem] leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-                {text('从空白开始，配置题材与篇幅', 'Start empty and set genre and length')}
-              </span>
-            </button>
-
-            <button
-              onClick={() => void pickProject()}
-              className="flex flex-col items-start gap-1.5 rounded-lg border p-3.5 text-left transition-colors hover:border-[var(--color-accent)]"
-              style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-raised)' }}
-            >
-              <span
-                className="flex h-7 w-7 items-center justify-center rounded-md"
-                style={{ backgroundColor: 'rgba(var(--color-accent-rgb), 0.1)', color: 'var(--color-accent)' }}
-              >
-                <FolderOpen size={15} strokeWidth={2} />
-              </span>
-              <span className="text-xs font-semibold" style={{ color: 'var(--color-text)' }}>
-                {text('打开项目', 'Open project')}
-              </span>
-              <span className="text-[0.7rem] leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-                {text('继续已有工程，恢复上次会话', 'Continue an existing project')}
-              </span>
-            </button>
+                <span
+                  className="flex h-[30px] w-[30px] items-center justify-center rounded-md"
+                  style={{ backgroundColor: 'rgba(var(--color-accent-rgb), 0.1)', color: 'var(--color-accent)' }}
+                >
+                  <Icon size={16} strokeWidth={1.8} />
+                </span>
+                <span style={{ color: 'var(--color-text)', fontSize: 13, fontWeight: 600 }}>
+                  {text(titleZh, titleEn)}
+                </span>
+                <span className="leading-relaxed" style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>
+                  {text(descZh, descEn)}
+                </span>
+              </button>
+            ))}
           </div>
 
           {recentProjects.length > 0 && (
