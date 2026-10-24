@@ -12,7 +12,6 @@ import { useProjectStore } from '../../stores/project-store'
 import { ContextMenu } from '../ui/ContextMenu'
 import { EmptyState } from '../ui/EmptyState'
 import KnowledgePanel from './KnowledgePanel'
-import HomeSidebarPanel from './sidebar/HomeSidebarPanel'
 import ProjectTree from './sidebar/ProjectTree'
 import CharactersView from './sidebar/CharactersView'
 import {
@@ -47,7 +46,7 @@ export default function Sidebar() {
     'plot-tree': text('剧情树', 'Plot tree'),
   }
   const headerTitle = viewTitles[activeRailItem] ?? viewTitles[sidebarView]
-  const workspaceNeedsProject = !currentProject && activeRailItem !== 'home' && activeRailItem !== 'project'
+  const workspaceNeedsProject = !currentProject && activeRailItem !== 'project'
 
   return (
     <div
@@ -61,7 +60,6 @@ export default function Sidebar() {
         <span>{headerTitle}</span>
       </div>
       <div className="flex-1 overflow-y-auto py-1">
-        {sidebarView === 'home' && <HomeSidebarPanel />}
         {/* 空态收口：动作只在主区出现一次，这里只说明「打开项目后有什么」 */}
         {workspaceNeedsProject && (
           <EmptyState

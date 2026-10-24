@@ -8,7 +8,8 @@ import { page } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import '../../../index.css'
-import WelcomePage from '../../pages/WelcomePage'
+import { OpenProjectFirstPage } from '../../panels/OpenProjectFirstPage'
+import { UpdateSection } from '../../updates/UpdateSection'
 import AIPanel from '../../panels/AIPanel'
 import BottomPanel from '../../panels/BottomPanel'
 import { useAgentStore } from '../../../stores/agent-store'
@@ -103,11 +104,15 @@ function LocaleShell() {
       </button>
       <TitleBar />
       <div className="grid h-[660px] grid-cols-[1fr_320px]">
-        <WelcomePage onNewProject={() => {}} onOpenProject={() => {}} />
+        <OpenProjectFirstPage title="项目" />
         <AIPanel />
       </div>
       <div className="h-[200px]">
         <BottomPanel />
+      </div>
+      {/* 更新卡片现在挂在「设置 › 关于」；这里固定 448px 宽复现窄容器下的排版 */}
+      <div className="h-[260px] w-[448px]">
+        <UpdateSection />
       </div>
       <StatusBar />
     </main>

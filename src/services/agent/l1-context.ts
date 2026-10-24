@@ -103,7 +103,6 @@ export function buildL1AgentContext(
 
 function labelSidebar(view: string, language: WritingLanguage): string {
   const map: Record<string, [string, string]> = {
-    home: ['主页', 'home'],
     project: ['项目', 'project'],
     knowledge: ['知识库', 'knowledge'],
     characters: ['角色', 'characters'],

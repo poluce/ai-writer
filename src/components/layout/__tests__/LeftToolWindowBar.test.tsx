@@ -19,7 +19,7 @@ describe('LeftToolWindowBar', () => {
   it('renders visible Chinese labels for every left navigation item', () => {
     const html = renderToString(<LeftToolWindowBar />)
 
-    for (const label of ['首页', '项目', '架构', '情节', '蓝图', '剧情', '人物', '知识库', '设置']) {
+    for (const label of ['项目', '架构', '情节', '蓝图', '剧情', '人物', '知识库', '设置']) {
       expect(html).toContain(label)
     }
   })
@@ -83,8 +83,8 @@ describe('LeftToolWindowBar', () => {
       expect(html).toMatch(pattern)
     }
 
-    // Home must remain enabled
-    const homePattern = new RegExp(`<button(?! disabled)[^>]*>[\\s\\S]*?<span class="left-nav-label">首页<\\/span>`, 'u')
-    expect(html).toMatch(homePattern)
+    // 项目入口必须保持可用（无项目时它是启动页）
+    const projectPattern = new RegExp(`<button(?! disabled)[^>]*>[\\s\\S]*?<span class="left-nav-label">项目<\\/span>`, 'u')
+    expect(html).toMatch(projectPattern)
   })
 })

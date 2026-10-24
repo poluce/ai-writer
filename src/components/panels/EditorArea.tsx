@@ -17,7 +17,6 @@ import VersionHistory from '../editor/VersionHistory'
 import ReviewReport from '../editor/ReviewReport'
 import NarrativeThreadEditor from '../editor/NarrativeThreadEditor'
 import ThreeWayMerge from '../editor/ThreeWayMerge'  // 保留引用以防其他入口使用
-import WelcomePage from '../pages/WelcomePage'
 import KnowledgeOverview from '../pages/KnowledgeOverview'
 import { OpenProjectFirstPage } from './OpenProjectFirstPage'
 import { useProjectStore } from '../../stores/project-store'
@@ -432,27 +431,7 @@ export default function EditorArea() {
 
   // ===== 条件渲染 =====
 
-  // 侧栏为「主页」时，中间区域显示欢迎页
-  if (sidebarView === 'home') {
-    return (
-      <WelcomePage
-        onNewProject={() => {
-          useLayoutStore.getState().openNewProject()
-        }}
-        onOpenProject={async () => {
-          const folder = await ipc.invoke('dialog:select-folder')
-          if (folder) {
-            useProjectStore.getState().openProject(folder)
-          }
-        }}
-        onImportNovel={() => {
-          useLayoutStore.getState().openNovelDeconstruction()
-        }}
-      />
-    )
-  }
-
-  // 未打开项目时：首页仍是欢迎页；蓝图与小说用同一套「请先打开项目」页。
+  // 未打开项目时：蓝图与小说用同一套「请先打开项目」页。
   if (!currentProject) {
     const emptyTitle = activeRailItem === 'blueprint'
       ? text('章节蓝图', 'Chapter blueprint')

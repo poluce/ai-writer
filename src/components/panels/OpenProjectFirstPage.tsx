@@ -1,8 +1,10 @@
-import { BookOpen, FolderOpen, Plus } from 'lucide-react'
+import { BookOpen, FolderOpen, Plus, X } from 'lucide-react'
 import { useLocaleStore } from '../../stores/locale-store'
 import { useLayoutStore } from '../../stores/layout-store'
 import { useProjectStore } from '../../stores/project-store'
 import { ipc } from '../../services/ipc-client'
+import { confirm } from '../ui/Confirm'
+import { toast } from '../ui/Toast'
 import { formatRelativeTime } from '../../utils/time'
 import type { Locale } from '../../i18n/types'
 
@@ -18,6 +20,23 @@ export function OpenProjectFirstPage({ title }: { title: string }) {
   const locale = useLocaleStore(s => s.locale)
 
   const openNewProject = () => useLayoutStore.getState().openNewProject()
+
+  /** 从最近项目移除记录（不删项目文件）——原先只在首页侧栏提供 */
+  const removeRecent = async (project: { name: string; path: string }) => {
+    const ok = await confirm(
+      text(
+        `确认从最近项目中移除「${project.name}」？\n这只会移除列表记录，不会删除项目文件。`,
+        `Remove “${project.name}” from recent projects?\nThis only removes the list entry and does not delete project files.`,
+      ),
+      {
+        title: text('从最近项目移除', 'Remove from recent projects'),
+        confirmText: text('移除记录', 'Remove entry'),
+      },
+    )
+    if (!ok) return
+    const success = await useProjectStore.getState().removeRecentProject(project.path)
+    if (success) toast.success(text(`已从最近项目移除「${project.name}」`, `Removed “${project.name}”`))
+  }
   const pickProject = async () => {
     const folder = await ipc.invoke('dialog:select-folder')
     if (folder) await useProjectStore.getState().openProject(folder)
@@ -104,18 +123,33 @@ export function OpenProjectFirstPage({ title }: { title: string }) {
               </div>
               <div className="flex flex-col gap-0.5">
                 {recentProjects.slice(0, 5).map(project => (
-                  <button
+                  <div
                     key={project.path}
-                    onClick={() => void useProjectStore.getState().openProject(project.path)}
-                    className="flex h-9 items-center gap-2 rounded-md px-2.5 text-left text-xs transition-colors hover:bg-[var(--color-hover)]"
-                    style={{ color: 'var(--color-text-secondary)' }}
+                    className="group flex h-9 items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-[var(--color-hover)]"
                   >
-                    <BookOpen size={13} strokeWidth={1.7} style={{ color: 'var(--color-text-muted)' }} />
-                    <span className="truncate">{project.name}</span>
-                    <span className="ml-auto shrink-0 text-[0.68rem]" style={{ color: 'var(--color-text-muted)' }}>
-                      {formatRelativeTime(new Date(project.updatedAt).getTime(), locale as Locale)}
-                    </span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => void useProjectStore.getState().openProject(project.path)}
+                      className="flex min-w-0 flex-1 items-center gap-2 text-left text-xs"
+                      style={{ color: 'var(--color-text-secondary)' }}
+                    >
+                      <BookOpen size={13} strokeWidth={1.7} style={{ color: 'var(--color-text-muted)' }} />
+                      <span className="truncate">{project.name}</span>
+                      <span className="ml-auto shrink-0 text-[0.68rem]" style={{ color: 'var(--color-text-muted)' }}>
+                        {formatRelativeTime(new Date(project.updatedAt).getTime(), locale as Locale)}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      title={text('从最近项目移除', 'Remove from recent projects')}
+                      aria-label={text('从最近项目移除', 'Remove from recent projects')}
+                      onClick={() => void removeRecent(project)}
+                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded opacity-0 transition-opacity group-hover:opacity-100"
+                      style={{ color: 'var(--color-text-muted)' }}
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
                 ))}
               </div>
             </div>

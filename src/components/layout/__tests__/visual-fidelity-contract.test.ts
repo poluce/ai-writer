@@ -21,7 +21,6 @@ const files = [
   'src/components/layout/TitleBar.tsx',
   'src/components/layout/LeftToolWindowBar.tsx',
   'src/components/layout/StatusBar.tsx',
-  'src/components/pages/WelcomePage.tsx',
   'src/components/panels/sidebar/ProjectTree.tsx',
   'src/components/panels/AIPanel.tsx',
   'src/components/panels/AIOutputPanel.tsx',

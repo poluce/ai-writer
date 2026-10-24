@@ -1,5 +1,6 @@
 import { APP_BRAND } from '../../shared/brand'
 import { useLocaleStore } from '../../stores/locale-store'
+import { UpdateSection } from '../updates/UpdateSection'
 
 export function AboutSection() {
   const text = useLocaleStore(s => s.text)
@@ -38,6 +39,11 @@ export function AboutSection() {
         <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
           {text('这是面向中文长篇小说、角色设定、章节蓝图和本地模型生成的桌面写作环境。默认优先使用本机模型与本地项目数据，适合离线创作、风格拆解、章节规划和长文续写。', 'A desktop writing environment for long-form fiction, character design, chapter blueprints, and local model generation. It prioritizes local models and project data for offline writing, style analysis, planning, and continuation.')}
         </p>
+      </div>
+
+      {/* 更新检查从首页搬到这里：版本号旁边才是它该在的位置（卡片自带标题） */}
+      <div className="pt-2">
+        <UpdateSection />
       </div>
 
       <div

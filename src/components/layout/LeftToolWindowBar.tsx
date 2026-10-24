@@ -2,7 +2,6 @@ import {
   FolderOpen,
   BookOpen,
   Users,
-  Home,
   ListTree,
   Globe2,
   GitBranch,
@@ -14,7 +13,7 @@ import { useEditorStore } from '../../stores/editor-store'
 import { openBuiltinEditor } from '../../services/editor-file-openers'
 import { useLocaleStore } from '../../stores/locale-store'
 
-/** 左侧侧边栏视图按钮配置（不含 Home，它单独渲染） */
+/** 左侧内容导航按钮配置（首页已并入项目，不再单独渲染） */
 const sidebarActivities: Array<{ id: SidebarView; icon: typeof FolderOpen; zh: string; en: string }> = [
   { id: 'project', icon: FolderOpen, zh: '项目', en: 'Project' },
 ]
@@ -91,8 +90,6 @@ export default function LeftToolWindowBar() {
       projectKey: project.path})
   }
 
-  /** Home 按钮是否激活 */
-  const homeActive = activeRailItem === 'home'
   const plotTreeActive = activeRailItem === 'plot-tree'
 
   return (
@@ -102,20 +99,8 @@ export default function LeftToolWindowBar() {
         width: 'var(--width-left-bar)',
         flexShrink: 0}}
     >
-      {/* ===== 顶部：Home + 侧边栏视图切换 ===== */}
+      {/* ===== 顶部：内容导航 ===== */}
       <div className="flex flex-col items-center w-full pt-0.5">
-
-        {/* Home 按钮 — 点击切换到主页视图 */}
-        <LeftNavButton
-          icon={Home}
-          label={text('首页', 'Home')}
-          active={homeActive}
-          onClick={() => setSidebarView('home')}
-          title={text('欢迎页', 'Welcome')}
-        />
-
-        {/* 分割线 */}
-        <div className="writer-nav-divider w-8 my-1" style={{ height: 1 }} />
 
         {/* 侧边栏视图按钮 */}
         {sidebarActivities.map(({ id, icon: Icon, zh, en }) => {
