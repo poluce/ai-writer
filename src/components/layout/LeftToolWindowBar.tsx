@@ -6,13 +6,9 @@ import {
   ListTree,
   Globe2,
   GitBranch,
-  ListChecks,
   Settings,
-  ScrollText,
-  Cpu,
   Map} from 'lucide-react'
-import { useLayoutStore, type SidebarView, type BottomTab } from '../../stores/layout-store'
-import { useWorkflowStore } from '../../stores/workflow-store'
+import { useLayoutStore, type SidebarView } from '../../stores/layout-store'
 import { useProjectStore } from '../../stores/project-store'
 import { useEditorStore } from '../../stores/editor-store'
 import { openBuiltinEditor } from '../../services/editor-file-openers'
@@ -23,12 +19,6 @@ const sidebarActivities: Array<{ id: SidebarView; icon: typeof FolderOpen; zh: s
   { id: 'project', icon: FolderOpen, zh: '项目', en: 'Project' },
 ]
 
-/** 底部面板 Tab 按钮配置 */
-const bottomTabs: Array<{ id: BottomTab; icon: typeof ListChecks; zh: string; en: string }> = [
-  { id: 'tasks', icon: ListChecks, zh: '任务', en: 'Tasks' },
-  { id: 'log', icon: ScrollText, zh: '日志', en: 'Logs' },
-  { id: 'models', icon: Cpu, zh: '模型', en: 'Models' },
-]
 
 function leftNavButtonClassName(active: boolean | undefined, disabled: boolean | undefined): string {
   let className = 'left-nav-button'
@@ -86,9 +76,7 @@ function LeftNavButton({
 export default function LeftToolWindowBar() {
   const activeRailItem = useLayoutStore(s => s.activeRailItem)
   const setSidebarView = useLayoutStore(s => s.setSidebarView)
-  const setBottomTab = useLayoutStore(s => s.setBottomTab)
   const openSettings = useLayoutStore(s => s.openSettings)
-  const currentRun = useWorkflowStore(s => s.currentRun)
   const hasOpenProject = useProjectStore(s => Boolean(s.currentProject))
   const text = useLocaleStore(s => s.text)
 
@@ -233,30 +221,9 @@ export default function LeftToolWindowBar() {
       {/* 弹性间隔 */}
       <div className="flex-1" />
 
-      {/* ===== 底部：底部面板 Tab 控制 ===== */}
+      {/* ===== 底部：设置（任务/日志/模型 已归底部页签条） ===== */}
       <div className="flex flex-col items-center w-full pb-1">
         <div className="writer-nav-divider w-8 mb-1" style={{ height: 1 }} />
-
-        {bottomTabs.map(({ id, icon: Icon, zh, en }) => {
-          const label = text(zh, en)
-          const isActive = activeRailItem === id
-          const showPulse = id === 'tasks' && currentRun &&
-            (currentRun.status === 'running' || currentRun.status === 'waiting')
-
-          return (
-            <LeftNavButton
-              key={id}
-              icon={Icon}
-              label={label}
-              active={isActive}
-              title={label}
-              pulse={!!showPulse}
-              onClick={() => setBottomTab(id)}
-            />
-          )
-        })}
-
-        <div className="writer-nav-divider w-8 my-1" style={{ height: 1 }} />
 
         <LeftNavButton
           icon={Settings}

@@ -62,13 +62,24 @@ export default function Sidebar() {
       </div>
       <div className="flex-1 overflow-y-auto py-1">
         {sidebarView === 'home' && <HomeSidebarPanel />}
+        {/* 空态收口：动作只在主区出现一次，这里只说明「打开项目后有什么」 */}
         {workspaceNeedsProject && (
           <EmptyState
-            icon={<BookOpen size={36} />}
-            message={text('请先打开项目', 'Open a project first')}
-            className="pb-[15vh]"
-            opacity={0.4}
-          />
+            icon={<BookOpen size={28} />}
+            message={text('未打开项目', 'No project open')}
+            className="pb-[15vh] p-4"
+            opacity={1}
+          >
+            <span
+              className="text-xs text-center mt-0.5 leading-relaxed"
+              style={{ color: 'var(--color-text-muted)' }}
+            >
+              {text(
+                '打开项目后，这里显示当前视图的内容。',
+                'Once a project is open, this view shows its content.',
+              )}
+            </span>
+          </EmptyState>
         )}
         {!workspaceNeedsProject && sidebarView === 'project' && <ProjectTree />}
         {!workspaceNeedsProject && sidebarView === 'knowledge' && <KnowledgePanel />}

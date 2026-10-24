@@ -56,12 +56,25 @@ function EmptyState({ assistantType = 'general' }: { assistantType?: AssistantTy
     .sort((a, b) => b.updatedAt - a.updatedAt)
     .slice(0, 3)
 
+  const hasProject = useProjectStore(s => Boolean(s.currentProject))
+
+  // 空态收口：新建 / 打开只由主区提供一次，这里只说明打开项目后能做什么。
+  const projectHint = !hasProject ? (
+    <div className="mt-4 px-1 text-xs leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+      {text(
+        '打开项目后，我可以读取设定、蓝图和正文，直接帮你写。',
+        'Once a project is open I can read your settings, blueprints, and drafts.',
+      )}
+    </div>
+  ) : null
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto px-4 py-4">
         <div className="mb-3 pl-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>
           {copy.description(text)}
         </div>
+        {projectHint}
 
         {recentConvs.length > 0 ? (
           <div className="mt-4">

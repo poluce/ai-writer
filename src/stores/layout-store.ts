@@ -80,7 +80,8 @@ interface LayoutState {
   /** 打开右侧面板并切换到指定视图 */
   openRightPanel: (view: RightView) => void
   toggleBottomPanel: () => void
-  setBottomTab: (tab: BottomTab) => void
+  /** 底部页签条专用：只切页签，不影响左侧内容导航的高亮。 */
+  selectBottomTab: (tab: BottomTab) => void
   setBottomPanelHeight: (height: number) => void
   openBottomTab: (tab: BottomTab) => void
 
@@ -175,17 +176,14 @@ export const useLayoutStore = create<LayoutState>()((set) => ({
   openRightPanel: (view) => set({ aiPanelOpen: true, rightView: view }),
 
   toggleBottomPanel: () => set((s) => ({ bottomPanelOpen: !s.bottomPanelOpen })),
-  setBottomTab: (tab) =>
-    set((s) => {
-      const sameButton = s.bottomTab === tab && s.activeRailItem === tab
-      return {
-        bottomTab: tab,
-        activeRailItem: tab,
-        bottomPanelOpen: nextPanelOpen(sameButton, s.bottomPanelOpen),
-      }
-    }),
+  selectBottomTab: (tab) =>
+    set((s) => ({
+      bottomTab: tab,
+      bottomPanelOpen: s.bottomPanelOpen && s.bottomTab === tab ? false : true,
+    })),
   setBottomPanelHeight: (height) => set({ bottomPanelHeight: clamp(height, 100, 500) }),
-  openBottomTab: (tab) => set({ bottomPanelOpen: true, bottomTab: tab, activeRailItem: tab }),
+  // 底部页签不再占用左栏高亮：打开底部页签时左栏仍停在内容导航上。
+  openBottomTab: (tab) => set({ bottomPanelOpen: true, bottomTab: tab }),
 
   // 全局弹窗 Actions
   openSettings: (section, activeRailItem) => {

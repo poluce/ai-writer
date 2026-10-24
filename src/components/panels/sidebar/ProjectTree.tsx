@@ -10,8 +10,6 @@ import { useProjectStore } from '../../../stores/project-store'
 import { useWorkflowStore } from '../../../stores/workflow-store'
 import { useDraftStore } from '../../../stores/draft-store'
 import { useEditorStore } from '../../../stores/editor-store'
-import { useLayoutStore } from '../../../stores/layout-store'
-import { ipc } from '../../../services/ipc-client'
 import { Button } from '../../ui/Button'
 import { EmptyState } from '../../ui/EmptyState'
 import { confirm } from '../../ui/Confirm'
@@ -174,42 +172,24 @@ export default function ProjectTree() {
   }, [workflowKey, currentProject?.path, refreshAll]) // eslint-disable-line react-hooks/exhaustive-deps -- currentProject 对象引用变化不触发，仅 path 变化需响应
 
   if (!currentProject) {
+    // 空态收口：动作只在主区出现一次，侧栏只说明「这里会显示什么」。
     return (
       <div className="writer-project-tree h-full">
         <EmptyState
-          icon={<span className="text-4xl opacity-60" style={{ color: 'var(--color-text-muted)' }}><FolderOpen size={36} /></span>}
+          icon={<span className="opacity-60" style={{ color: 'var(--color-text-muted)' }}><FolderOpen size={28} /></span>}
           message={text('未打开项目', 'No project open')}
           className="p-4 pb-[15vh]"
           opacity={1}
         >
           <span
-            className="text-xs text-center mt-0.5"
+            className="text-xs text-center mt-0.5 leading-relaxed"
             style={{ color: 'var(--color-text-muted)' }}
           >
-            {text('新建或打开一个项目', 'Create or open a project to begin.')}
+            {text(
+              '打开项目后，这里显示小说配置、故事架构、章节蓝图与正文章节。',
+              'Once a project is open, its configuration, architecture, blueprints, and chapters appear here.',
+            )}
           </span>
-          {/* 操作按钮 */}
-          <div className="flex flex-col gap-2 mt-3 w-full">
-            <Button
-              variant="default"
-              className="w-full"
-              onClick={() => useLayoutStore.getState().openNewProject()}
-            >
-              {text('新建项目', 'New project')}
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={async () => {
-                const folder = await ipc.invoke('dialog:select-folder')
-                if (folder) {
-                  useProjectStore.getState().openProject(folder)
-                }
-              }}
-            >
-              {text('打开项目', 'Open project')}
-            </Button>
-          </div>
         </EmptyState>
       </div>
     )

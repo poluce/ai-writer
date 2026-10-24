@@ -12,7 +12,6 @@ import { ipc } from './services/ipc-client'
 import TitleBar from './components/layout/TitleBar'
 import StatusBar from './components/layout/StatusBar'
 import LeftToolWindowBar from './components/layout/LeftToolWindowBar'
-import RightToolWindowBar from './components/layout/RightToolWindowBar'
 import Sidebar from './components/panels/Sidebar'
 import EditorArea from './components/panels/EditorArea'
 import AIPanel from './components/panels/AIPanel'
@@ -21,6 +20,8 @@ import BlueprintPanel from './components/panels/BlueprintPanel'
 import ReviewPanel from './components/panels/ReviewPanel'
 import AIOutputPanel from './components/panels/AIOutputPanel'
 import BottomPanel from './components/panels/BottomPanel'
+import { BottomPanelTabs } from './components/panels/BottomPanelTabs'
+import { AssistantSwitcher } from './components/panels/agent/AssistantSwitcher'
 import NewProjectDialog from './components/dialogs/NewProjectDialog'
 import ImportNovelDialog from './components/dialogs/ImportNovelDialog'
 import AuthorManuscriptImportDialog from './components/dialogs/AuthorManuscriptImportDialog'
@@ -279,67 +280,82 @@ export default function App() {
         {/* 左侧工具窗口栏（全高，包括底部面板区域） */}
         <LeftToolWindowBar />
 
-        {/* 纵向 PanelGroup：上层主区域 + 下层底部面板 */}
-        <PanelGroup orientation="vertical" className="flex-1">
+        {/* 纵向：PanelGroup（上层主区域 + 下层底部面板）+ 收起态常驻页签条 */}
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <PanelGroup orientation="vertical" className="flex-1">
 
-          {/* 上层：侧边栏 | 编辑区 | AI 面板（水平分割） */}
-          <Panel id="top" defaultSize={75} minSize={30}>
-            <PanelGroup orientation="horizontal" className="flex-1 h-full">
+            {/* 上层：侧边栏 | 编辑区 | AI 面板（水平分割） */}
+            <Panel id="top" defaultSize={75} minSize={30}>
+              <PanelGroup orientation="horizontal" className="flex-1 h-full">
 
-              {/* 左侧边栏 */}
-              {sidebarOpen && (
-                <>
-                  <Panel id="sidebar" defaultSize={20} minSize={10}>
-                    <ErrorBoundary fallbackLabel={text('侧边栏渲染失败', 'Sidebar failed to render')}>
-                      <Sidebar />
-                    </ErrorBoundary>
-                  </Panel>
-                  <PanelResizeHandle />
-                </>
-              )}
+                {/* 左侧边栏 */}
+                {sidebarOpen && (
+                  <>
+                    <Panel id="sidebar" defaultSize={20} minSize={10}>
+                      <ErrorBoundary fallbackLabel={text('侧边栏渲染失败', 'Sidebar failed to render')}>
+                        <Sidebar />
+                      </ErrorBoundary>
+                    </Panel>
+                    <PanelResizeHandle />
+                  </>
+                )}
 
-              {/* 编辑区 */}
-              <Panel id="editor" defaultSize={60} minSize={10}>
-                <ErrorBoundary fallbackLabel={text('编辑区渲染失败', 'Editor failed to render')}>
-                  <EditorArea />
-                </ErrorBoundary>
-              </Panel>
+                {/* 编辑区 */}
+                <Panel id="editor" defaultSize={60} minSize={10}>
+                  <ErrorBoundary fallbackLabel={text('编辑区渲染失败', 'Editor failed to render')}>
+                    <EditorArea />
+                  </ErrorBoundary>
+                </Panel>
 
-              {/* 右侧面板（Agent 对话 / 架构助手 / 蓝图助手 / 审稿助手 / AI 输出） */}
-              {aiPanelOpen && (
-                <>
-                  <PanelResizeHandle />
-                  <Panel id="ai-panel" defaultSize={20} minSize={10}>
-                    <ErrorBoundary fallbackLabel={text('AI 面板渲染失败', 'AI panel failed to render')}>
-                      {rightView === 'ai-output'
-                        ? <AIOutputPanel />
-                        : rightView === 'blueprint'
-                          ? <BlueprintPanel />
-                          : rightView === 'architect'
-                            ? <ArchitectPanel />
-                            : rightView === 'review'
-                              ? <ReviewPanel />
-                              : <AIPanel />}
-                    </ErrorBoundary>
-                  </Panel>
-                </>
-              )}
-            </PanelGroup>
-          </Panel>
+                {/* 右侧面板（Agent 对话 / 架构助手 / 蓝图助手 / 审稿助手 / AI 输出） */}
+                {aiPanelOpen && (
+                  <>
+                    <PanelResizeHandle />
+                    <Panel id="ai-panel" defaultSize={20} minSize={10}>
+                      <ErrorBoundary fallbackLabel={text('AI 面板渲染失败', 'AI panel failed to render')}>
+                        <div className="flex h-full w-full flex-col overflow-hidden">
+                          {/* 五个助手视图的切换器：并入面板头部，取代原来的 30px 右侧图标栏 */}
+                          <AssistantSwitcher />
+                          <div className="min-h-0 flex-1 overflow-hidden">
+                            {rightView === 'ai-output'
+                              ? <AIOutputPanel />
+                              : rightView === 'blueprint'
+                                ? <BlueprintPanel />
+                                : rightView === 'architect'
+                                  ? <ArchitectPanel />
+                                  : rightView === 'review'
+                                    ? <ReviewPanel />
+                                    : <AIPanel />}
+                          </div>
+                        </div>
+                      </ErrorBoundary>
+                    </Panel>
+                  </>
+                )}
+              </PanelGroup>
+            </Panel>
 
-          {/* 下层：底部面板。关闭时拆掉 Panel，避免留下空白占位。 */}
-          {bottomPanelOpen && (
-            <>
-              <PanelResizeHandle />
-              <Panel id="bottom" defaultSize={25} minSize={8}>
-                <BottomPanel />
-              </Panel>
-            </>
+            {/* 下层：底部面板。关闭时拆掉 Panel，只保留常驻页签条。 */}
+            {bottomPanelOpen && (
+              <>
+                <PanelResizeHandle />
+                <Panel id="bottom" defaultSize={25} minSize={8}>
+                  <BottomPanel />
+                </Panel>
+              </>
+            )}
+          </PanelGroup>
+
+          {/* 面板收起时，任务 / 日志 / 模型的页签条仍然常驻在这里 */}
+          {!bottomPanelOpen && (
+            <div
+              className="flex-shrink-0"
+              style={{ backgroundColor: 'var(--color-panel)', borderTop: '1px solid var(--color-border)' }}
+            >
+              <BottomPanelTabs />
+            </div>
           )}
-        </PanelGroup>
-
-        {/* 右侧工具窗口栏（全高，包括底部面板区域） */}
-        <RightToolWindowBar />
+        </div>
       </div>
 
 

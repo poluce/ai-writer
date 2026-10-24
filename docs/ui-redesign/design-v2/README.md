@@ -79,16 +79,34 @@ v2 在这页只改三件事：表面层级（页面底 `#F4F6F9` / 内容面白 
 
 ## 六、落地状态
 
+P1–P6 全部完成，并在运行中的真实应用里逐项截图验证（见 `impl/`）。
+
 | 阶段 | 状态 | 涉及文件 |
 | :--- | :--- | :--- |
-| P1 令牌 | 已完成 | `src/index.css`（light 主题色板 / 圆角 / 投影）、`src/tokens/__tests__/tokens.test.ts` |
-| P2 表面层级与行高 | 已完成 | `src/index.css`（左导航行高、树节点行高）、`electron/main.ts`、`index.html` |
-| P3 空态收口 | 未开始 | — |
-| P4 助手切换器取代右栏 | 未开始 | — |
-| P5 标题栏降噪 + 主题菜单 | 未开始 | — |
-| P6 底部三 tab 常驻 | 未开始 | — |
+| P1 令牌 | 已完成 | `src/index.css`（light 色板 / 圆角 / 投影）、`src/tokens/__tests__/tokens.test.ts` |
+| P2 表面层级与行高 | 已完成 | `src/index.css`（左导航 66→54、树节点 26→30）、`electron/main.ts`、`index.html` |
+| P3 空态收口 | 已完成 | `OpenProjectFirstPage.tsx`、`ProjectTree.tsx`、`AgentConversation.tsx`、`Sidebar.tsx` |
+| P4 助手切换器取代右栏 | 已完成 | 新增 `AssistantSwitcher.tsx`；删除 `RightToolWindowBar.tsx`；`App.tsx` |
+| P5 标题栏降噪 + 主题菜单 | 已完成 | `TitleBar.tsx`（更多菜单 / 主题四选一）、`src/index.css`（标题栏层级） |
+| P6 底部三 tab 常驻 | 已完成 | 新增 `BottomPanelTabs.tsx`、`layout-store` 的 `selectBottomTab`、`App.tsx`、`BottomPanel.tsx`、`LeftToolWindowBar.tsx` |
 
-P1/P2 实际落地的值与上面「设计令牌」一致，另有一处调整：弱化文字 `--color-text-muted` 取 `#5F6773` 而不是 `#6B7280` —— 后者在 `--color-active` 上只有 3.90:1，低于 AA；`#5F6773` 为 4.61:1，同时仍比次级文字 `#4A5160` 浅一档。
+落地时与设计稿的三处偏差，都以「真实可用」为准：
+
+1. **弱化文字取 `#5F6773` 而非 `#6B7280`**：后者在 `--color-active` 上只有 3.90:1，低于 AA；`#5F6773` 为 4.61:1，仍比次级文字 `#4A5160` 浅一档。
+2. **助手切换器在窄面板下只留图标**：默认分栏把右栏压到 160–200px 时，五个「图标+文字」会被挤成省略号，因此用 `ResizeObserver` 在 < 268px 时收起标签。
+3. **底部页签条在面板收起时常驻在主区下方**，不占用左侧内容导航；`任务/日志/模型调用` 三个入口从左侧栏移除，左栏只剩内容维度。
+
+另外修掉一个真实缺陷：标题栏与主区域都是 `.app-skin-root` 的直接子元素、默认同为 `z-index:1`，主区域在 DOM 中靠后会把下拉菜单整块盖住——下拉菜单原先在真实应用里完全不可见。现已在根层级单独把标题栏抬到 `z-index:30`。
+
+### 实机截图（1439×900 @2x）
+
+| 截图 | 内容 |
+| :--- | :--- |
+| [impl/empty-state.png](impl/empty-state.png) | 未打开项目：主区单一引导 + 最近项目，侧栏只解释不重复按钮 |
+| [impl/project-config.png](impl/project-config.png) | 打开项目后的小说配置页 |
+| [impl/titlebar-more-menu.png](impl/titlebar-more-menu.png) | 标题栏「更多」折叠低频动作 |
+| [impl/theme-menu.png](impl/theme-menu.png) | 主题改为四选一菜单 |
+| [impl/bottom-panel.png](impl/bottom-panel.png) | 底部页签条展开任务面板 |
 
 ## 七、落地顺序
 

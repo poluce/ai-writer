@@ -1244,6 +1244,12 @@
   z-index: 1;
 }
 
+/* 标题栏的下拉菜单必须压住下方主区域。
+   两者都是 root 的直接子元素、默认同为 z-index:1，主区域在 DOM 中靠后就会盖住菜单。 */
+.app-skin-root > .writer-topbar {
+  z-index: 30;
+}
+
 .app-skin-background {
   position: absolute;
   inset: 0;

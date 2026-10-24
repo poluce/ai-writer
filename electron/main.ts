@@ -1,4 +1,10 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron'
+
+// 开发期可选：设置 VELA_DEBUG_CDP_PORT 后开放 CDP，便于脚本化验证渲染层（打包版永不开启）。
+const debugCdpPort = process.env.VELA_DEBUG_CDP_PORT
+if (debugCdpPort && !app.isPackaged) {
+  app.commandLine.appendSwitch('remote-debugging-port', debugCdpPort)
+}
 import { createRequire } from 'node:module'
 import { registerIPCHandlers } from './ipc-handlers'
 import { registerMCPHandlers } from './mcp/mcp-ipc-bridge'
