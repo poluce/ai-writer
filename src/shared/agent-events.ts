@@ -38,6 +38,7 @@ export type BuiltinEditorTarget =
 export type RendererAction =
   | { type: 'open_editor'; target: 'builtin'; editor: BuiltinEditorTarget }
   | { type: 'open_editor'; target: 'file'; filePath: string; content: string; fileName: string }
+  | { type: 'open_editor'; target: 'draft'; chapterNumber: number; draftId?: number }
   | {
       type: 'replace_draft_excerpt'
       chapterNumber: number

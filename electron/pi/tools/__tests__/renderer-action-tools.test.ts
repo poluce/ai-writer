@@ -6,6 +6,11 @@ import type { RendererAction } from '../../renderer-action'
 vi.mock('../../../database', () => ({
   getCurrentProjectPath: vi.fn(),
 }))
+vi.mock('../../../repositories/draft-repository', () => ({
+  DraftRepository: {
+    getLatestByChapter: vi.fn(),
+  },
+}))
 vi.mock('../../../utils/project-context', () => ({
   assertProjectFilePath: vi.fn(),
 }))
@@ -15,15 +20,18 @@ vi.mock('../../../security/windows-safe-file-system', () => ({
 }))
 
 import { getCurrentProjectPath } from '../../../database'
+import { DraftRepository } from '../../../repositories/draft-repository'
 import { assertProjectFilePath } from '../../../utils/project-context'
 import { windowsSafeFileSystem } from '../../../security/windows-safe-file-system'
 
 const projectPathMock = getCurrentProjectPath as ReturnType<typeof vi.fn>
+const getLatestByChapterMock = DraftRepository.getLatestByChapter as ReturnType<typeof vi.fn>
 const assertPathMock = assertProjectFilePath as ReturnType<typeof vi.fn>
 const readTextMock = windowsSafeFileSystem.readText as ReturnType<typeof vi.fn>
 
 beforeEach(() => {
   projectPathMock.mockReset()
+  getLatestByChapterMock.mockReset()
   assertPathMock.mockReset()
   readTextMock.mockReset()
 })
@@ -69,6 +77,27 @@ describe('open_editor', () => {
 
     expect(actions).toEqual([{ type: 'open_editor', target: 'builtin', editor: 'architecture' }])
     expect(result.content[0]).toMatchObject({ type: 'text', text: '已打开「故事架构」页面' })
+  })
+
+  it('opens a chapter draft tab in the main workspace when target is draft', async () => {
+    getLatestByChapterMock.mockReturnValue({ id: 101, chapterNumber: 3, version: 1 })
+    const actions: RendererAction[] = []
+    const tool = createOpenEditorTool('zh-CN', (a) => { actions.push(a) })
+    const result = await tool.execute('c1', { target: 'draft', chapter_number: 3 })
+
+    expect(getLatestByChapterMock).toHaveBeenCalledWith(3)
+    expect(actions).toEqual([{
+      type: 'open_editor',
+      target: 'draft',
+      chapterNumber: 3,
+      draftId: 101,
+    }])
+    expect(result.content[0]).toMatchObject({ type: 'text', text: '已在主工作区打开第 3 章草稿' })
+  })
+
+  it('requires valid chapter_number when target is draft', async () => {
+    const tool = createOpenEditorTool('zh-CN', () => {})
+    await expect(tool.execute('c1', { target: 'draft' })).rejects.toThrow('chapter_number')
   })
 })
 

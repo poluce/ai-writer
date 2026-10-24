@@ -74,13 +74,19 @@ export function createDelegateToAssistantTool(
         )
       }
 
+      const guidance = writingLanguageText(
+        language,
+        `\n\n[系统协同提示：成果已由${targetLabel}直接调用工具在主工作区打开呈现。向作者汇报时，请保持极简卡片式导读（3-5句话概括核心结论，严禁在对话框长篇复读清单），明确引导作者直接在主界面的主工作区面板中查阅与交互操作。]`,
+        `\n\n[System Coordination Note: The deliverable has been opened in the main workspace by the ${targetLabel}. When reporting to the author, provide a concise qualitative overview (3-5 sentences; do NOT restate lengthy checklists in the chat), and guide the author to view details directly in the main workspace.]`,
+      )
+
       return {
         content: [{
           type: 'text',
           text: writingLanguageText(
             language,
-            `【${targetLabel}已完成任务】\n\n${response.result}`,
-            `[${targetLabel} completed the task]\n\n${response.result}`,
+            `【${targetLabel}已完成任务】\n\n${response.result}${guidance}`,
+            `[${targetLabel} completed the task]\n\n${response.result}${guidance}`,
           ),
         }],
         details: {

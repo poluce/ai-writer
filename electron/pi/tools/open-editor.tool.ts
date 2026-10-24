@@ -4,6 +4,7 @@ import type { AgentTool } from '@earendil-works/pi-agent-core'
 import { Type, StringEnum } from '@earendil-works/pi-ai'
 
 import { getCurrentProjectPath } from '../../database'
+import { DraftRepository } from '../../repositories/draft-repository'
 import { assertProjectFilePath } from '../../utils/project-context'
 import {
   createSecureFileCapability,
@@ -20,13 +21,14 @@ import {
  * 数据库驱动的内置页面不需要文件路径；只有 file 目标才读取物理文件。
  * 内置页面的打开由渲染层完成，主进程不做多余的读盘。
  */
-const TARGET_ALIASES: Record<string, BuiltinEditorTarget | 'file'> = {
+const TARGET_ALIASES: Record<string, BuiltinEditorTarget | 'file' | 'draft'> = {
   config: 'config',
   blueprints: 'blueprints',
   characters: 'characters',
   architecture: 'architecture',
   synopsis: 'synopsis',
   file: 'file',
+  draft: 'draft',
   '小说配置': 'config',
   '配置': 'config',
   '章节蓝图': 'blueprints',
@@ -39,16 +41,20 @@ const TARGET_ALIASES: Record<string, BuiltinEditorTarget | 'file'> = {
   '情节大纲': 'synopsis',
   '大纲': 'synopsis',
   '文件': 'file',
+  '草稿': 'draft',
+  '章节': 'draft',
+  '正文': 'draft',
 }
 
 const Target = StringEnum(
-  ['config', 'blueprints', 'characters', 'architecture', 'synopsis', 'file'] as const,
-  { description: 'Target editor: "config", "blueprints", "characters", "architecture", "synopsis", or "file".' },
+  ['config', 'blueprints', 'characters', 'architecture', 'synopsis', 'file', 'draft'] as const,
+  { description: 'Target editor: "config", "blueprints", "characters", "architecture", "synopsis", "file", or "draft".' },
 )
 
 const Schema = Type.Object({
   target: Target,
   file_path: Type.Optional(Type.String({ description: '当 target 为 "file" 时必填，指定项目目录内文本文件的相对路径' })),
+  chapter_number: Type.Optional(Type.Integer({ minimum: 1, description: '当 target 为 "draft" 时必填，指定要在主工作区打开的章节号' })),
 })
 
 const TARGET_LABELS: Record<BuiltinEditorTarget, readonly [string, string]> = {
@@ -65,8 +71,8 @@ export function createOpenEditorTool(
 ): AgentTool<typeof Schema> {
   const text = (zhCN: string, enUS: string) => writingLanguageText(language, zhCN, enUS)
   const description = language === 'en-US'
-    ? 'Open a page for the user: a built-in database-backed editor (config, blueprints, characters, architecture, synopsis) or a read-only view of a project file (target "file" requires file_path).'
-    : '为用户打开页面：数据库驱动的内置编辑器（小说配置 config、章节蓝图 blueprints、角色管理 characters、故事架构 architecture、情节大纲 synopsis），或以只读视图打开项目内的文件（target 用 file，需给 file_path）。'
+    ? 'Open a page in the main workspace for the user: a chapter draft (target "draft" with chapter_number), a built-in database-backed editor (config, blueprints, characters, architecture, synopsis), or a project file (target "file" requires file_path).'
+    : '在主工作区为用户打开页面展示：章节正文草稿（target 为 "draft"，需给 chapter_number）、内置编辑器（小说配置 config、章节蓝图 blueprints、角色管理 characters、故事架构 architecture、情节大纲 synopsis），或项目内的文件（target 用 file，需给 file_path）。'
 
   return {
     name: 'open_editor',
@@ -75,7 +81,31 @@ export function createOpenEditorTool(
     parameters: Schema,
     execute: async (_id, params) => {
       const rawTarget = params.target
-      const target = TARGET_ALIASES[rawTarget] ?? (rawTarget as BuiltinEditorTarget | 'file')
+      const target = TARGET_ALIASES[rawTarget] ?? (rawTarget as BuiltinEditorTarget | 'file' | 'draft')
+
+      if (target === 'draft') {
+        const chapterNumber = params.chapter_number
+        if (!chapterNumber || chapterNumber < 1) {
+          throw new Error(text('target=draft 时必须提供大于 0 的 chapter_number', 'chapter_number is required when target is "draft"'))
+        }
+        const draft = DraftRepository.getLatestByChapter(chapterNumber)
+        if (!draft) {
+          throw new Error(text(`找不到第 ${chapterNumber} 章的草稿`, `No draft found for Chapter ${chapterNumber}`))
+        }
+        rendererAction({
+          type: 'open_editor',
+          target: 'draft',
+          chapterNumber,
+          draftId: draft.id,
+        })
+        return {
+          content: [{ type: 'text', text: text(
+            `已在主工作区打开第 ${chapterNumber} 章草稿`,
+            `Opened Chapter ${chapterNumber} draft in the main workspace`,
+          ) }],
+          details: { chapterNumber, draftId: draft.id },
+        }
+      }
 
       if (target !== 'file') {
         const label = TARGET_LABELS[target]

@@ -251,10 +251,31 @@ export class AgentSessionManager {
           ? writingLanguageText(language, `\n关注重点与指示：\n${instructionText}`, `\nSpecific Instructions & Focus:\n${instructionText}`)
           : ''
 
+        let targetGuidance = ''
+        if (params.target === 'review') {
+          targetGuidance = writingLanguageText(
+            language,
+            `\n【重要交付规约】\n1. 请直接调用专属工具读取权威事实（manage_drafts 读取正文，read_blueprint、read_continuity_facts 核验事实）。\n2. 审查结论必须调用 submit_chapter_review 工具落盘生成审稿报告（系统会自动在主编辑区展开全屏审稿看板，供作者交互勾选与一键修稿）。严禁仅在对话框用纯文本输出审查清单而不落盘！\n3. submit_chapter_review 提交完成后，你的文字回复只需提供极简的定性总结（150字以内），引导作者移步主界面的审稿看板查阅详情与勾选，绝不要在对话框中重复罗列清单。`,
+            `\n[Crucial Deliverable Contract]\n1. Directly call your dedicated tools (manage_drafts to read prose, read_blueprint and read_continuity_facts to verify facts).\n2. You MUST call the submit_chapter_review tool to persist the review report (the system automatically opens the interactive review dashboard in the main editor area for checkbox confirmation and revision). NEVER reply only with plain text without calling submit_chapter_review!\n3. After calling submit_chapter_review, your text response should only provide a concise qualitative summary (under 150 words) directing the author to the main review report tab, without duplicating the whole checklist in text.`,
+          )
+        } else if (params.target === 'blueprint') {
+          targetGuidance = writingLanguageText(
+            language,
+            `\n【重要交付规约】\n1. 请调用 read_blueprint、read_continuity_facts、read_architecture 获取前文事实与设定。\n2. 推演确定的细纲必须调用 propose_chapter_blueprint 工具持久化写入项目。\n3. 文字回复保持清晰精炼，侧重场景节拍与冲突设计。`,
+            `\n[Crucial Deliverable Contract]\n1. Call read_blueprint, read_continuity_facts, and read_architecture for established facts.\n2. Persist the finalized blueprint using propose_chapter_blueprint.\n3. Keep text response concise and focused on beats and dramatic conflict.`,
+          )
+        } else {
+          targetGuidance = writingLanguageText(
+            language,
+            `\n【重要交付规约】\n1. 充分使用架构与设定读取工具理解当前事实。\n2. 推演确定的世界观、大纲或人物设定必须调用相应工具（story_architecture、novel_config、manage_characters 等）持久化写入项目。\n3. 文字回复保持清晰精炼。`,
+            `\n[Crucial Deliverable Contract]\n1. Utilize architecture and lore tools to understand current facts.\n2. Persist agreed settings, outlines, or characters with appropriate tools (story_architecture, novel_config, manage_characters, etc.).\n3. Keep text response clear and concise.`,
+          )
+        }
+
         const input = writingLanguageText(
           language,
-          `【来自项目助手的任务委派】\n\n核心任务：\n${params.task}${chapterPart}${instructionPart}\n\n你拥有专属的项目读取与推演工具，请直接调用工具（如读取草稿、蓝图、连续性事实或设定）获取权威事实，切勿依赖外部二手转述。推演完成后，如有需要固化到项目的成果（如审稿报告、细纲蓝图或设定），请直接调用专属工具写入项目，并给出清晰详尽的回复。`,
-          `[Task Delegated from Project Assistant]\n\nTask:\n${params.task}${chapterPart}${instructionPart}\n\nYou possess dedicated project tools. Call them directly (e.g., read drafts, blueprints, continuity facts, or settings) to retrieve authoritative facts rather than relying on secondhand summary. After completing your deduction, persist any deliverables (such as review reports, blueprints, or settings) directly via your tools, and provide a comprehensive response.`,
+          `【来自项目助手的任务委派】\n\n核心任务：\n${params.task}${chapterPart}${instructionPart}\n${targetGuidance}`,
+          `[Task Delegated from Project Assistant]\n\nTask:\n${params.task}${chapterPart}${instructionPart}\n${targetGuidance}`,
         )
 
         // 获取或创建目标助手会话

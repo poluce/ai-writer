@@ -1,4 +1,6 @@
 import type { RendererAction, RendererActionResult } from '../../shared/agent-events'
+import type { DraftStatus } from '../../shared/draft-status'
+import type { DraftMeta } from '../../shared/contracts/draft'
 import { globalEventBus } from '../../shared/event-bus'
 import { logFailure } from '../../shared/fail-log'
 import { projectSessionContextFromProject } from '../../shared/project-session-context'
@@ -14,6 +16,34 @@ import { useProjectStore } from '../../stores/project-store'
 export async function handleRendererAction(action: RendererAction): Promise<RendererActionResult | void> {
   switch (action.type) {
     case 'open_editor': {
+      if (action.target === 'draft') {
+        const project = useProjectStore.getState().currentProject
+        if (!project) return
+        const projectSession = projectSessionContextFromProject(project)
+        if (!projectSession) return
+        const { ipc } = await import('../ipc-client')
+        const draftMeta: DraftMeta | null = action.draftId
+          ? await ipc.invokeWithProjectSession(projectSession, 'db:draft-get-meta', action.draftId, project.path)
+          : await ipc.invokeWithProjectSession(projectSession, 'db:draft-get-latest', action.chapterNumber, project.path)
+        if (!draftMeta) return
+        const full = await ipc.invokeWithProjectSession(projectSession, 'db:draft-get-full', draftMeta.id, project.path)
+        const content = full?.content ?? ''
+        const filePath = `vela://draft/${draftMeta.id}`
+        const uiText = useLocaleStore.getState().text
+        useEditorStore.getState().openFile({
+          id: filePath,
+          name: draftMeta.chapterTitle || uiText(`第${draftMeta.chapterNumber}章`, `Chapter ${draftMeta.chapterNumber}`),
+          type: 'chapter',
+          filePath,
+          content,
+          savedContent: content,
+          draftId: draftMeta.id,
+          chapterNumber: draftMeta.chapterNumber,
+          draftStatus: draftMeta.status as DraftStatus,
+          projectKey: project.path,
+        })
+        return
+      }
       if (action.target === 'builtin') {
         const uiText = useLocaleStore.getState().text
         const builtin = {
