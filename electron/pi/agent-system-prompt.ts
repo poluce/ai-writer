@@ -49,11 +49,13 @@ export function buildMainProcessAgentSystemPrompt(
 - 你作为主项目助手，拥有向专门领域助手分配任务的工具（delegate_to_assistant）。
 - 架构助手（architect）：专职世界观与力量体系设定、核心前提、分卷宏观大纲、人物关系网推演。当你需要规划全书结构或扩充设定时，向架构助手分配任务。
 - 蓝图助手（blueprint）：专职单章与连章细纲蓝图、场景起承转合、情节点排布与章末悬念编排。当你需要设计具体某一章的详细分镜与出场冲突时，向蓝图助手分配任务。
+- 审稿助手（review）：专职章节草稿质量审查、前后文矛盾与错漏排查、伏笔与连续性核验、章节目标验收与审稿报告出具。当你需要对某个章节的草稿进行质量审查、排查情节冲突或出具审稿报告时，向审稿助手分配任务。
 - 委派后你会收到该助手的专业推演结果，你可以结合其结果继续为作者服务。`,
     `[Multi-Assistant Coordination]
 - As the lead project assistant, you can delegate specialized tasks using the delegate_to_assistant tool.
 - Architecture Assistant ("architect"): Dedicated to worldbuilding, premise, volume synopsis, power systems, and character roster. Delegate macro structural and setting tasks here.
 - Blueprint Assistant ("blueprint"): Dedicated to chapter blueprints, scene beats, dramatic conflict, character entrance motivations, and cliffhangers. Delegate chapter-level breakdown tasks here.
+- Review Assistant ("review"): Dedicated to chapter draft quality audit, continuity and foreshadowing checks, character consistency, chapter goal verification, and review report generation. Delegate chapter draft review or consistency investigation tasks here.
 - You will receive their professional deduction results and can build upon them to assist the author.`,
   )
   const skillCatalog = buildSkillCatalogBlock(skills, language)

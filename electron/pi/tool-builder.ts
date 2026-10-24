@@ -20,12 +20,12 @@ import { createWebFetchTool } from './tools/web-fetch.tool'
 import { buildMcpAgentTools } from './tools/mcp.tool'
 import { createReadContinuityFactsTool } from './tools/read-continuity-facts.tool'
 import { createSubmitChapterReviewTool } from './tools/submit-chapter-review.tool'
-import { createDelegateToAssistantTool, type AssistantDelegateHandler } from './tools/delegate-to-assistant.tool'
+import { createDelegateToAssistantTool, type AssistantDelegateHandler, type DelegatableAssistantType } from './tools/delegate-to-assistant.tool'
 import type { AnyAgentTool } from './tool-types'
 import type { AgentSkillCatalogEntry } from '../../src/shared/agent-skills'
 import type { AssistantType } from '../../src/shared/agent-conversation-archive'
 
-export type { AssistantDelegateHandler }
+export type { AssistantDelegateHandler, DelegatableAssistantType }
 
 /**
  * 需要串行执行的工具名单（写操作、环境变动与命令执行）。

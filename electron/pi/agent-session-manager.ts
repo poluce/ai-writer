@@ -10,7 +10,7 @@ import { ConversationQueue } from './conversation-queue'
 import { createPiModels } from './pi-models'
 import { toPiModelSamplingParams } from './pi-stream-options'
 import { resolveGenerationParameters } from '../llm/generation-parameter-policy'
-import { buildToolsForAssistantType, confirmationToolNames, type AssistantDelegateHandler } from './tool-builder'
+import { buildToolsForAssistantType, confirmationToolNames, type AssistantDelegateHandler, type DelegatableAssistantType } from './tool-builder'
 import type { AgentConversationStore } from './agent-conversation-store'
 
 import type { CreativeStrategy } from '../../src/shared/reasoning-types'
@@ -179,8 +179,8 @@ export class AgentSessionManager {
   }
 
   /**
-   * 向架构助手或章节蓝图助手委派专门任务。
-   * 目标助手在自身独立会话中执行，完成后返回生成文本，并把设定/蓝图更新写入项目。
+   * 向专门领域助手（架构助手、章节蓝图助手或审稿助手）委派任务。
+   * 目标助手在自身独立会话中执行，完成后返回生成文本，并把设定/蓝图/审稿报告更新写入项目。
    * 引入消息排队机制（Mailbox Queue）：
    * - 优先复用目标助手的已有会话；
    * - 若目标助手已有会话处于忙碌状态，任务平滑压入其消息队列排队等待，严禁并发新建碎片会话；
@@ -188,7 +188,7 @@ export class AgentSessionManager {
    */
   async delegateTask(
     params: {
-      target: 'architect' | 'blueprint'
+      target: DelegatableAssistantType
       task: string
       context?: string
     },
@@ -243,8 +243,8 @@ export class AgentSessionManager {
         const language = this.options.resolveLanguage(targetConvId)
         const input = writingLanguageText(
           language,
-          `【来自项目助手的任务委派】\n\n任务内容：\n${params.task}${params.context ? `\n\n补充背景：\n${params.context}` : ''}\n\n请以你的专业角色全力完成此项推演。如有需要固化到项目的设定或蓝图，请直接调用相关工具写入项目，并给出清晰详尽的回复。`,
-          `[Task Delegated from Project Assistant]\n\nTask:\n${params.task}${params.context ? `\n\nAdditional Context:\n${params.context}` : ''}\n\nPlease complete this task thoroughly within your professional role. If settings or blueprints need to be persisted to the project, invoke your tools directly and provide a comprehensive response.`,
+          `【来自项目助手的任务委派】\n\n任务内容：\n${params.task}${params.context ? `\n\n补充背景：\n${params.context}` : ''}\n\n请以你的专业角色全力完成此项推演。如有需要固化到项目的设定、蓝图或审稿报告，请直接调用相关工具写入项目，并给出清晰详尽的回复。`,
+          `[Task Delegated from Project Assistant]\n\nTask:\n${params.task}${params.context ? `\n\nAdditional Context:\n${params.context}` : ''}\n\nPlease complete this task thoroughly within your professional role. If settings, blueprints, or review reports need to be persisted to the project, invoke your tools directly and provide a comprehensive response.`,
         )
 
         // 获取或创建目标助手会话

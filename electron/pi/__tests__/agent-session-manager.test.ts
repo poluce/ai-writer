@@ -444,4 +444,27 @@ describe('AgentSessionManager', () => {
     expect(result.conversationId).toMatch(/^blueprint-/)
     expect(openMock).toHaveBeenCalledWith(expect.stringMatching(/^blueprint-/), { create: true })
   })
+
+  it('creates a new review conversation and delegates task when target assistant is review', async () => {
+    const openMock = vi.fn(async (id: string) => ({
+      metadata: { id },
+      setName: vi.fn(),
+    }))
+    const store = fakeStore({
+      listConversations: vi.fn(async () => []),
+      open: openMock,
+    })
+    const { manager } = buildManager(store as never)
+
+    const result = await manager.delegateTask({
+      target: 'review',
+      task: '审查第1章草稿',
+      context: '检查逻辑漏洞',
+    }, 'parent-conv-1')
+
+    expect(result.success).toBe(true)
+    expect(result.conversationId).toMatch(/^review-/)
+    expect(openMock).toHaveBeenCalledWith(expect.stringMatching(/^review-/), { create: true })
+    expect(result.result).toBe('mocked text')
+  })
 })
