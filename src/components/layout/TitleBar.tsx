@@ -7,12 +7,12 @@ import {
   FolderOpen,
   Import,
   Languages,
+  LogOut,
   Menu,
   Minus,
   Moon,
   MoreHorizontal,
   ScrollText,
-  Settings,
   Sparkles,
   Square,
   Sun,
@@ -68,7 +68,6 @@ export default function TitleBar() {
   const tabs = useEditorStore(s => s.tabs)
   const draftLedgers = useEditorDraftLedgerStore(s => s.draftLedgers)
   const hasDirty = countUnsavedEditorItems(tabs, draftLedgers) > 0
-  const openSettings = useLayoutStore(s => s.openSettings)
   const openNewProject = useLayoutStore(s => s.openNewProject)
   const openExport = useLayoutStore(s => s.openExport)
   const openAuthorManuscriptImport = useLayoutStore(s => s.openAuthorManuscriptImport)
@@ -159,11 +158,14 @@ export default function TitleBar() {
     }
   }
 
+  const [showMainMenu, setShowMainMenu] = useState(false)
   const [showMoreMenu, setShowMoreMenu] = useState(false)
   const [showThemeMenu, setShowThemeMenu] = useState(false)
+  const mainMenuRef = useRef<HTMLDivElement>(null)
   const moreMenuRef = useRef<HTMLDivElement>(null)
   const themeMenuRef = useRef<HTMLDivElement>(null)
   const themeMenuPoint = useRef({ x: 0, y: 0 })
+  useOutsideClick(mainMenuRef, () => setShowMainMenu(false), showMainMenu)
   useOutsideClick(moreMenuRef, () => setShowMoreMenu(false), showMoreMenu)
   useOutsideClick(themeMenuRef, () => setShowThemeMenu(false), showThemeMenu)
 
@@ -245,9 +247,71 @@ export default function TitleBar() {
       </div>
 
       <div className="flex items-center gap-2 min-w-0 flex-1">
-        <button className="writer-command-button" title={t('common.settings')} onClick={() => openSettings()}>
-          <Menu size={17} strokeWidth={1.8} />
-        </button>
+        <div className="relative" ref={mainMenuRef}>
+          <button
+            className="writer-command-button"
+            title={text('主菜单', 'Main menu')}
+            aria-haspopup="menu"
+            aria-expanded={showMainMenu}
+            onClick={() => setShowMainMenu(v => !v)}
+          >
+            <Menu size={17} strokeWidth={1.8} />
+          </button>
+          {showMainMenu && (
+            <div
+              role="menu"
+              aria-label={text('主菜单', 'Main menu')}
+              className="absolute left-0 top-full z-50 mt-1 w-56 rounded-lg py-1"
+              style={{
+                backgroundColor: 'var(--color-sidebar)',
+                border: '1px solid var(--color-border)',
+                boxShadow: 'var(--shadow-popover)',
+                WebkitAppRegion: 'no-drag',
+              } as CSSProperties}
+            >
+              <div className="px-3 pb-0.5 pt-1 text-[10px] font-medium" style={{ color: 'var(--color-text-muted)' }}>
+                {text('项目', 'Project')}
+              </div>
+              <MenuItem
+                label={text('新建项目', 'New project')}
+                icon={<FilePlus2 size={13} />}
+                shortcut={isMac ? '⌘N' : 'Ctrl+N'}
+                onClick={() => { setShowMainMenu(false); openNewProject() }}
+              />
+              <MenuItem
+                label={text('打开项目…', 'Open project…')}
+                icon={<FolderOpen size={13} />}
+                shortcut={isMac ? '⌘O' : 'Ctrl+O'}
+                onClick={() => { setShowMainMenu(false); void handleOpenProject() }}
+              />
+              <div className="my-1 h-px mx-2" style={{ backgroundColor: 'var(--color-border)' }} />
+              <div className="px-3 pb-0.5 pt-1 text-[10px] font-medium" style={{ color: 'var(--color-text-muted)' }}>
+                {text('内容', 'Content')}
+              </div>
+              <MenuItem
+                label={text('导入原稿…', 'Import manuscript…')}
+                icon={<FileText size={13} />}
+                onClick={() => { setShowMainMenu(false); openAuthorManuscriptImport() }}
+              />
+              <MenuItem
+                label={t('project.imitationShort')}
+                icon={<Import size={13} />}
+                onClick={() => { setShowMainMenu(false); openNovelDeconstruction() }}
+              />
+              <MenuItem
+                label={t('common.export')}
+                icon={<Upload size={13} />}
+                onClick={() => { setShowMainMenu(false); openExport() }}
+              />
+              <div className="my-1 h-px mx-2" style={{ backgroundColor: 'var(--color-border)' }} />
+              <MenuItem
+                label={text('退出', 'Exit')}
+                icon={<LogOut size={13} />}
+                onClick={() => { setShowMainMenu(false); void ipc.invoke('window:close') }}
+              />
+            </div>
+          )}
+        </div>
 
         <span className="text-xs font-semibold opacity-90 whitespace-nowrap">{t('project.currentLabel')}</span>
         <button
@@ -404,14 +468,6 @@ export default function TitleBar() {
         >
           <Languages size={13} strokeWidth={1.5} />
           <span>{locale === 'zh-CN' ? 'EN' : '中文'}</span>
-        </button>
-        <button
-          onClick={() => openSettings()}
-          title={t('common.settings')}
-          className="writer-command-button"
-          style={{ minHeight: 24, padding: '0 7px' }}
-        >
-          <Settings size={13} strokeWidth={1.5} />
         </button>
         <div className="writer-command-divider h-5 w-px mx-1" />
         <button

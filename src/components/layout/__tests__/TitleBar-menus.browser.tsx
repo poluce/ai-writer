@@ -63,6 +63,24 @@ describe('TitleBar menus', () => {
     await expect.element(moreMenu.getByRole('button', { name: '备份' })).toBeVisible()
   })
 
+  it('turns the title-bar Menu button into the real main menu instead of a second Settings entry', async () => {
+    await act(async () => root.render(<TitleBar />))
+
+    // 设置入口只保留左栏底部：标题栏不再有第二个齿轮
+    expect(page.getByRole('button', { name: '设置' }).query()).toBeNull()
+
+    const trigger = page.getByRole('button', { name: '主菜单' })
+    await expect.element(trigger).toBeVisible()
+    await act(async () => trigger.click())
+
+    const mainMenu = page.getByRole('menu', { name: '主菜单' })
+    await expect.element(mainMenu.getByRole('button', { name: '新建项目' })).toBeVisible()
+    await expect.element(mainMenu.getByRole('button', { name: /打开项目/ })).toBeVisible()
+    await expect.element(mainMenu.getByRole('button', { name: '退出' })).toBeVisible()
+    // 主菜单不再重复设置入口
+    expect(mainMenu.getByRole('button', { name: '设置' }).query()).toBeNull()
+  })
+
   it('exposes the four themes as a menu instead of a single cycling icon', async () => {
     await act(async () => root.render(<TitleBar />))
 
