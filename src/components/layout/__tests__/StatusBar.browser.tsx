@@ -50,8 +50,9 @@ describe('StatusBar', () => {
     useLLMStore.setState({ models: [model({})], defaultModelId: 'model-1' })
     await act(async () => root.render(<StatusBar />))
 
-    // 品牌分段仍然在，作为状态栏正常渲染的基准
+    // 品牌分段仍然在，作为状态栏正常渲染的基准，并在软件名后展示版本号
     await expect.element(page.getByText('AI Writer')).toBeVisible()
+    await expect.element(page.getByText(`v${__APP_VERSION__}`)).toBeVisible()
     // 当前模型名不再展示，也不存在点击进设置的入口
     expect(page.getByText('Gemini 3.8 Flash').query()).toBeNull()
     expect(page.getByText('未配置模型').query()).toBeNull()
