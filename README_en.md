@@ -26,6 +26,10 @@
 
 > **Interface screenshots are pending an update.** The old v0.8.5 screenshots no longer match the current 0.1.4 UI and have been removed; new screenshots will be added from the actual build.
 
+> ## v0.1.5 — design v2 UI overhaul & review workspace lifecycle closure
+>
+> Switched default theme to light mode and adopted design v2 tokens with accessible WCAG AA contrast. Consolidated assistant modes into the panel header, removed the legacy 30px right toolbar, merged Home and Project into a unified entry point, and docked status tabs to a persistent bottom strip. Upgraded review reports into the main workspace with dual-pane annotated draft views and categorized boards, completed the full revision lifecycle, and implemented automated diagnostic log rotation with unified idempotency keys.
+
 > ## v0.1.4 — read-only review assistant & architectural decoupling
 >
 > Introduced a dedicated read-only review assistant with a permanent right toolbar entrance and session isolation. The assistant is guarded by a safe read-only toolset and executes reviews against a strictly typed `ReviewContract` with dirty-write protection. Decoupled Stores and Services via lifecycle hooks, eliminated mega-components (>1000 LOC), and enforced DAG layering contracts.
@@ -60,7 +64,7 @@
 - The Chinese long-form workflow connects blueprints, drafts, revisions, and final chapters; review is handled by the read-only review assistant.
 - Windows users receive an in-app reminder for new releases and can download, restart, and finish the update in one flow.
 
-See the [bilingual 0.1.4 notes](.release/notes/v0.1.4.md) for each change. Official installers are published through this repository's [GitHub Releases](https://github.com/poluce/ai-writer/releases/latest).
+See the [bilingual 0.1.5 notes](.release/notes/v0.1.5.md) for each change. Official installers are published through this repository's [GitHub Releases](https://github.com/poluce/ai-writer/releases/latest).
 
 > ## Feature baseline inherited from upstream (historical)
 >
@@ -175,7 +179,7 @@ The installer is not code-signed at present. Windows may show publisher or reput
 
 ### macOS
 
-0.1.4 does not ship a macOS installer yet: this release line qualifies and publishes Windows x64 first. macOS installers return in a later version, still as separate ARM64 and Intel builds.
+0.1.5 does not ship a macOS installer yet: this release line qualifies and publishes Windows x64 first. macOS installers return in a later version, still as separate ARM64 and Intel builds.
 
 ## Current limits
 
