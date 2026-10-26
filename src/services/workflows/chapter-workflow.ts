@@ -313,7 +313,24 @@ export function createRefineFromReviewWorkflow(
         },
       },
     ],
-    onComplete: { mode: 'open', openResult: async () => { } },
+    onComplete: {
+      mode: 'open',
+      openResult: async () => {
+        // 修稿完成后这份审稿报告的使命已结束：关闭对应 Tab，避免旧报告长期占据主工作区。
+        // 报告记录本身仍保留，由用户或助手显式删除（删除是破坏性动作，不自动执行）。
+        const { useEditorStore } = await import('../../stores/editor-store')
+        const editor = useEditorStore.getState()
+        for (const tab of editor.tabs) {
+          if (
+            tab.type === 'review-report'
+            && tab.reviewId === params.reviewSourceId
+            && tab.projectKey === params.projectPath
+          ) {
+            editor.closeTab(tab.id)
+          }
+        }
+      },
+    },
   }
 }
 

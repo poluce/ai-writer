@@ -7,6 +7,7 @@ import { projectSessionContextFromProject } from '../../shared/project-session-c
 import { openBuiltinEditor } from '../editor-file-openers'
 import { useEditorStore } from '../../stores/editor-store'
 import { useLocaleStore } from '../../stores/locale-store'
+import { openReviewReportTab } from '../editor/open-review-report'
 import { useProjectStore } from '../../stores/project-store'
 
 /**
@@ -185,25 +186,53 @@ export async function handleRendererAction(action: RendererAction): Promise<Rend
       }
       return
     }
+    case 'close_editor_tab': {
+      const project = useProjectStore.getState().currentProject
+      if (!project) return
+      const editor = useEditorStore.getState()
+      const matchingTabs = editor.tabs.filter(tab =>
+        tab.projectKey === project.path
+        && tab.type === 'review-report'
+        && (action.reviewId !== undefined
+          ? tab.reviewId === action.reviewId
+          : action.chapterNumber !== undefined && tab.chapterNumber === action.chapterNumber),
+      )
+      for (const tab of matchingTabs) editor.closeTab(tab.id)
+      return
+    }
+    case 'refresh_reviews': {
+      const project = useProjectStore.getState().currentProject
+      if (!project) return
+      const projectSession = projectSessionContextFromProject(project)
+      if (!projectSession) return
+      globalEventBus.emit('REFRESH_RESOURCE', {
+        resources: ['reviews'],
+        projectPath: project.path,
+        projectSession,
+      })
+      return
+    }
     case 'open_review_report': {
       const project = useProjectStore.getState().currentProject
       if (!project) return
-      const uiText = useLocaleStore.getState().text
-      useEditorStore.getState().openFile({
-        id: `review-${action.draftPath}-${action.reviewIndex}`,
-        name: uiText(
-          `审稿报告：第${action.chapterNumber}章`,
-          `Review report: Chapter ${action.chapterNumber}`,
-        ),
-        type: 'review-report',
-        content: action.content,
-        filePath: action.draftPath,
-        reportPath: action.reportPath,
-        reviewReport: action.content,
+      const projectSession = projectSessionContextFromProject(project)
+      if (!projectSession) return
+      openReviewReportTab({
+        review: {
+          id: action.reviewId,
+          reviewIndex: action.reviewIndex,
+          content: action.content,
+        },
         chapterNumber: action.chapterNumber,
+        draftFilePath: action.draftPath,
         chapterDir: action.chapterDir,
-        reviewId: action.reviewId,
         projectKey: project.path,
+      })
+      // 侧栏目录树按草稿挂载审查报告节点；新报告写入后需要重新拉取 reviews。
+      globalEventBus.emit('REFRESH_RESOURCE', {
+        resources: ['reviews', 'fileTree'],
+        projectPath: project.path,
+        projectSession,
       })
       return
     }

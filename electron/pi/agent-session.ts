@@ -316,6 +316,9 @@ export class AgentSession {
       }
     }
 
+    // 审稿报告删除不可撤销：无论哪种执行模式都必须用户确认。
+    if (toolName === 'delete_review_report') return true
+
     // 写作模式（writing）：创作类工具全部自动放行，零弹窗直接落盘；操作系统级 bash 命令保留底线确认
     if (this.executionMode === 'writing') {
       if (toolName === 'bash') return true
@@ -403,7 +406,6 @@ export class AgentSession {
         status: 'running',
       }
       this.toolCalls.set(event.toolCallId, call)
-      logInfo('AgentTool', 'start', { toolName: event.toolName, toolCallId: event.toolCallId })
       if (this.announcedToolCalls.has(event.toolCallId)) return
       this.announcedToolCalls.add(event.toolCallId)
       this.emit({ type: 'tool_call_start', call })
@@ -421,8 +423,6 @@ export class AgentSession {
           toolCallId: event.toolCallId,
           error: call.error,
         })
-      } else {
-        logInfo('AgentTool', 'completed', { toolName: event.toolName, toolCallId: event.toolCallId })
       }
       this.emit({ type: 'tool_call_complete', call })
     }))
@@ -456,11 +456,6 @@ export class AgentSession {
         this.emit({ type: 'error', message: '生成已中断' })
         return
       }
-      logInfo('Agent', 'run completed', {
-        conversationId: this.conversationId,
-
-        fullTextChars: this.fullText.length,
-      })
       this.emit({ type: 'done', fullText: this.fullText })
     }))
   }

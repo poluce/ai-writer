@@ -274,6 +274,26 @@ function generateDescription(
         `Will run skill operation: ${action || 'manage_skills'}`,
       )
     }
+    case 'manage_review_reports': {
+      const action = String(args.action ?? 'list')
+      if (action === 'close') {
+        const target = typeof args.review_id === 'number'
+          ? `ID ${args.review_id}`
+          : typeof args.chapter_number === 'number'
+            ? `第 ${args.chapter_number} 章`
+            : ''
+        return text(
+          `将关闭审稿报告 Tab（${target || '当前报告'}）`,
+          `Will close the review report tab (${target || 'current report'})`,
+        )
+      }
+      return text('将列出当前项目的审稿报告清单', 'Will list review reports in this project')
+    }
+    case 'delete_review_report':
+      return text(
+        `将永久删除审稿报告（ID: ${args.review_id ?? '？'}），删除不可撤销`,
+        `Will permanently delete review report (ID: ${args.review_id ?? '?'}); this cannot be undone`,
+      )
     case 'replace_draft_excerpt': {
       return text(
         `将替换第 ${args.chapter_number ?? '？'} 章草稿中的一段原文`,

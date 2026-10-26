@@ -58,6 +58,10 @@ export function buildMainProcessAgentSystemPrompt(
   1. 专门助手（审稿、蓝图、架构）在执行任务时，均会调用专属工具将成果写入项目并在中间【主工作区】展开全屏专业文档（例如审稿助手会弹出可交互勾选的《审稿报告》看板，蓝图助手会打开章节细纲卡片）。
   2. 收到委派完成通知后，你作为主助手，严禁在狭窄的侧边栏对话框全文复读几千字细则或问题清单！
   3. 你的回复必须是极简的导读卡片（3-5句话）：说明任务完成情况与核心定性评级，明确告知成果已在主工作区展开，引导作者移步主界面查阅原文对照并进行交互操作（如直接勾选需要采纳的意见后一键修稿）。
+- 【审稿报告生命周期】：
+  1. 审稿驱动的修稿完成并合并后，系统会自动关闭对应的审稿报告 Tab；报告记录仍保留在侧栏草稿节点下。
+  2. 需要清理报告时，先用 manage_review_reports（action: "list"）列出报告，向作者确认要删除的具体报告后，再调用 delete_review_report。
+  3. 删除不可撤销，并会解除历史修订与该报告的溯源关联；作者没有明确要求删除时，不要主动删除或批量清理。只想关闭已打开的报告 Tab 时，用 manage_review_reports（action: "close"）。
 - 委派后你会收到该助手的专业推演结果，你可以结合其结果继续为作者服务。`,
     `[Multi-Assistant Coordination]
 - As the lead project assistant, you can delegate specialized tasks using the delegate_to_assistant tool.
@@ -72,6 +76,10 @@ export function buildMainProcessAgentSystemPrompt(
   1. Specialized assistants persist deliverables and open full-screen documents directly in the main workspace (e.g., Review Assistant opens the interactive Review Report tab, Blueprint Assistant opens chapter blueprints).
   2. Upon receiving task completion, NEVER restate lengthy checklists or full settings in the narrow sidebar chat!
   3. Provide a concise 3-5 sentence card-style overview: summarize the core status and qualitative verdict, notify the author that the document has opened in the main workspace, and direct them to inspect and interact in the main editor.
+- [Review Report Lifecycle]:
+  1. Once a review-driven revision is completed and merged, the system automatically closes the matching review report tab; the report record stays attached to its draft node in the sidebar.
+  2. When cleanup is needed, first call manage_review_reports (action: "list"), ask the author which report to delete, then call delete_review_report.
+  3. Deletion is irreversible and detaches historical revision provenance links. Never delete or bulk-clean reports unless the author explicitly asks. To only close an open report tab, use manage_review_reports (action: "close").
 - You will receive their professional deduction results and can build upon them to assist the author.`,
   )
   const skillCatalog = buildSkillCatalogBlock(skills, language)

@@ -7,6 +7,8 @@ import { createNovelConfigTool } from './tools/novel-config.tool'
 import { createStoryArchitectureTool } from './tools/story-architecture.tool'
 import { createReadBlueprintTool } from './tools/read-blueprint.tool'
 import { createManageDraftsTool } from './tools/manage-drafts.tool'
+import { createManageReviewReportsTool } from './tools/manage-review-reports.tool'
+import { createDeleteReviewReportTool } from './tools/delete-review-report.tool'
 import { createReadProjectStateTool } from './tools/read-project-state.tool'
 import { createSearchKnowledgeTool } from './tools/search-knowledge.tool'
 import { createManageKnowledgeBaseTool } from './tools/manage-knowledge-base.tool'
@@ -46,6 +48,8 @@ export function sequentialToolNames(): ReadonlySet<string> {
     'manage_skills',
     'manage_knowledge_base',
     'submit_chapter_review',
+    'manage_review_reports',
+    'delete_review_report',
     'delegate_to_assistant',
   ])
 }
@@ -79,6 +83,8 @@ export function buildAgentTools(
     createReadArchitectureTool(language),
     createReadBlueprintTool(language),
     createManageDraftsTool(language, rendererAction),
+    createManageReviewReportsTool(language, rendererAction),
+    createDeleteReviewReportTool(language, rendererAction),
     createReadProjectStateTool(language),
     createSearchKnowledgeTool(language),
     createManageKnowledgeBaseTool(language),
@@ -225,6 +231,7 @@ export function confirmationToolNames(): ReadonlySet<string> {
     'manage_skills',
     'manage_knowledge_base',
     'submit_chapter_review',
+    'delete_review_report',
     'delegate_to_assistant',
   ])
 }

@@ -6,6 +6,7 @@ import { resetEditorSessionStores, useEditorStore } from '../editor-store'
 import { useLayoutStore } from '../layout-store'
 import { useProjectStore } from '../project-store'
 import { useLocaleStore } from '../locale-store'
+import { globalEventBus } from '../../shared/event-bus'
 
 const PROJECT_PATH = 'C:\\novels\\renderer-actions'
 const originalEditorState = useEditorStore.getState()
@@ -173,5 +174,81 @@ describe('tool completion → artifact cards', () => {
     }, context)
 
     expect(next.toolCalls?.[0].source).toBe('mcp')
+  })
+})
+
+describe('agent renderer actions — review report lifecycle', () => {
+  it('closes only the review tab that matches the requested review id', async () => {
+    useEditorStore.getState().openFile({
+      id: 'review-a',
+      name: '审查报告：第1章',
+      type: 'review-report',
+      content: '{}',
+      filePath: 'vela://draft/1',
+      chapterNumber: 1,
+      reviewId: 11,
+      projectKey: PROJECT_PATH,
+    })
+    useEditorStore.getState().openFile({
+      id: 'review-b',
+      name: '审查报告：第1章',
+      type: 'review-report',
+      content: '{}',
+      filePath: 'vela://draft/1',
+      chapterNumber: 1,
+      reviewId: 12,
+      projectKey: PROJECT_PATH,
+    })
+
+    await handleRendererAction({ type: 'close_editor_tab', target: 'review-report', reviewId: 11 })
+
+    const remainingReviewIds = useEditorStore.getState().tabs
+      .filter(tab => tab.type === 'review-report')
+      .map(tab => tab.reviewId)
+    expect(remainingReviewIds).toEqual([12])
+  })
+
+  it('closes review tabs by chapter number when no review id is provided', async () => {
+    useEditorStore.getState().openFile({
+      id: 'review-c1',
+      name: '审查报告：第1章',
+      type: 'review-report',
+      content: '{}',
+      filePath: 'vela://draft/1',
+      chapterNumber: 1,
+      reviewId: 21,
+      projectKey: PROJECT_PATH,
+    })
+    useEditorStore.getState().openFile({
+      id: 'review-c2',
+      name: '审查报告：第2章',
+      type: 'review-report',
+      content: '{}',
+      filePath: 'vela://draft/2',
+      chapterNumber: 2,
+      reviewId: 22,
+      projectKey: PROJECT_PATH,
+    })
+
+    await handleRendererAction({ type: 'close_editor_tab', target: 'review-report', chapterNumber: 1 })
+
+    expect(useEditorStore.getState().tabs.some(tab => tab.reviewId === 21)).toBe(false)
+    expect(useEditorStore.getState().tabs.some(tab => tab.reviewId === 22)).toBe(true)
+  })
+
+  it('refreshes review nodes through the resource event', async () => {
+    const payloads: Array<{ resources: string[]; projectPath: string }> = []
+    const dispose = globalEventBus.on('REFRESH_RESOURCE', payload => {
+      payloads.push({ resources: [...payload.resources], projectPath: payload.projectPath })
+    })
+    try {
+      await handleRendererAction({ type: 'refresh_reviews' })
+    } finally {
+      dispose()
+    }
+
+    expect(payloads).toHaveLength(1)
+    expect(payloads[0].resources).toEqual(['reviews'])
+    expect(payloads[0].projectPath).toBe(PROJECT_PATH)
   })
 })

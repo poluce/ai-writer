@@ -24,6 +24,8 @@
 | `bash`（harness） | 在固定 cwd 执行命令（默认 120s 超时） | 同上；写行为不在提交态保护内 | 是 |
 | `replace_draft_excerpt` | 按唯一原文精确替换草稿片段 | `DraftRepository` | 是 |
 | `open_editor` | 打开内置页面（config/blueprints/characters/architecture/synopsis）或只读查看项目文件 | 渲染层动作 | 是 |
+| `manage_review_reports` | 审稿报告生命周期（非破坏性）：list 列出报告元数据、close 关闭主工作区里的报告 Tab | `ReviewRepository.listSummaries` + 渲染层动作 | 否 |
+| `delete_review_report` | 永久删除一份审稿报告（不可撤销，解除修订溯源；待修稿引用时拒绝） | `ReviewRepository.deleteById` + 渲染层动作 | **是（任何执行模式）** |
 | `novel_config` | 读取或直接填充修改小说配置各个字段（大纲/世界观/金手指/人设等） | `ProjectCoreRepository` | 是（修改时） |
 | `story_architecture` | 读取或直接填充修改故事架构三大核心文档（premise/worldbuilding/synopsis） | `ProjectCoreRepository` | 是（修改时） |
 | `propose_chapter_blueprint` | 章节细纲全生命周期：单章/批量新建、字段/段落替换、范围/全书导出与删除 | `BlueprintRepository` | 计划模式需确认 / 写作模式自动执行 |
