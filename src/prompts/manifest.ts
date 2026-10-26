@@ -22,14 +22,6 @@ export const BUILTIN_PROMPT_STRUCTURES: readonly BuiltinPromptStructure[] = [
     },
   },
   {
-    key: "edit_selected_text",
-    variables: {
-      "edit_instruction": "作者对选中文本的处理要求",
-      "selected_text": "编辑器中选中的正文",
-    },
-    requiredContextVariables: ["selected_text"],
-  },
-  {
     key: "generate_novel_config_field",
     variables: {
       "existing_config": "已有小说配置",
@@ -107,17 +99,6 @@ export const BUILTIN_PROMPT_STRUCTURES: readonly BuiltinPromptStructure[] = [
       "step_guidance": "作者对本步骤的补充指导（可选）",
     },
     requiredContextVariables: ["premise", "character_dynamics", "world_building", "genre", "number_of_chapters", "word_number", "plot_structure_guide", "narrative_pov", "global_guidance"],
-  },
-  {
-    key: "chapter_blueprint",
-    variables: {
-      "novel_architecture": "全书设定与大纲（故事前提+角色图谱+世界观+情节大纲）",
-      "number_of_chapters": "总章数",
-      "global_guidance": "全局写作要求",
-      "genre": "小说类型",
-      "pacing_guidance": "节奏/风格指导（可选）",
-    },
-    requiredContextVariables: ["novel_architecture", "number_of_chapters", "global_guidance", "genre", "pacing_guidance"],
   },
   {
     key: "chapter_blueprint_chunk",
@@ -227,13 +208,6 @@ export const BUILTIN_PROMPT_STRUCTURES: readonly BuiltinPromptStructure[] = [
     },
   },
   {
-    key: "extract_initial_characters",
-    variables: {
-      "character_dynamics": "角色图谱纯文本",
-      "genre": "小说类型",
-    },
-  },
-  {
     key: "infer_single_chapter_blueprint",
     variables: {
       "chapter_content": "本章正文全文",
@@ -260,7 +234,6 @@ export const BUILTIN_PROMPT_STRUCTURES: readonly BuiltinPromptStructure[] = [
 export const EDITABLE_PROMPT_KEYS: readonly string[] = [
   "assistant_writing_identity",
   "generate_novel_config_field",
-  "edit_selected_text",
   "generate_global_config",
   "premise",
   "character_dynamics",
@@ -270,7 +243,6 @@ export const EDITABLE_PROMPT_KEYS: readonly string[] = [
   "first_chapter_draft",
   "next_chapter_draft",
   "refine_chapter",
-  "consistency_check",
   "analyze_writing_style",
   "refine_from_review",
   "generate_chapter_notes",
@@ -287,13 +259,11 @@ export const EDITABLE_PROMPT_KEYS: readonly string[] = [
  */
 export const CORE_LOCALIZED_BUILTIN_PROMPT_KEYS: readonly string[] = [
   "generate_novel_config_field",
-  "edit_selected_text",
   "generate_global_config",
   "premise",
   "character_dynamics",
   "world_building",
   "synopsis",
-  "chapter_blueprint",
   "chapter_blueprint_chunk",
   "first_chapter_draft",
   "next_chapter_draft",
@@ -304,7 +274,6 @@ export const CORE_LOCALIZED_BUILTIN_PROMPT_KEYS: readonly string[] = [
   "update_character_cards",
   "analyze_writing_style",
   "infer_novel_config",
-  "extract_initial_characters",
   "infer_novel_config_with_vectors",
   "infer_single_chapter_blueprint",
 ]

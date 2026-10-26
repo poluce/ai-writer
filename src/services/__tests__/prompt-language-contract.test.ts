@@ -10,13 +10,11 @@ import { ArchitecturePromptBuilder, DirectoryPromptBuilder } from '../prompts/pr
 
 const REQUIRED_CORE_KEYS = [
   'generate_novel_config_field',
-  'edit_selected_text',
   'generate_global_config',
   'premise',
   'character_dynamics',
   'world_building',
   'synopsis',
-  'chapter_blueprint',
   'chapter_blueprint_chunk',
   'first_chapter_draft',
   'next_chapter_draft',
@@ -27,7 +25,6 @@ const REQUIRED_CORE_KEYS = [
   'update_character_cards',
   'analyze_writing_style',
   'infer_novel_config',
-  'extract_initial_characters',
   'infer_novel_config_with_vectors',
   'infer_single_chapter_blueprint',
 ] as const

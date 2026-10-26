@@ -5,7 +5,6 @@ import { BUILTIN_PROMPTS, EDITABLE_PROMPT_KEYS, getBuiltinPromptTemplate, getPro
 
 const expectedPromptVariables: Record<string, string[]> = {
   assistant_writing_identity: ['mode_instruction'],
-  edit_selected_text: ['edit_instruction', 'selected_text'],
   generate_novel_config_field: ['existing_config', 'field_label', 'field_requirements'],
   generate_global_config: ['user_idea', 'number_of_chapters', 'word_number'],
   premise: [
@@ -54,7 +53,6 @@ const expectedPromptVariables: Record<string, string[]> = {
     'global_guidance',
     'step_guidance',
   ],
-  chapter_blueprint: ['novel_architecture', 'number_of_chapters', 'global_guidance', 'genre', 'pacing_guidance'],
   chapter_blueprint_chunk: [
     'novel_architecture',
     'chapter_list',
@@ -106,7 +104,6 @@ const expectedPromptVariables: Record<string, string[]> = {
   generate_chapter_notes: ['chapter_content', 'chapter_number', 'chapter_title'],
   update_character_cards: ['chapter_content', 'chapter_number', 'existing_cards_json'],
   infer_novel_config: ['sample_content'],
-  extract_initial_characters: ['character_dynamics', 'genre'],
   infer_single_chapter_blueprint: ['chapter_content', 'chapter_number', 'chapter_title', 'novel_config_summary'],
   infer_novel_config_with_vectors: [
     'sampled_worldview',
@@ -134,7 +131,6 @@ const expectedJsonFields: Record<string, string[]> = {
     'globalGuidance',
     'writingStyle',
   ],
-  chapter_blueprint: ['blueprints', 'chapterNumber', 'title', 'purpose', 'characters', 'keyEvents', 'suspenseHook'],
   chapter_blueprint_chunk: ['blueprints', 'chapterNumber', 'title', 'purpose', 'characters', 'keyEvents', 'suspenseHook'],
   consistency_check: ['items', 'category', 'severity', 'quote', 'description', 'summary'],
   update_character_cards: [
@@ -167,24 +163,6 @@ const expectedJsonFields: Record<string, string[]> = {
     'synopsis',
     'target',
     'relation',
-    'currentState',
-  ],
-  extract_initial_characters: [
-    'characters',
-    'name',
-    'role',
-    'gender',
-    'age',
-    'appearance',
-    'personality',
-    'background',
-    'abilities',
-    'motivation',
-    'relationships',
-    'target',
-    'relation',
-    'arc',
-    'notes',
     'currentState',
   ],
   infer_single_chapter_blueprint: ['chapterNumber', 'title', 'role', 'purpose', 'characters', 'keyEvents', 'suspenseHook'],
@@ -227,16 +205,15 @@ const optionalGuidanceLabels = [
 ]
 
 describe('built-in model-neutral prompt contract', () => {
-  it('does not advertise prompt editors that have no production consumer', () => {
-    expect(EDITABLE_PROMPT_KEYS).not.toContain('chapter_blueprint')
-    expect(EDITABLE_PROMPT_KEYS).not.toContain('extract_initial_characters')
-  })
-  it('keeps character-card extraction on the submit-tool contract', () => {
-    const text = promptText('extract_initial_characters')
-
-    expect(text).toContain('提交工具')
-    expect(text).toContain('characters')
-    expect(text).toContain('空的 characters 列表')
+  it('drops templates that no runtime path consumes and hides offline-only ones from editors', () => {
+    const builtinKeys = BUILTIN_PROMPTS.map((template) => template.key)
+    for (const key of ['edit_selected_text', 'chapter_blueprint', 'extract_initial_characters']) {
+      expect(builtinKeys, `${key} must not be registered without a production consumer`).not.toContain(key)
+      expect(EDITABLE_PROMPT_KEYS, `${key} must not stay editable`).not.toContain(key)
+    }
+    // consistency_check 只服务离线续写校准脚本，不再向用户暴露编辑入口
+    expect(builtinKeys).toContain('consistency_check')
+    expect(EDITABLE_PROMPT_KEYS).not.toContain('consistency_check')
   })
 
   it('keeps system roles free of overclaiming slogan identities', () => {
@@ -430,7 +407,7 @@ describe('built-in model-neutral prompt contract', () => {
   })
 
   it('carries explicit author facts through architecture and blueprint prompts', () => {
-    for (const key of ['character_dynamics', 'world_building', 'synopsis', 'chapter_blueprint', 'chapter_blueprint_chunk']) {
+    for (const key of ['character_dynamics', 'world_building', 'synopsis', 'chapter_blueprint_chunk']) {
       expect(promptText(key), `${key} should preserve author facts`).toContain('作者明确设定')
     }
   })
