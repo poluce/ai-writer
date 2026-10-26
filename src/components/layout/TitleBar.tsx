@@ -11,7 +11,6 @@ import {
   Menu,
   Minus,
   Moon,
-  MoreHorizontal,
   ScrollText,
   Sparkles,
   Square,
@@ -159,14 +158,11 @@ export default function TitleBar() {
   }
 
   const [showMainMenu, setShowMainMenu] = useState(false)
-  const [showMoreMenu, setShowMoreMenu] = useState(false)
   const [showThemeMenu, setShowThemeMenu] = useState(false)
   const mainMenuRef = useRef<HTMLDivElement>(null)
-  const moreMenuRef = useRef<HTMLDivElement>(null)
   const themeMenuRef = useRef<HTMLDivElement>(null)
   const themeMenuPoint = useRef({ x: 0, y: 0 })
   useOutsideClick(mainMenuRef, () => setShowMainMenu(false), showMainMenu)
-  useOutsideClick(moreMenuRef, () => setShowMoreMenu(false), showMoreMenu)
   useOutsideClick(themeMenuRef, () => setShowThemeMenu(false), showThemeMenu)
 
   /** 从点击位置做圆形展开的主题切换；不支持 View Transition 时直接切换。 */
@@ -303,6 +299,12 @@ export default function TitleBar() {
                 icon={<Upload size={13} />}
                 onClick={() => { setShowMainMenu(false); openExport() }}
               />
+              <MenuItem
+                label={t('common.backup')}
+                icon={<Archive size={13} />}
+                disabled
+                onClick={() => {}}
+              />
               <div className="my-1 h-px mx-2" style={{ backgroundColor: 'var(--color-border)' }} />
               <MenuItem
                 label={text('退出', 'Exit')}
@@ -330,65 +332,6 @@ export default function TitleBar() {
           <CheckCircle2 size={14} strokeWidth={1.9} />
           {hasDirty ? t('save.modified') : t('save.saved')}
         </span>
-
-        <div className="writer-command-divider h-5 w-px" />
-
-        {/* 高频动作留在标题栏 */}
-        <button className="writer-command-button" title={t('project.new')} onClick={openNewProject}>
-          <FilePlus2 size={14} strokeWidth={1.75} />
-          {t('common.new')}
-        </button>
-        <button className="writer-command-button" title={t('project.open')} onClick={handleOpenProject}>
-          <FolderOpen size={14} strokeWidth={1.75} />
-          {t('common.open')}
-        </button>
-
-        {/* 低频动作收进「更多」，标题栏不再一排同级按钮 */}
-        <div className="relative" ref={moreMenuRef}>
-          <button
-            className="writer-command-button"
-            title={text('更多操作', 'More actions')}
-            onClick={() => setShowMoreMenu(v => !v)}
-          >
-            <MoreHorizontal size={14} strokeWidth={1.75} />
-            {text('更多', 'More')}
-          </button>
-          {showMoreMenu && (
-            <div
-              role="menu"
-              aria-label={text('更多操作', 'More actions')}
-              className="absolute left-0 top-full z-50 mt-1 w-44 rounded-lg py-1"
-              style={{
-                backgroundColor: 'var(--color-sidebar)',
-                border: '1px solid var(--color-border)',
-                boxShadow: 'var(--shadow-popover)',
-                WebkitAppRegion: 'no-drag',
-              } as CSSProperties}
-            >
-              <MenuItem
-                label={t('common.backup')}
-                icon={<Archive size={13} />}
-                disabled
-                onClick={() => {}}
-              />
-              <MenuItem
-                label={text('导入原稿', 'Import Manuscript')}
-                icon={<FileText size={13} />}
-                onClick={() => { setShowMoreMenu(false); openAuthorManuscriptImport() }}
-              />
-              <MenuItem
-                label={t('project.imitationShort')}
-                icon={<Import size={13} />}
-                onClick={() => { setShowMoreMenu(false); openNovelDeconstruction() }}
-              />
-              <MenuItem
-                label={t('common.export')}
-                icon={<Upload size={13} />}
-                onClick={() => { setShowMoreMenu(false); openExport() }}
-              />
-            </div>
-          )}
-        </div>
       </div>
 
       <div className="flex items-center gap-1 flex-shrink-0">

@@ -43,30 +43,14 @@ afterEach(async () => {
 })
 
 describe('TitleBar menus', () => {
-  it('keeps only high-frequency actions inline and folds the rest into More', async () => {
+  it('keeps the title bar free of duplicate commands and exposes them from the main menu', async () => {
     await act(async () => root.render(<TitleBar />))
 
-    // 高频动作仍在标题栏
-    await expect.element(page.getByRole('button', { name: '新建', exact: true })).toBeVisible()
-    await expect.element(page.getByRole('button', { name: '打开', exact: true })).toBeVisible()
-
-    // 低频动作不再直接排在标题栏上
-    expect(page.getByRole('button', { name: '导入原稿' }).query()).toBeNull()
-    expect(page.getByRole('button', { name: '拆解仿写' }).query()).toBeNull()
-    expect(page.getByRole('button', { name: '导出' }).query()).toBeNull()
-
-    // 打开「更多」后才出现
-    await act(async () => page.getByRole('button', { name: '更多', exact: true }).click())
-    const moreMenu = page.getByRole('menu')
-    await expect.element(moreMenu.getByRole('button', { name: '导入原稿' })).toBeVisible()
-    await expect.element(moreMenu.getByRole('button', { name: '导出' })).toBeVisible()
-    await expect.element(moreMenu.getByRole('button', { name: '备份' })).toBeVisible()
-  })
-
-  it('turns the title-bar Menu button into the real main menu instead of a second Settings entry', async () => {
-    await act(async () => root.render(<TitleBar />))
-
-    // 设置入口只保留左栏底部：标题栏不再有第二个齿轮
+    // 标题栏不再重复命令入口：新建 / 打开 / 更多 全部收进主菜单
+    expect(page.getByRole('button', { name: '新建', exact: true }).query()).toBeNull()
+    expect(page.getByRole('button', { name: '打开', exact: true }).query()).toBeNull()
+    expect(page.getByRole('button', { name: '更多', exact: true }).query()).toBeNull()
+    // 设置入口只保留左栏底部：标题栏没有第二个齿轮
     expect(page.getByRole('button', { name: '设置' }).query()).toBeNull()
 
     const trigger = page.getByRole('button', { name: '主菜单' })
@@ -74,9 +58,9 @@ describe('TitleBar menus', () => {
     await act(async () => trigger.click())
 
     const mainMenu = page.getByRole('menu', { name: '主菜单' })
-    await expect.element(mainMenu.getByRole('button', { name: '新建项目' })).toBeVisible()
-    await expect.element(mainMenu.getByRole('button', { name: /打开项目/ })).toBeVisible()
-    await expect.element(mainMenu.getByRole('button', { name: '退出' })).toBeVisible()
+    for (const name of [/新建项目/, /打开项目/, /导入原稿/, /拆解仿写/, /导出/, /备份/, /退出/]) {
+      await expect.element(mainMenu.getByRole('button', { name })).toBeVisible()
+    }
     // 主菜单不再重复设置入口
     expect(mainMenu.getByRole('button', { name: '设置' }).query()).toBeNull()
   })
