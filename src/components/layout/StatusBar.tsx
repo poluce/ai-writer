@@ -1,22 +1,15 @@
 import { useState, useEffect } from 'react'
-import { Wifi, CheckCircle2, FolderOpen } from 'lucide-react'
+import { CheckCircle2, FolderOpen } from 'lucide-react'
 import { useProjectStore } from '../../stores/project-store'
-import { useLLMStore } from '../../stores/llm-store'
 import { useLayoutStore } from '../../stores/layout-store'
 import { useWorkflowStore } from '../../stores/workflow-store'
 import { useLocaleStore } from '../../stores/locale-store'
 import { APP_BRAND } from '../../shared/brand'
 import { publicAssetUrl } from '../../shared/public-asset'
 
-/** 底部状态栏 — JetBrains 风格：22px、深灰底、多分段、hover 可点击感 */
+/** 底部状态栏 — JetBrains 风格：22px、深灰底、多分段、任务胶囊可点击 */
 export default function StatusBar() {
   const currentProject = useProjectStore((s) => s.currentProject)
-  const models = useLLMStore(s => s.models)
-  const defaultModelId = useLLMStore(s => s.defaultModelId)
-  const openSettings = useLayoutStore(s => s.openSettings)
-  const defaultModel = models.find(
-    (m) => m.id === defaultModelId && (m.purposes?.some((p) => p !== 'embedding') ?? true)
-  )
   const text = useLocaleStore(s => s.text)
 
   return (
@@ -43,27 +36,9 @@ export default function StatusBar() {
         )}
       </div>
 
-      {/* 右侧：AI 胶囊 + 模型名 */}
+      {/* 右侧：AI 任务胶囊 */}
       <div className="flex items-center h-full">
-        {/* AI 任务胶囊指示器（右下角） */}
         <AITaskCapsule />
-
-        {defaultModel ? (
-          <StatusBarSegment
-            title={text(`当前模型：${defaultModel.name}`, `Current model: ${defaultModel.name}`)}
-            onClick={() => openSettings('llm')}
-          >
-            <Wifi size={11} />
-            <span className="opacity-80 max-w-[120px] truncate">{defaultModel.name}</span>
-          </StatusBarSegment>
-        ) : (
-          <StatusBarSegment
-            title={text('点击配置模型', 'Click to configure a model')}
-            onClick={() => openSettings('llm')}
-          >
-            <span className="opacity-50">{text('未配置模型', 'No model configured')}</span>
-          </StatusBarSegment>
-        )}
       </div>
     </div>
   )
