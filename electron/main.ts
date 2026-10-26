@@ -40,6 +40,7 @@ import {
 import { configureSingleInstanceRuntime } from './services/single-instance-runtime'
 import { installWindowCloseGuard } from './controllers/window-controller'
 import { appendVelaLog } from './utils/app-log'
+import { createRendererConsoleRecord } from './utils/renderer-console'
 import { describeError } from '../src/shared/fail-log'
 
 import { fileURLToPath } from 'node:url'
@@ -223,14 +224,9 @@ function createWindow(): void {
   })
 
   win.webContents.on('console-message', (_event, level, message, line, sourceId) => {
-    appendVelaLog({
-      ts: new Date().toISOString(),
-      level: level >= 2 ? 'error' : 'info',
-      scope: 'RendererConsole',
-      event: message,
-      line,
-      sourceId,
-    })
+    // 只把 warning/error 写入诊断日志；info/verbose 和 [Vela ...] 结构化失败不重复记。
+    const record = createRendererConsoleRecord(level, message, line, sourceId)
+    if (record) appendVelaLog(record)
   })
 
   win.webContents.on('render-process-gone', (_event, details) => {

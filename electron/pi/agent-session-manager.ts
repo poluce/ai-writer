@@ -116,19 +116,6 @@ export class AgentSessionManager {
     const queue = this.getQueue(conversationId)
     return queue.enqueue(async () => {
       try {
-        const profile = this.options.resolveModel(modelId, assistantType)
-        logInfo('Agent', 'prompt start', {
-          conversationId,
-          modelId,
-          modelName: profile?.modelName,
-          protocol: profile?.protocol,
-          provider: profile?.provider,
-          thinkingLevel: thinkingLevel ?? 'off',
-          executionMode: executionMode ?? 'plan',
-          assistantType,
-          chars: input.length,
-          pendingQueued: queue.pendingCount,
-        })
         const session = await this.getOrCreate(conversationId, modelId, history, skills, thinkingLevel, assistantType)
         const language = this.options.resolveLanguage(conversationId)
         session.setEditorSnapshot(editorSnapshot)
@@ -141,7 +128,6 @@ export class AgentSessionManager {
         })
         await session.setTools(tools)
         await session.prompt(input)
-        logInfo('Agent', 'prompt finished', { conversationId, modelId, assistantType })
         return { success: true }
       } catch (error) {
         logFailure('Agent', 'prompt failed', error, { conversationId, modelId })
@@ -465,13 +451,6 @@ export class AgentSessionManager {
       session: harnessSession,
       conversationId,
     })
-    logInfo('Agent', 'agent session opened', {
-      conversationId,
-      durable: true,
-      modelName: profile.modelName,
-      thinkingLevel,
-    })
-
     // Pi 会话为空（首次运行、旧数据、文件被删）才用渲染层发来的纯文本历史播种。
     if (history && history.length > 0 && await session.transcriptLength() === 0) {
       await session.seedHistory(history)

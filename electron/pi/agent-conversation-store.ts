@@ -11,7 +11,7 @@ import { NodeExecutionEnv } from '@earendil-works/pi-agent-core/harness/env/node
 import { laneConfig } from '@earendil-works/pi-agent-core/harness/session'
 
 import { DIR_VELA_INTERNAL } from '../../src/shared/project-paths'
-import { logFailure, logInfo } from '../../src/shared/fail-log'
+import { logFailure } from '../../src/shared/fail-log'
 import { MODELS_CONFIG_PATH, readJsonFile } from '../utils/config-utils'
 import { AGENT_LANE_NAME, VELA_SESSION_CONFIG } from './agent-session'
 import { isAssistantThinkingLevel, type AssistantThinkingLevel } from '../../src/shared/agent-runtime'
@@ -403,10 +403,6 @@ export class AgentConversationStore {
       )
       this.opened.set(conversationId, session)
       this.known.set(conversationId, session.metadata)
-      logInfo('Agent', 'conversation session created', {
-        conversationId,
-        path: session.metadata.path,
-      })
       return session
     } catch (error) {
       logFailure('Agent', 'failed to open conversation session', error, { conversationId })
