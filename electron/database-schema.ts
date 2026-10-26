@@ -8,6 +8,8 @@ import { countDraftUnits } from "../src/shared/draft-units"
 import { parseHumanConfirmedReviewSnapshot } from "../src/shared/human-confirmed-review"
 import { migrateDraftUnitCounts } from "./services/draft-unit-migration"
 import { ensureCharacterRosterSchema } from "./repositories/character-roster-schema"
+import { migrateLegacyReceiptTables } from "./services/receipt-table-migration"
+import { IDEMPOTENCY_RETENTION_DAYS } from "../src/shared/idempotency"
 
 export function ensureProjectSchema(db: BetterSqlite3.Database, importSourceSecret?: Buffer) {
   db.exec(`
@@ -217,24 +219,19 @@ export function ensureProjectSchema(db: BetterSqlite3.Database, importSourceSecr
     CREATE INDEX IF NOT EXISTS idx_chapter_deletion_status
       ON chapter_deletion_operations(status);
 
-    -- Imported finalized chapters are committed as one idempotent unit. The
-    -- stored receipt is replayed only after the immutable draft/outbox facts
-    -- have been verified again.
-    CREATE TABLE IF NOT EXISTS finalized_draft_import_operations (
-      operation_id TEXT PRIMARY KEY,
-      payload_hash TEXT NOT NULL,
-      receipt_json TEXT NOT NULL,
-      created_at TEXT DEFAULT (datetime('now'))
+    -- 通用幂等键：所有需要“重试只生效一次”的写操作共用一张表，
+    -- (scope, key) 唯一定位，request_hash 防止同 key 绑定不同载荷，
+    -- response_json 保存首次执行结果；仅保留 90 天。
+    CREATE TABLE IF NOT EXISTS idempotency_keys (
+      scope TEXT NOT NULL,
+      key TEXT NOT NULL,
+      request_hash TEXT NOT NULL,
+      response_json TEXT NOT NULL DEFAULT '{}',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (scope, key)
     );
-
-    -- Global facts inferred during import are committed as one idempotent
-    -- unit: project core plus the authoritative structured character roster.
-    CREATE TABLE IF NOT EXISTS import_global_fact_operations (
-      operation_id TEXT PRIMARY KEY,
-      payload_hash TEXT NOT NULL,
-      receipt_json TEXT NOT NULL,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
+    CREATE INDEX IF NOT EXISTS idx_idempotency_keys_created
+      ON idempotency_keys(created_at);
 
     -- ============================================================
     -- 6. revisions — 修稿（派生自 draft）
@@ -1073,6 +1070,12 @@ export function ensureProjectSchema(db: BetterSqlite3.Database, importSourceSecr
   } catch (error) {
     console.warn('[Vela DB] skipped cs_updated_at_chapter sentinel migration', error)
   }
+
+  // 旧版领域收据表迁移到通用幂等表（幂等：旧表不存在时跳过）。
+  migrateLegacyReceiptTables(db)
+  // 幂等键只保留最近 90 天，项目打开时统一清理，避免再次只增不减。
+  db.prepare("DELETE FROM idempotency_keys WHERE created_at < datetime('now', ?)")
+    .run(`-${IDEMPOTENCY_RETENTION_DAYS} days`)
 
   migrateDraftUnitCounts(db)
 }

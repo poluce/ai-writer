@@ -7,6 +7,7 @@
 import { createHash } from 'node:crypto'
 import type BetterSqlite3 from 'better-sqlite3'
 import { getProjectDb } from '../database'
+import { IdempotencyRepository, IDEMPOTENCY_SCOPES } from './idempotency-repository'
 import { ContentRepository } from './content-repository'
 import type { DraftSourceDependency } from '../../src/shared/draft-source-dependency'
 import type { DraftFull, DraftMeta } from '../../src/shared/contracts/draft'
@@ -508,7 +509,7 @@ export class DraftRepository {
         if (!db) throw new Error('[DraftRepository] 数据库未连接')
 
         const tx = db.transaction(() => {
-            db.prepare('DELETE FROM finalized_draft_import_operations').run()
+            IdempotencyRepository.deleteScope(IDEMPOTENCY_SCOPES.finalizedDraftImport)
             db.prepare('DELETE FROM post_process_steps').run()
             db.prepare('DELETE FROM post_process_runs').run()
             db.prepare('DELETE FROM reviews').run()

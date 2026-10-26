@@ -460,38 +460,41 @@ describe('BlueprintRepository range commit', () => {
       })
       const authoritativeRoster = authoritativeCommit.snapshot
 
+      const syncOperationId = committed.characterSyncOperation.operationId
       const restoreEvidence = () => db.prepare(`
-        UPDATE character_roster_operations
-        SET payload_hash = ?, committed_revision = ?, projection_hash = ?
-        WHERE operation_id = ?
+        UPDATE idempotency_keys
+        SET request_hash = ?, response_json = ?
+        WHERE scope = 'character-roster' AND key = ?
       `).run(
         authoritativeCommit.payloadHash,
-        authoritativeCommit.revision,
-        authoritativeCommit.snapshot.projectionHash,
-        committed.characterSyncOperation.operationId,
+        JSON.stringify({
+          revision: authoritativeCommit.revision,
+          projectionHash: authoritativeCommit.snapshot.projectionHash,
+        }),
+        syncOperationId,
       )
       db.prepare(`
-        UPDATE character_roster_operations SET payload_hash = 'forged'
-        WHERE operation_id = ?
-      `).run(committed.characterSyncOperation.operationId)
+        UPDATE idempotency_keys SET request_hash = 'forged'
+        WHERE scope = 'character-roster' AND key = ?
+      `).run(syncOperationId)
       expect(() => BlueprintRepository.completeCharacterSyncOperation(
-        committed.characterSyncOperation.operationId,
+        syncOperationId,
       )).toThrow(/操作证据/u)
       restoreEvidence()
       db.prepare(`
-        UPDATE character_roster_operations SET committed_revision = 999
-        WHERE operation_id = ?
-      `).run(committed.characterSyncOperation.operationId)
+        UPDATE idempotency_keys SET response_json = ?
+        WHERE scope = 'character-roster' AND key = ?
+      `).run(JSON.stringify({ revision: 999, projectionHash: authoritativeRoster.projectionHash }), syncOperationId)
       expect(() => BlueprintRepository.completeCharacterSyncOperation(
-        committed.characterSyncOperation.operationId,
+        syncOperationId,
       )).toThrow(/操作证据/u)
       restoreEvidence()
       db.prepare(`
-        UPDATE character_roster_operations SET projection_hash = 'forged'
-        WHERE operation_id = ?
-      `).run(committed.characterSyncOperation.operationId)
+        UPDATE idempotency_keys SET response_json = ?
+        WHERE scope = 'character-roster' AND key = ?
+      `).run(JSON.stringify({ revision: authoritativeCommit.revision, projectionHash: 'forged' }), syncOperationId)
       expect(() => BlueprintRepository.completeCharacterSyncOperation(
-        committed.characterSyncOperation.operationId,
+        syncOperationId,
       )).toThrow(/操作证据/u)
       restoreEvidence()
 

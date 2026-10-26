@@ -241,7 +241,7 @@ describe('FinalizedDraftImportRepository transaction seam', () => {
     expect(db.prepare('SELECT COUNT(*) AS count FROM contents').get()).toEqual({ count: 0 })
     expect(db.prepare('SELECT COUNT(*) AS count FROM drafts').get()).toEqual({ count: 0 })
     expect(db.prepare('SELECT COUNT(*) AS count FROM finalization_outbox').get()).toEqual({ count: 0 })
-    expect(db.prepare('SELECT COUNT(*) AS count FROM finalized_draft_import_operations').get())
+    expect(db.prepare("SELECT COUNT(*) AS count FROM idempotency_keys WHERE scope = 'finalized-draft-import'").get())
       .toEqual({ count: 0 })
   })
 
@@ -255,7 +255,7 @@ describe('FinalizedDraftImportRepository transaction seam', () => {
     expect(db.prepare('SELECT COUNT(*) AS count FROM contents').get()).toEqual({ count: 9 })
     expect(db.prepare('SELECT COUNT(*) AS count FROM drafts').get()).toEqual({ count: 9 })
     expect(db.prepare('SELECT COUNT(*) AS count FROM finalization_outbox').get()).toEqual({ count: 9 })
-    expect(db.prepare('SELECT COUNT(*) AS count FROM finalized_draft_import_operations').get())
+    expect(db.prepare("SELECT COUNT(*) AS count FROM idempotency_keys WHERE scope = 'finalized-draft-import'").get())
       .toEqual({ count: 1 })
   })
 

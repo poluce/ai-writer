@@ -148,9 +148,10 @@ function rawRosterStorage() {
       WHERE id = 'main'
     `).get(),
     operations: db.prepare(`
-      SELECT operation_id, payload_hash, committed_revision, projection_hash, created_at
-      FROM character_roster_operations
-      ORDER BY operation_id
+      SELECT scope, key AS operation_id, request_hash AS payload_hash, response_json, created_at
+      FROM idempotency_keys
+      WHERE scope = 'character-roster'
+      ORDER BY key
     `).all(),
   }
 }
@@ -498,7 +499,7 @@ describe('CharacterRosterRepository public read/commit seam', () => {
       )),
     })
     const operationCountBeforeReplay = (db.prepare(
-      'SELECT COUNT(*) AS count FROM character_roster_operations',
+      "SELECT COUNT(*) AS count FROM idempotency_keys WHERE scope = 'character-roster'",
     ).get() as { count: number }).count
 
     const replay = CharacterRosterRepository.commit(commitRequest())
@@ -517,7 +518,7 @@ describe('CharacterRosterRepository public read/commit seam', () => {
     })
     expect(replay.revision).toBe(replay.snapshot.revision)
     expect(replay.snapshot).toEqual(second.snapshot)
-    expect((db.prepare('SELECT COUNT(*) AS count FROM character_roster_operations').get() as { count: number }).count)
+    expect((db.prepare("SELECT COUNT(*) AS count FROM idempotency_keys WHERE scope = 'character-roster'").get() as { count: number }).count)
       .toBe(operationCountBeforeReplay)
   })
 
@@ -602,7 +603,7 @@ describe('CharacterRosterRepository public read/commit seam', () => {
   it('rolls back cards, projection, revision and receipt together when the final receipt write faults', () => {
     db.exec(`
       CREATE TRIGGER character_roster_test_receipt_fault
-      BEFORE INSERT ON character_roster_operations
+      BEFORE INSERT ON idempotency_keys
       BEGIN
         SELECT RAISE(ABORT, 'injected receipt fault');
       END;

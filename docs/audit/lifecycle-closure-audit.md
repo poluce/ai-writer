@@ -15,8 +15,8 @@
   - **B 类：能力不对称（4 处）**——产品能创建，但没有对应的关闭/删除动作；
   - **C 类：语义或范围待确认（4 处）**——有删除动作，但清理边界可能不符合预期。
 - 其余 20+ 类资源已确认闭环（见第四节矩阵），本次不重复处理。
-- **修复进度（2026-10-26 第二轮）**：已修复 5 项（A1、A2、A3、A4、A6），
-  剩余 9 项：A5、B1、B2、B3、B4、C1、C2、C3、C4。详见第七节。
+- **修复进度（2026-10-26 第二轮）**：已修复 6 项（A1、A2、A3、A4、A5、A6），
+  剩余 8 项：B1、B2、B3、B4、C1、C2、C3、C4。详见第七、八节。
 
 ## 二、审计方法
 
@@ -258,9 +258,8 @@ grep -n "kind\|source_review_id" electron/repositories/review-repository.ts | he
 
 ### 仍待处理
 
-- **A5** 幂等收据表保留期（`character_roster_operations` / `blueprint_commit_operations` /
-  `blueprint_character_sync_operations` / `finalized_draft_import_operations` /
-  `import_global_fact_operations`）：需要先确认可安全裁剪的时间窗，暂不动；
+- **A5** 已按“中期规范化”完成：四张领域收据表迁移到通用 `idempotency_keys`（90 天 TTL），
+  蓝图角色同步队列完成即删；详见第八节；
 - **B1** 物理文件删除能力；**B2** 通用 Tab 关闭；**B3** 设定/架构显式 clear；**B4** 审稿助手角色边界确认；
 - **C1** 剧情树清空与叙事线索的语义；**C2** 项目清空范围定义；**C3** 确认快照保留策略；
 - **C4** `consistency_exemptions` 逻辑删除（可接受，待文档说明）。
@@ -282,3 +281,44 @@ grep -n "deleteTerminalRun" -A 20 electron/repositories/import-run-store.ts
 # 后处理同源去重
 grep -n "只保留最新一次跑批" -A 6 electron/repositories/post-process-repository.ts
 ```
+
+---
+
+## 八、幂等收据规范化（2026-10-26 第三轮，A5 根治）
+
+### 设计
+
+- 新增通用表 `idempotency_keys(scope, key, request_hash, response_json, created_at)`：
+  所有“客户端可能重试、只能生效一次”的写操作共用一张表，按 `(scope, key)` 唯一定位；
+- scope 固定为四个领域：`character-roster`、`blueprint-commit`、`finalized-draft-import`、
+  `import-global-facts`；`response_json` 保存首次执行结果，重试时直接复用；
+- 只保留最近 **90 天**（`IDEMPOTENCY_RETENTION_DAYS`），项目打开时统一 prune，
+  不再出现只增不减的收据表；
+- 旧库迁移：启动时把 `character_roster_operations` / `blueprint_commit_operations` /
+  `finalized_draft_import_operations` / `import_global_fact_operations` 的数据迁入
+  `idempotency_keys` 后 **DROP 旧表**；迁移幂等，可重复打开项目；
+- 蓝图角色同步：保留 `blueprint_character_sync_operations` 作为 **pending 队列**，
+  同步完成后把完成回执合并进蓝图提交的幂等结果，并删除队列行；
+  未完成阶段仍以队列行为权威证据，队列缺失/被篡改时 fail closed；
+- 清空语义同步收口：清空生成数据 → `finalized-draft-import`；清空蓝图 → `blueprint-commit`
+  + 同步队列；清空角色/架构 → `character-roster` + `import-global-facts`。
+
+### 代码落点
+
+| 文件 | 作用 |
+| --- | --- |
+| `src/shared/idempotency.ts` | scope / 保留期共享契约 |
+| `electron/repositories/idempotency-repository.ts` | find / put / updateResponse / deleteScope / prune |
+| `electron/repositories/idempotency-schema.ts` | 通用表 DDL（纯依赖，供各仓储复用） |
+| `electron/services/receipt-table-migration.ts` | 四张旧表迁移 + 同步队列表重建 + 旧表 DROP |
+| `electron/database-schema.ts` | 建表、启动迁移、90 天 prune |
+| `character-roster-repository.ts`、`blueprint-repository.ts`、`finalized-draft-import-repository.ts`、`import-global-facts-repository.ts` | 幂等逻辑改用通用表 |
+| `draft-repository.ts`、`project-clear-repository.ts` | 清空范围改为按 scope 删除幂等记录 |
+
+### 验证
+
+- 新增 `electron/__tests__/idempotency-migration.test.ts`（3 例）：旧表迁移与删除、
+  已完成同步回执合并、pending 队列保留、90 天 TTL prune、新项目不创建旧表；
+- 更新现有测试：角色名单 32 例、蓝图 19 例、定稿导入 12 例、全局事实 3 例、
+  import-run effect 收据 22 例、项目清空 11 例全部通过；
+- `tsc --noEmit`、ESLint 通过；全量浏览器/单元回归见提交说明。

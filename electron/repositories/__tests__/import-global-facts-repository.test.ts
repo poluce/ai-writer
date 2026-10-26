@@ -81,7 +81,7 @@ describe('ImportGlobalFactsRepository transaction seam', () => {
 
     expect(ProjectCoreRepository.get()).toMatchObject({ genre: '', premise: '' })
     expect(CharacterRosterRepository.read()).toMatchObject({ revision: 0, status: 'empty' })
-    expect(getProjectDb()!.prepare('SELECT COUNT(*) AS count FROM import_global_fact_operations').get())
+    expect(getProjectDb()!.prepare("SELECT COUNT(*) AS count FROM idempotency_keys WHERE scope = 'import-global-facts'").get())
       .toEqual({ count: 0 })
   })
 

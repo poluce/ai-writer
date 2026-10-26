@@ -90,7 +90,7 @@ describe('structured character roster static contract', () => {
     expect(projectClear).toContain("characters_arch = ''")
     expect(projectClear).toContain("DELETE FROM characters")
     expect(projectClear).toContain("DELETE FROM character_roster_meta")
-    expect(projectClear).toContain("DELETE FROM character_roster_operations")
+    expect(projectClear).toContain('IdempotencyRepository.deleteScope(IDEMPOTENCY_SCOPES.characterRoster)')
     expect(roster.match(/SET characters_arch\s*=/g)).toHaveLength(1)
     expect(workflow).not.toContain('runArchCharacterExtract')
     expect(workflow).not.toContain('createCharacterExtractSteps')

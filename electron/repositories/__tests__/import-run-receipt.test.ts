@@ -211,17 +211,15 @@ describe('import-run durable effect receipt', () => {
 
   it('accepts an already-satisfied receipt when blueprints need no existing-roster relationship update', () => {
     prepareCommittedBlueprintReceipt()
-    tamperOffline(`
-      UPDATE blueprint_character_sync_operations
-      SET status = 'completed',
-          completion_receipt = json_object(
-            'blueprintCommitOperationId', 'import-blueprints-receipt-run-1-1',
-            'operationId', 'blueprint-sync-import-blueprints-receipt-run-1-1',
-            'status', 'already-satisfied'
-          ),
-          completed_at = created_at
-      WHERE operation_id = 'blueprint-sync-import-blueprints-receipt-run-1-1'
-    `)
+    const operation = BlueprintRepository.getCommittedRangeOperation(
+      'import-blueprints-receipt-run-1-1',
+    )
+    expect(BlueprintRepository.completeCharacterSyncOperation(
+      operation!.characterSyncOperation.operationId,
+    )).toMatchObject({
+      status: 'completed',
+      completionReceipt: { status: 'already-satisfied' },
+    })
 
     expect(ImportRunRepository.getEffectReceipt('receipt-run', 'blueprints', '1-1-52367a66'))
       .toMatchObject({ state: 'committed' })
@@ -310,12 +308,14 @@ describe('import-run durable effect receipt', () => {
   it('fails closed after reopen when a blueprint receipt swaps its nested sync operation', () => {
     prepareCommittedBlueprintReceipt()
     tamperOffline(`
-      INSERT INTO blueprint_commit_operations (
-        operation_id, payload_hash, mode, start_chapter, end_chapter, character_sync_input
-      ) SELECT
-        'import-blueprints-another-run-1-1', payload_hash, mode, start_chapter, end_chapter, character_sync_input
-      FROM blueprint_commit_operations
-      WHERE operation_id = 'import-blueprints-receipt-run-1-1';
+      INSERT INTO idempotency_keys (scope, key, request_hash, response_json)
+      SELECT
+        'blueprint-commit',
+        'import-blueprints-another-run-1-1',
+        request_hash,
+        json_set(response_json, '$.sync.operationId', 'blueprint-sync-import-blueprints-another-run-1-1')
+      FROM idempotency_keys
+      WHERE scope = 'blueprint-commit' AND key = 'import-blueprints-receipt-run-1-1';
       INSERT INTO blueprint_character_sync_operations (
         operation_id, blueprint_commit_operation_id, blueprint_commit_payload_hash,
         status, start_chapter, end_chapter, character_sync_input
@@ -343,8 +343,8 @@ describe('import-run durable effect receipt', () => {
   })
 
   it.each([
-    ['payload hash', `UPDATE blueprint_commit_operations SET payload_hash = '${'0'.repeat(64)}' WHERE operation_id = 'import-blueprints-receipt-run-1-1'`],
-    ['range', `UPDATE blueprint_commit_operations SET end_chapter = 2 WHERE operation_id = 'import-blueprints-receipt-run-1-1'`],
+    ['payload hash', `UPDATE idempotency_keys SET request_hash = '${'0'.repeat(64)}' WHERE scope = 'blueprint-commit' AND key = 'import-blueprints-receipt-run-1-1'`],
+    ['range', `UPDATE idempotency_keys SET response_json = json_set(response_json, '$.endChapter', 2) WHERE scope = 'blueprint-commit' AND key = 'import-blueprints-receipt-run-1-1'`],
     ['sync status', `UPDATE blueprint_character_sync_operations SET status = 'completed' WHERE operation_id = 'blueprint-sync-import-blueprints-receipt-run-1-1'`],
   ])('fails closed after reopen when authoritative blueprint %s is tampered', (_label, mutation) => {
     prepareCommittedBlueprintReceipt()
@@ -360,15 +360,15 @@ describe('import-run durable effect receipt', () => {
   it('does not recreate a deleted authoritative operation while validating replay', () => {
     prepareCommittedBlueprintReceipt()
     tamperOffline(`
-      DELETE FROM blueprint_commit_operations
-      WHERE operation_id = 'import-blueprints-receipt-run-1-1'
+      DELETE FROM idempotency_keys
+      WHERE scope = 'blueprint-commit' AND key = 'import-blueprints-receipt-run-1-1'
     `)
 
     expect(() => ImportRunRepository.getEffectReceipt('receipt-run', 'blueprints', '1-1-52367a66'))
       .toThrow(/receipt.*损坏|收据.*损坏/i)
     expect(getProjectDb()!.prepare(`
-      SELECT COUNT(*) AS count FROM blueprint_commit_operations
-      WHERE operation_id = 'import-blueprints-receipt-run-1-1'
+      SELECT COUNT(*) AS count FROM idempotency_keys
+      WHERE scope = 'blueprint-commit' AND key = 'import-blueprints-receipt-run-1-1'
     `).get()).toEqual({ count: 0 })
   })
 
@@ -392,9 +392,9 @@ describe('import-run durable effect receipt', () => {
   it('rejects a global receipt whose operation ledger hash changes after reopen', () => {
     prepareCommittedGlobalReceipt()
     tamperOffline(`
-      UPDATE import_global_fact_operations
-      SET payload_hash = '${'0'.repeat(64)}'
-      WHERE operation_id = 'novel-import-global-receipt-run'
+      UPDATE idempotency_keys
+      SET request_hash = '${'0'.repeat(64)}'
+      WHERE scope = 'import-global-facts' AND key = 'novel-import-global-receipt-run'
     `)
 
     expect(() => ImportRunRepository.getEffectReceipt('receipt-run', 'global', 'done'))

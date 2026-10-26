@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import type BetterSqlite3 from 'better-sqlite3'
 
+import { IdempotencyRepository, IDEMPOTENCY_SCOPES } from './idempotency-repository'
 import {
   CHARACTER_ROSTER_ROLES,
   CHARACTER_ROSTER_SCHEMA_VERSION,
@@ -34,13 +35,6 @@ interface CharacterRosterMetaRow {
   legacy_markdown: string
   projection_hash: string
   fact_hash: string
-}
-
-interface CharacterRosterOperationRow {
-  operation_id: string
-  payload_hash: string
-  committed_revision: number
-  projection_hash: string
 }
 
 const ROLE_ORDER: Record<CharacterRosterRole, number> = {
@@ -899,13 +893,12 @@ export class CharacterRosterRepository {
     const requestPayloadHash = payloadHash(request)
 
     return db.transaction(() => {
-      const existingOperation = db.prepare(`
-        SELECT operation_id, payload_hash, committed_revision, projection_hash
-        FROM character_roster_operations
-        WHERE operation_id = ?
-      `).get(request.operationId) as CharacterRosterOperationRow | undefined
+      const existingOperation = IdempotencyRepository.find(
+        IDEMPOTENCY_SCOPES.characterRoster,
+        request.operationId,
+      )
       if (existingOperation) {
-        if (existingOperation.payload_hash !== requestPayloadHash) {
+        if (existingOperation.requestHash !== requestPayloadHash) {
           throw new Error('操作 ID 已被用于不同的角色名单，已拒绝覆盖')
         }
         // 幂等 replay 只是“该操作已被观察到”的无写入查询，不能把历史
@@ -1031,11 +1024,12 @@ export class CharacterRosterRepository {
         SET revision = ?, migration_state = 'ready', projection_hash = ?, fact_hash = ?, updated_at = datetime('now')
         WHERE id = 'main'
       `).run(nextRevision, projectionHash, factHash)
-      db.prepare(`
-        INSERT INTO character_roster_operations (
-          operation_id, payload_hash, committed_revision, projection_hash
-        ) VALUES (?, ?, ?, ?)
-      `).run(request.operationId, requestPayloadHash, nextRevision, projectionHash)
+      IdempotencyRepository.put(
+        IDEMPOTENCY_SCOPES.characterRoster,
+        request.operationId,
+        requestPayloadHash,
+        { revision: nextRevision, projectionHash },
+      )
 
       const snapshot = assertReadBack(
         db,
