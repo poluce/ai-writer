@@ -67,6 +67,8 @@ export default function TitleBar() {
   const tabs = useEditorStore(s => s.tabs)
   const draftLedgers = useEditorDraftLedgerStore(s => s.draftLedgers)
   const hasDirty = countUnsavedEditorItems(tabs, draftLedgers) > 0
+  // 没有任何可保存的编辑器项时（例如启动页），保存状态没有意义，不渲染指示灯
+  const hasTrackedEditors = tabs.length > 0 || Object.keys(draftLedgers).length > 0
   const openNewProject = useLayoutStore(s => s.openNewProject)
   const openExport = useLayoutStore(s => s.openExport)
   const openAuthorManuscriptImport = useLayoutStore(s => s.openAuthorManuscriptImport)
@@ -324,14 +326,16 @@ export default function TitleBar() {
           <span className="truncate">{currentProject?.name ?? t('project.none')}</span>
         </button>
 
-        <span
-          className="inline-flex items-center gap-1 text-xs font-medium whitespace-nowrap"
-          title={hasDirty ? t('save.dirty') : t('save.saved')}
-          style={{ color: hasDirty ? 'var(--color-warning-text)' : 'var(--color-success-text)' }}
-        >
-          <CheckCircle2 size={14} strokeWidth={1.9} />
-          {hasDirty ? t('save.modified') : t('save.saved')}
-        </span>
+        {hasTrackedEditors && (
+          <span
+            className="inline-flex items-center gap-1 text-xs font-medium whitespace-nowrap"
+            title={hasDirty ? t('save.dirty') : t('save.saved')}
+            style={{ color: hasDirty ? 'var(--color-warning-text)' : 'var(--color-success-text)' }}
+          >
+            <CheckCircle2 size={14} strokeWidth={1.9} />
+            {hasDirty ? t('save.modified') : t('save.saved')}
+          </span>
+        )}
       </div>
 
       <div className="flex items-center gap-1 flex-shrink-0">
