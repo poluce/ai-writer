@@ -11,16 +11,11 @@ import type {
   AuthoritativeChapterSequence,
 } from '../../src/shared/author-manuscript-import'
 import { getProjectDb } from '../database'
+import { IdempotencyRepository, IDEMPOTENCY_SCOPES } from './idempotency-repository'
 import {
   countDraftUnits,
 } from '../../src/shared/draft-units'
 import { resolveManuscriptTarget } from '../services/manuscript-publisher'
-
-interface ImportOperationRow {
-  operation_id: string
-  payload_hash: string
-  receipt_json: string
-}
 
 interface ImportedDraftFactRow {
   draft_id: number
@@ -195,10 +190,14 @@ function finalizationId(operationId: string, chapterNumber: number): string {
   return `import-${sha256(`${operationId}:${chapterNumber}`).slice(0, 32)}`
 }
 
-function parseStoredReceipt(row: ImportOperationRow): FinalizedDraftImportReceipt {
+function parseStoredReceipt(
+  operationId: string,
+  payloadHash: string,
+  responseJson: string,
+): FinalizedDraftImportReceipt {
   let candidate: unknown
   try {
-    candidate = JSON.parse(row.receipt_json)
+    candidate = JSON.parse(responseJson)
   } catch {
     throw new Error('定稿导入收据损坏，已拒绝重放')
   }
@@ -207,8 +206,8 @@ function parseStoredReceipt(row: ImportOperationRow): FinalizedDraftImportReceip
   }
   const receipt = candidate as Partial<FinalizedDraftImportReceipt>
   if (
-    receipt.operationId !== row.operation_id
-    || receipt.payloadHash !== row.payload_hash
+    receipt.operationId !== operationId
+    || receipt.payloadHash !== payloadHash
     || !Array.isArray(receipt.chapterNumbers)
     || !Array.isArray(receipt.drafts)
     || receipt.chapterNumbers.length !== receipt.drafts.length
@@ -284,13 +283,16 @@ export class FinalizedDraftImportRepository {
     if (!current) throw new Error('项目数据库未打开')
     const normalizedOperationId = requireNonEmptyOperationId(operationId)
     const chapters = normalizeChapters(input)
-    const row = current.prepare(`
-      SELECT operation_id, payload_hash, receipt_json
-      FROM finalized_draft_import_operations
-      WHERE operation_id = ?
-    `).get(normalizedOperationId) as ImportOperationRow | undefined
-    if (!row) return null
-    const receipt = parseStoredReceipt(row)
+    const record = IdempotencyRepository.find(
+      IDEMPOTENCY_SCOPES.finalizedDraftImport,
+      normalizedOperationId,
+    )
+    if (!record) return null
+    const receipt = parseStoredReceipt(
+      normalizedOperationId,
+      record.requestHash,
+      record.responseJson,
+    )
     verifyStoredFacts(receipt, chapters)
     return receipt
   }
@@ -385,16 +387,15 @@ export class FinalizedDraftImportRepository {
     const acceptedPayloadHashes = requestPayloadHashCandidates(normalizedRequest, chapters)
 
     const transaction = db.transaction(() => {
-      const existing = db.prepare(`
-        SELECT operation_id, payload_hash, receipt_json
-        FROM finalized_draft_import_operations
-        WHERE operation_id = ?
-      `).get(operationId) as ImportOperationRow | undefined
+      const existing = IdempotencyRepository.find(
+        IDEMPOTENCY_SCOPES.finalizedDraftImport,
+        operationId,
+      )
       if (existing) {
-        if (!acceptedPayloadHashes.has(existing.payload_hash)) {
+        if (!acceptedPayloadHashes.has(existing.requestHash)) {
           throw new Error('定稿导入 operationId 已绑定不同载荷')
         }
-        const receipt = parseStoredReceipt(existing)
+        const receipt = parseStoredReceipt(operationId, existing.requestHash, existing.responseJson)
         verifyStoredFacts(receipt, chapters)
         return { ...receipt, idempotent: true }
       }
@@ -475,10 +476,12 @@ export class FinalizedDraftImportRepository {
         drafts,
         idempotent: false,
       }
-      db.prepare(`
-        INSERT INTO finalized_draft_import_operations (operation_id, payload_hash, receipt_json)
-        VALUES (?, ?, ?)
-      `).run(operationId, payloadHash, JSON.stringify(receipt))
+      IdempotencyRepository.put(
+        IDEMPOTENCY_SCOPES.finalizedDraftImport,
+        operationId,
+        payloadHash,
+        receipt,
+      )
       return receipt
     })
     return transaction()

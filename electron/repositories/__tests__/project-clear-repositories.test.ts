@@ -111,7 +111,7 @@ describe('project clear repositories', () => {
     BlueprintRepository.clearAll()
 
     expect(db.prepare).toHaveBeenCalledWith('DELETE FROM blueprint_character_sync_operations')
-    expect(db.prepare).toHaveBeenCalledWith('DELETE FROM blueprint_commit_operations')
+    expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('DELETE FROM idempotency_keys'))
     expect(db.prepare).toHaveBeenCalledWith('DELETE FROM blueprints')
     expect(db.run).toHaveBeenCalledTimes(3)
   })
@@ -124,7 +124,7 @@ describe('project clear repositories', () => {
 
     const statements = db.prepare.mock.calls.map(([sql]) => sql)
     expect(statements).toEqual([
-      'DELETE FROM finalized_draft_import_operations',
+      expect.stringContaining('DELETE FROM idempotency_keys'),
       'DELETE FROM post_process_steps',
       'DELETE FROM post_process_runs',
       'DELETE FROM reviews',
@@ -169,9 +169,8 @@ describe('project clear repositories', () => {
     const statements = db.prepare.mock.calls.map(([sql]) => sql)
     expect(statements).toEqual(expect.arrayContaining([
       'DELETE FROM blueprint_character_sync_operations',
-      'DELETE FROM blueprint_commit_operations',
+      expect.stringContaining('DELETE FROM idempotency_keys') as unknown as string,
       'DELETE FROM blueprints',
-      'DELETE FROM character_roster_operations',
       'DELETE FROM character_roster_meta',
       'DELETE FROM characters',
       expect.stringContaining('UPDATE project_core') as unknown as string,
@@ -190,7 +189,7 @@ describe('project clear repositories', () => {
       db.prepare("UPDATE project_core SET plot_tree_snapshot = ? WHERE id = 'main'").run(previousPlotTree)
       const beforeClear = CharacterRosterRepository.commit(rosterCommitRequest('roster-before-clear', 0))
       expect(beforeClear.snapshot).toMatchObject({ status: 'ready', entries: [expect.objectContaining({ name: '清除前角色' })] })
-      expect(db.prepare('SELECT COUNT(*) AS count FROM character_roster_operations').get()).toEqual({ count: 1 })
+      expect(db.prepare("SELECT COUNT(*) AS count FROM idempotency_keys WHERE scope = 'character-roster'").get()).toEqual({ count: 1 })
 
       expect(ProjectClearRepository.clearGeneratedData({ creativeFields: true })).toMatchObject({
         cleared: ['creativeFields'],
@@ -201,7 +200,7 @@ describe('project clear repositories', () => {
         .toEqual({ plot_tree_snapshot: previousPlotTree })
       expect(db.prepare('SELECT COUNT(*) AS count FROM characters').get()).toEqual({ count: 0 })
       expect(db.prepare('SELECT COUNT(*) AS count FROM character_roster_meta').get()).toEqual({ count: 0 })
-      expect(db.prepare('SELECT COUNT(*) AS count FROM character_roster_operations').get()).toEqual({ count: 0 })
+      expect(db.prepare("SELECT COUNT(*) AS count FROM idempotency_keys WHERE scope = 'character-roster'").get()).toEqual({ count: 0 })
       expect(CharacterRosterRepository.read()).toMatchObject({
         revision: 0,
         migrationState: 'empty',

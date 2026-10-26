@@ -7,6 +7,8 @@ import { createNovelConfigTool } from './tools/novel-config.tool'
 import { createStoryArchitectureTool } from './tools/story-architecture.tool'
 import { createReadBlueprintTool } from './tools/read-blueprint.tool'
 import { createManageDraftsTool } from './tools/manage-drafts.tool'
+import { createManageReviewReportsTool } from './tools/manage-review-reports.tool'
+import { createDeleteReviewReportTool } from './tools/delete-review-report.tool'
 import { createReadProjectStateTool } from './tools/read-project-state.tool'
 import { createSearchKnowledgeTool } from './tools/search-knowledge.tool'
 import { createManageKnowledgeBaseTool } from './tools/manage-knowledge-base.tool'
@@ -20,12 +22,12 @@ import { createWebFetchTool } from './tools/web-fetch.tool'
 import { buildMcpAgentTools } from './tools/mcp.tool'
 import { createReadContinuityFactsTool } from './tools/read-continuity-facts.tool'
 import { createSubmitChapterReviewTool } from './tools/submit-chapter-review.tool'
-import { createDelegateToAssistantTool, type AssistantDelegateHandler } from './tools/delegate-to-assistant.tool'
+import { createDelegateToAssistantTool, type AssistantDelegateHandler, type DelegatableAssistantType } from './tools/delegate-to-assistant.tool'
 import type { AnyAgentTool } from './tool-types'
 import type { AgentSkillCatalogEntry } from '../../src/shared/agent-skills'
 import type { AssistantType } from '../../src/shared/agent-conversation-archive'
 
-export type { AssistantDelegateHandler }
+export type { AssistantDelegateHandler, DelegatableAssistantType }
 
 /**
  * 需要串行执行的工具名单（写操作、环境变动与命令执行）。
@@ -46,6 +48,8 @@ export function sequentialToolNames(): ReadonlySet<string> {
     'manage_skills',
     'manage_knowledge_base',
     'submit_chapter_review',
+    'manage_review_reports',
+    'delete_review_report',
     'delegate_to_assistant',
   ])
 }
@@ -79,6 +83,8 @@ export function buildAgentTools(
     createReadArchitectureTool(language),
     createReadBlueprintTool(language),
     createManageDraftsTool(language, rendererAction),
+    createManageReviewReportsTool(language, rendererAction),
+    createDeleteReviewReportTool(language, rendererAction),
     createReadProjectStateTool(language),
     createSearchKnowledgeTool(language),
     createManageKnowledgeBaseTool(language),
@@ -138,6 +144,7 @@ export function buildBlueprintAgentTools(
   return [
     createProposeChapterBlueprintTool(language),
     createReadBlueprintTool(language),
+    createReadContinuityFactsTool(language),
     createReadProjectStateTool(language),
     createReadArchitectureTool(language),
     createManageCharactersTool(language, rendererAction),
@@ -224,6 +231,7 @@ export function confirmationToolNames(): ReadonlySet<string> {
     'manage_skills',
     'manage_knowledge_base',
     'submit_chapter_review',
+    'delete_review_report',
     'delegate_to_assistant',
   ])
 }

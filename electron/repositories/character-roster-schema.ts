@@ -1,11 +1,13 @@
 import type BetterSqlite3 from 'better-sqlite3'
 import type { CharacterRosterMigrationState } from '../../src/shared/character-roster'
+import { ensureIdempotencySchema } from './idempotency-schema'
 
 /**
  * 结构化角色名单只保存并发控制、迁移和投影元数据。
  * 角色条目本身始终留在已有的 characters 表中，避免建立并列 JSON 事实源。
  */
 export function ensureCharacterRosterSchema(db: BetterSqlite3.Database): void {
+  ensureIdempotencySchema(db)
   db.exec(`
     CREATE TABLE IF NOT EXISTS character_roster_meta (
       id TEXT PRIMARY KEY CHECK (id = 'main'),
@@ -23,14 +25,6 @@ export function ensureCharacterRosterSchema(db: BetterSqlite3.Database): void {
       projection_hash TEXT NOT NULL DEFAULT '',
       fact_hash TEXT NOT NULL DEFAULT '',
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-
-    CREATE TABLE IF NOT EXISTS character_roster_operations (
-      operation_id TEXT PRIMARY KEY,
-      payload_hash TEXT NOT NULL,
-      committed_revision INTEGER NOT NULL,
-      projection_hash TEXT NOT NULL,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `)
 

@@ -12,6 +12,7 @@ import { Label } from '../ui/Label'
 import { useProjectStore } from '../../stores/project-store'
 import { useWorkflowStore } from '../../stores/workflow-store'
 import { useLocaleStore } from '../../stores/locale-store'
+import ImportRunHistory from './ImportRunHistory'
 import { ipc } from '../../services/ipc-client'
 import {
   AUTHOR_IMPORT_PREVIEW_STALE,
@@ -285,6 +286,18 @@ export default function AuthorManuscriptImportDialog({ open, onClose }: AuthorMa
                 {text('继续导入', 'Continue Import')}
               </Button>
             </div>
+          )}
+
+          {currentProject && (
+            <ImportRunHistory
+              purpose="author-manuscript"
+              onDeleted={runId => {
+                setResumableState(previous => previous
+                  ? { ...previous, runs: previous.runs.filter(run => run.id !== runId) }
+                  : previous)
+                setSelectedResumableRunId(selected => (selected === runId ? '' : selected))
+              }}
+            />
           )}
 
           <div>

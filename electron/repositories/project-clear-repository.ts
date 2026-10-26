@@ -4,6 +4,8 @@ import path from 'node:path'
 import { getCurrentProjectPath, getProjectDb } from '../database'
 import { ensureCharacterRosterSchema } from './character-roster-schema'
 import { clearBlueprintFactsWithinTransaction } from './blueprint-repository'
+import { IdempotencyRepository, IDEMPOTENCY_SCOPES } from './idempotency-repository'
+import { ensureIdempotencySchema } from './idempotency-schema'
 
 export type ProjectClearScope = 'creativeFields' | 'blueprints' | 'generatedText'
 
@@ -93,11 +95,13 @@ export class ProjectClearRepository {
         try {
             const tx = db.transaction(() => {
                 if (options.generatedText) {
-                    db.prepare('DELETE FROM finalized_draft_import_operations').run()
+                    ensureIdempotencySchema(db)
+                    IdempotencyRepository.deleteScope(IDEMPOTENCY_SCOPES.finalizedDraftImport)
                     db.prepare('DELETE FROM post_process_steps').run()
                     db.prepare('DELETE FROM post_process_runs').run()
                     db.prepare('DELETE FROM reviews').run()
                     db.prepare('DELETE FROM revisions').run()
+                    db.prepare('DELETE FROM recovery_candidates').run()
                     db.prepare('DELETE FROM drafts').run()
                     db.prepare('DELETE FROM contents').run()
                     db.prepare('DELETE FROM summary_snapshots').run()
@@ -115,7 +119,9 @@ export class ProjectClearRepository {
                     // 与 receipt。这样下次 read 会重新分类为空项目，而不会遗留
                     // ready 状态或旧角色参与新的架构生成。
                     ensureCharacterRosterSchema(db)
-                    db.prepare('DELETE FROM character_roster_operations').run()
+                    // 角色名单与全局事实导入的幂等回执随对应事实一起清空。
+                    IdempotencyRepository.deleteScope(IDEMPOTENCY_SCOPES.characterRoster)
+                    IdempotencyRepository.deleteScope(IDEMPOTENCY_SCOPES.importGlobalFacts)
                     db.prepare('DELETE FROM character_roster_meta').run()
                     db.prepare('DELETE FROM characters').run()
                     db.prepare(`

@@ -7,6 +7,9 @@ import { createHash } from 'node:crypto'
 
 import { getProjectDb } from '../database'
 import { CharacterRosterRepository } from './character-roster-repository'
+import { IdempotencyRepository, IDEMPOTENCY_SCOPES } from './idempotency-repository'
+import { ensureIdempotencySchema } from './idempotency-schema'
+import type { IdempotencyRecord } from './idempotency-repository'
 import { blueprintCharacterSyncFactError } from '../../src/shared/blueprint-character-sync-evidence'
 import type { BlueprintData } from '../../src/shared/blueprint'
 import type {
@@ -44,13 +47,21 @@ export interface BlueprintRow {
 /** 前端使用的驼峰接口；定义在 shared，供渲染层与提案校验共用。 */
 export type { BlueprintData } from '../../src/shared/blueprint'
 
-interface BlueprintCommitOperationRow {
-    operation_id: string
-    payload_hash: string
+interface StoredBlueprintCommitSyncState {
+    operationId: string
+    payloadHash: string
+    createdAt: string
+    updatedAt?: string
+    completedAt?: string
+    completionReceipt?: BlueprintCharacterSyncCompletionReceipt
+}
+
+interface StoredBlueprintCommitState {
     mode: BlueprintRangeCommitMode
-    start_chapter: number
-    end_chapter: number
-    character_sync_input: string
+    startChapter: number
+    endChapter: number
+    characterSyncInput: BlueprintData[]
+    sync: StoredBlueprintCommitSyncState
 }
 
 interface BlueprintCharacterSyncOperationRow {
@@ -65,13 +76,6 @@ interface BlueprintCharacterSyncOperationRow {
     created_at: string
     updated_at: string
     completed_at: string | null
-}
-
-interface CharacterRosterOperationEvidenceRow {
-    operation_id: string
-    payload_hash: string
-    committed_revision: number
-    projection_hash: string
 }
 
 const SHA256_HEX = /^[a-f0-9]{64}$/u
@@ -100,17 +104,9 @@ function requireProjectDb(): NonNullable<ReturnType<typeof getProjectDb>> {
 }
 
 function ensureBlueprintCommitSchema(db: NonNullable<ReturnType<typeof getProjectDb>>): void {
+    ensureIdempotencySchema(db)
+    // 蓝图角色同步只保留 pending 队列；完成的回执合并进蓝图提交的幂等结果。
     db.exec(`
-      CREATE TABLE IF NOT EXISTS blueprint_commit_operations (
-        operation_id TEXT PRIMARY KEY,
-        payload_hash TEXT NOT NULL,
-        mode TEXT NOT NULL CHECK(mode IN ('full', 'replace-range')),
-        start_chapter INTEGER NOT NULL,
-        end_chapter INTEGER NOT NULL,
-        character_sync_input TEXT NOT NULL,
-        committed_at TEXT NOT NULL DEFAULT (datetime('now'))
-      );
-
       CREATE TABLE IF NOT EXISTS blueprint_character_sync_operations (
         operation_id TEXT PRIMARY KEY,
         blueprint_commit_operation_id TEXT NOT NULL UNIQUE,
@@ -122,29 +118,10 @@ function ensureBlueprintCommitSchema(db: NonNullable<ReturnType<typeof getProjec
         completion_receipt TEXT DEFAULT NULL,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-        completed_at TEXT DEFAULT NULL,
-        FOREIGN KEY (blueprint_commit_operation_id)
-          REFERENCES blueprint_commit_operations(operation_id) ON DELETE CASCADE
+        completed_at TEXT DEFAULT NULL
       );
       CREATE INDEX IF NOT EXISTS idx_blueprint_character_sync_status
         ON blueprint_character_sync_operations(status, created_at);
-
-      INSERT OR IGNORE INTO blueprint_character_sync_operations (
-        operation_id,
-        blueprint_commit_operation_id,
-        blueprint_commit_payload_hash,
-        start_chapter,
-        end_chapter,
-        character_sync_input
-      )
-      SELECT
-        'blueprint-sync-' || operation_id,
-        operation_id,
-        payload_hash,
-        start_chapter,
-        end_chapter,
-        character_sync_input
-      FROM blueprint_commit_operations;
     `)
 }
 
@@ -154,7 +131,8 @@ export function clearBlueprintFactsWithinTransaction(
 ): void {
     ensureBlueprintCommitSchema(db)
     db.prepare('DELETE FROM blueprint_character_sync_operations').run()
-    db.prepare('DELETE FROM blueprint_commit_operations').run()
+    // 蓝图提交的幂等回执与蓝图事实同域，清空蓝图时一并清理。
+    IdempotencyRepository.deleteScope(IDEMPOTENCY_SCOPES.blueprintCommit)
     db.prepare('DELETE FROM blueprints').run()
 }
 
@@ -226,17 +204,6 @@ function readExactRange(
     const snapshot = rows.map(rowToData)
     assertExactRange({ ...request, blueprints: snapshot })
     return snapshot
-}
-
-function readCharacterSyncInput(row: BlueprintCommitOperationRow): BlueprintData[] {
-    let parsed: unknown
-    try {
-        parsed = JSON.parse(row.character_sync_input)
-    } catch {
-        throw new Error('蓝图提交幂等回执损坏')
-    }
-    if (!Array.isArray(parsed)) throw new Error('蓝图提交幂等回执格式无效')
-    return parsed as BlueprintData[]
 }
 
 function parseCharacterSyncInput(serialized: string): BlueprintData[] {
@@ -314,8 +281,129 @@ function readCharacterSyncOperation(
     return row ? rowToCharacterSyncOperation(row) : null
 }
 
-function authoritativeCharacterSyncCompletionReceipt(
+function parseStoredBlueprintCommitState(record: IdempotencyRecord): StoredBlueprintCommitState {
+    let parsed: unknown
+    try {
+        parsed = JSON.parse(record.responseJson)
+    } catch {
+        throw new Error('蓝图提交幂等回执损坏')
+    }
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('蓝图提交幂等回执格式无效')
+    }
+    const value = parsed as Partial<StoredBlueprintCommitState>
+    if (
+        (value.mode !== 'full' && value.mode !== 'replace-range')
+        || !Number.isInteger(value.startChapter)
+        || !Number.isInteger(value.endChapter)
+        || !Array.isArray(value.characterSyncInput)
+        || !value.sync
+        || typeof value.sync !== 'object'
+    ) throw new Error('蓝图提交幂等回执格式无效')
+    const sync = value.sync as Partial<StoredBlueprintCommitSyncState>
+    if (
+        typeof sync.operationId !== 'string'
+        || typeof sync.payloadHash !== 'string'
+        || typeof sync.createdAt !== 'string'
+    ) throw new Error('蓝图提交幂等回执格式无效')
+    return {
+        mode: value.mode,
+        startChapter: value.startChapter as number,
+        endChapter: value.endChapter as number,
+        characterSyncInput: value.characterSyncInput as BlueprintData[],
+        sync: sync as StoredBlueprintCommitSyncState,
+    }
+}
+
+function readStoredBlueprintCommit(
+    operationId: string,
+): { record: IdempotencyRecord; state: StoredBlueprintCommitState } | null {
+    const record = IdempotencyRepository.find(IDEMPOTENCY_SCOPES.blueprintCommit, operationId)
+    if (!record) return null
+    return { record, state: parseStoredBlueprintCommitState(record) }
+}
+
+function characterSyncOperationFromState(
+    commitOperationId: string,
+    state: StoredBlueprintCommitState,
+): BlueprintCharacterSyncOperation {
+    const completed = Boolean(state.sync.completionReceipt)
+    return {
+        operationId: state.sync.operationId,
+        blueprintCommitOperationId: commitOperationId,
+        blueprintCommitPayloadHash: state.sync.payloadHash,
+        status: completed ? 'completed' : 'pending',
+        startChapter: state.startChapter,
+        endChapter: state.endChapter,
+        characterSyncInput: state.characterSyncInput,
+        ...(state.sync.completionReceipt ? { completionReceipt: state.sync.completionReceipt } : {}),
+        createdAt: state.sync.createdAt,
+        updatedAt: state.sync.completedAt ?? state.sync.updatedAt ?? state.sync.createdAt,
+        ...(state.sync.completedAt ? { completedAt: state.sync.completedAt } : {}),
+    }
+}
+
+function resolveCharacterSyncOperation(
     db: NonNullable<ReturnType<typeof getProjectDb>>,
+    commitOperationId: string,
+    state: StoredBlueprintCommitState,
+): BlueprintCharacterSyncOperation {
+    if (state.sync.completionReceipt) {
+        const completed = characterSyncOperationFromState(commitOperationId, state)
+        assertAuthoritativeCharacterSyncCompletion(completed)
+        return completed
+    }
+    // 未完成阶段以 pending 队列行为权威证据；队列行缺失或被篡改时 fail closed。
+    const pending = readCharacterSyncOperation(db, state.sync.operationId)
+    if (!pending || pending.status !== 'pending') {
+        throw new Error('蓝图提交缺少可恢复的角色同步操作')
+    }
+    if (
+        pending.blueprintCommitPayloadHash !== state.sync.payloadHash
+        || pending.startChapter !== state.startChapter
+        || pending.endChapter !== state.endChapter
+        || JSON.stringify(pending.characterSyncInput) !== JSON.stringify(state.characterSyncInput)
+    ) {
+        throw new Error('蓝图提交与角色同步队列不一致')
+    }
+    return pending
+}
+
+function commitOperationIdFromSyncOperationId(syncOperationId: string): string | null {
+    const prefix = 'blueprint-sync-'
+    return syncOperationId.startsWith(prefix) ? syncOperationId.slice(prefix.length) : null
+}
+
+function buildRangeCommitReceipt(
+    db: NonNullable<ReturnType<typeof getProjectDb>>,
+    operationId: string,
+    payloadHash: string,
+    state: StoredBlueprintCommitState,
+    idempotent: boolean,
+): BlueprintRangeCommitReceipt {
+    const persisted = readExactRange(db, {
+        mode: state.mode,
+        operationId,
+        startChapter: state.startChapter,
+        endChapter: state.endChapter,
+    })
+    const snapshot = snapshotWithCharacterSyncFacts(persisted, state.characterSyncInput)
+    const characterSyncOperation = resolveCharacterSyncOperation(db, operationId, state)
+    return {
+        mode: state.mode,
+        operationId,
+        payloadHash,
+        idempotent,
+        startChapter: state.startChapter,
+        endChapter: state.endChapter,
+        chapterNumbers: snapshot.map(blueprint => blueprint.chapterNumber),
+        snapshot,
+        characterSyncInput: state.characterSyncInput,
+        characterSyncOperation,
+    }
+}
+
+function authoritativeCharacterSyncCompletionReceipt(
     operation: BlueprintCharacterSyncOperation,
 ): BlueprintCharacterSyncCompletionReceipt {
     const roster = CharacterRosterRepository.read()
@@ -325,28 +413,34 @@ function authoritativeCharacterSyncCompletionReceipt(
     const factError = blueprintCharacterSyncFactError(operation.characterSyncInput, roster.entries)
     if (factError) throw new Error(`${factError}，已拒绝完成蓝图角色同步`)
 
-    const rosterOperation = db.prepare(`
-      SELECT operation_id, payload_hash, committed_revision, projection_hash
-      FROM character_roster_operations
-      WHERE operation_id = ?
-    `).get(operation.operationId) as CharacterRosterOperationEvidenceRow | undefined
-    if (!rosterOperation) {
+    // 角色名单提交改为通用幂等表后，蓝图角色同步通过同一 operationId 的幂等回执取证。
+    const evidence = IdempotencyRepository.find(
+        IDEMPOTENCY_SCOPES.characterRoster,
+        operation.operationId,
+    )
+    if (!evidence) {
         return {
             blueprintCommitOperationId: operation.blueprintCommitOperationId,
             operationId: operation.operationId,
             status: 'already-satisfied',
         }
     }
+    let stored: { revision?: unknown; projectionHash?: unknown }
+    try {
+        stored = JSON.parse(evidence.responseJson) as { revision?: unknown; projectionHash?: unknown }
+    } catch {
+        throw new Error('角色名单幂等回执损坏')
+    }
+    const committedRevision = stored.revision
+    const projectionHash = stored.projectionHash
     if (
-        rosterOperation.operation_id !== operation.operationId
-        || rosterOperation.committed_revision < 1
-        || rosterOperation.committed_revision > roster.revision
-        || !SHA256_HEX.test(rosterOperation.payload_hash)
-        || !SHA256_HEX.test(rosterOperation.projection_hash)
-        || (
-            rosterOperation.committed_revision === roster.revision
-            && rosterOperation.projection_hash !== roster.projectionHash
-        )
+        typeof committedRevision !== 'number'
+        || typeof projectionHash !== 'string'
+        || committedRevision < 1
+        || committedRevision > roster.revision
+        || !SHA256_HEX.test(evidence.requestHash)
+        || !SHA256_HEX.test(projectionHash)
+        || (committedRevision === roster.revision && projectionHash !== roster.projectionHash)
     ) {
         throw new Error('角色名单操作证据与当前事实不匹配，已拒绝完成蓝图角色同步')
     }
@@ -355,20 +449,19 @@ function authoritativeCharacterSyncCompletionReceipt(
         operationId: operation.operationId,
         status: 'committed',
         rosterReceipt: {
-            operationId: rosterOperation.operation_id,
-            payloadHash: rosterOperation.payload_hash,
-            revision: rosterOperation.committed_revision,
+            operationId: operation.operationId,
+            payloadHash: evidence.requestHash,
+            revision: committedRevision,
             idempotent: false,
         },
     }
 }
 
 function assertAuthoritativeCharacterSyncCompletion(
-    db: NonNullable<ReturnType<typeof getProjectDb>>,
     operation: BlueprintCharacterSyncOperation,
 ): void {
     if (operation.status !== 'completed' || !operation.completionReceipt) return
-    const authoritative = authoritativeCharacterSyncCompletionReceipt(db, operation)
+    const authoritative = authoritativeCharacterSyncCompletionReceipt(operation)
     if (
         JSON.stringify(canonicalize(operation.completionReceipt))
         !== JSON.stringify(canonicalize(authoritative))
@@ -495,38 +588,9 @@ export class BlueprintRepository {
         if (!operationId.trim()) throw new Error('蓝图提交缺少操作 ID')
         const db = requireProjectDb()
         ensureBlueprintCommitSchema(db)
-        const operation = db.prepare(`
-          SELECT operation_id, payload_hash, mode, start_chapter, end_chapter, character_sync_input
-          FROM blueprint_commit_operations
-          WHERE operation_id = ?
-        `).get(operationId) as BlueprintCommitOperationRow | undefined
-        if (!operation) return null
-        const characterSyncInput = readCharacterSyncInput(operation)
-        const persisted = readExactRange(db, {
-            mode: operation.mode,
-            operationId: operation.operation_id,
-            startChapter: operation.start_chapter,
-            endChapter: operation.end_chapter,
-        })
-        const snapshot = snapshotWithCharacterSyncFacts(persisted, characterSyncInput)
-        const characterSyncOperation = readCharacterSyncOperation(
-            db,
-            characterSyncOperationId(operation.operation_id),
-        )
-        if (!characterSyncOperation) throw new Error('蓝图提交缺少可恢复的角色同步操作')
-        assertAuthoritativeCharacterSyncCompletion(db, characterSyncOperation)
-        return {
-            mode: operation.mode,
-            operationId: operation.operation_id,
-            payloadHash: operation.payload_hash,
-            idempotent: false,
-            startChapter: operation.start_chapter,
-            endChapter: operation.end_chapter,
-            chapterNumbers: snapshot.map(blueprint => blueprint.chapterNumber),
-            snapshot,
-            characterSyncInput,
-            characterSyncOperation,
-        }
+        const stored = readStoredBlueprintCommit(operationId)
+        if (!stored) return null
+        return buildRangeCommitReceipt(db, operationId, stored.record.requestHash, stored.state, false)
     }
 
     /** 完整逻辑范围只提交一次，并在同一事务内回读验证后返回收据。 */
@@ -536,41 +600,18 @@ export class BlueprintRepository {
         ensureBlueprintCommitSchema(db)
         const payloadHash = commitPayloadHash(request)
         const tx = db.transaction(() => {
-            const existingOperation = db.prepare(`
-              SELECT operation_id, payload_hash, mode, start_chapter, end_chapter, character_sync_input
-              FROM blueprint_commit_operations
-              WHERE operation_id = ?
-            `).get(request.operationId) as BlueprintCommitOperationRow | undefined
-            if (existingOperation) {
-                if (existingOperation.payload_hash !== payloadHash) {
+            const existing = readStoredBlueprintCommit(request.operationId)
+            if (existing) {
+                if (existing.record.requestHash !== payloadHash) {
                     throw new Error('操作 ID 已被用于不同的蓝图提交，已拒绝覆盖')
                 }
-                const characterSyncInput = readCharacterSyncInput(existingOperation)
-                const persisted = readExactRange(db, {
-                    mode: existingOperation.mode,
-                    operationId: existingOperation.operation_id,
-                    startChapter: existingOperation.start_chapter,
-                    endChapter: existingOperation.end_chapter,
-                })
-                const snapshot = snapshotWithCharacterSyncFacts(persisted, characterSyncInput)
-                const characterSyncOperation = readCharacterSyncOperation(
+                return buildRangeCommitReceipt(
                     db,
-                    characterSyncOperationId(existingOperation.operation_id),
-                )
-                if (!characterSyncOperation) throw new Error('蓝图提交缺少可恢复的角色同步操作')
-                assertAuthoritativeCharacterSyncCompletion(db, characterSyncOperation)
-                return {
-                    mode: existingOperation.mode,
-                    operationId: existingOperation.operation_id,
+                    request.operationId,
                     payloadHash,
-                    idempotent: true,
-                    startChapter: existingOperation.start_chapter,
-                    endChapter: existingOperation.end_chapter,
-                    chapterNumbers: snapshot.map(blueprint => blueprint.chapterNumber),
-                    snapshot,
-                    characterSyncInput,
-                    characterSyncOperation,
-                }
+                    existing.state,
+                    true,
+                )
             }
 
             if (request.mode === 'full') {
@@ -595,18 +636,6 @@ export class BlueprintRepository {
             }
 
             const characterSyncInput = request.blueprints.map(blueprint => ({ ...blueprint }))
-            db.prepare(`
-              INSERT INTO blueprint_commit_operations (
-                operation_id, payload_hash, mode, start_chapter, end_chapter, character_sync_input
-              ) VALUES (?, ?, ?, ?, ?, ?)
-            `).run(
-                request.operationId,
-                payloadHash,
-                request.mode,
-                request.startChapter,
-                request.endChapter,
-                JSON.stringify(characterSyncInput),
-            )
             const syncOperationId = characterSyncOperationId(request.operationId)
             db.prepare(`
               INSERT INTO blueprint_character_sync_operations (
@@ -625,22 +654,30 @@ export class BlueprintRepository {
                 request.endChapter,
                 JSON.stringify(characterSyncInput),
             )
-            const snapshot = snapshotWithCharacterSyncFacts(persisted, characterSyncInput)
-            const characterSyncOperation = readCharacterSyncOperation(db, syncOperationId)
-            if (!characterSyncOperation) throw new Error('蓝图提交未创建可恢复的角色同步操作')
-
-            return {
+            const pendingSync = readCharacterSyncOperation(db, syncOperationId)
+            if (!pendingSync) throw new Error('蓝图提交未创建可恢复的角色同步操作')
+            const state: StoredBlueprintCommitState = {
                 mode: request.mode,
-                operationId: request.operationId,
-                payloadHash,
-                idempotent: false,
                 startChapter: request.startChapter,
                 endChapter: request.endChapter,
-                chapterNumbers: snapshot.map(blueprint => blueprint.chapterNumber),
-                snapshot,
                 characterSyncInput,
-                characterSyncOperation,
+                sync: {
+                    operationId: syncOperationId,
+                    payloadHash,
+                    // 与队列行保持同一时间戳格式，保证 effect receipt 权威校验可比较。
+                    createdAt: pendingSync.createdAt,
+                },
             }
+            // 幂等回执与蓝图事实、角色同步队列同事务落盘：
+            // 重试时直接复用回执，不再依赖独立的 commit_operations 表。
+            IdempotencyRepository.put(
+                IDEMPOTENCY_SCOPES.blueprintCommit,
+                request.operationId,
+                payloadHash,
+                state,
+            )
+
+            return buildRangeCommitReceipt(db, request.operationId, payloadHash, state, false)
         })
         return tx()
     }
@@ -673,8 +710,18 @@ export class BlueprintRepository {
         if (!operationId.trim()) throw new Error('蓝图角色同步操作 ID 不能为空')
         const db = requireProjectDb()
         ensureBlueprintCommitSchema(db)
-        const operation = readCharacterSyncOperation(db, operationId)
-        if (operation) assertAuthoritativeCharacterSyncCompletion(db, operation)
+        const pending = readCharacterSyncOperation(db, operationId)
+        if (pending) {
+            if (pending.status === 'completed') assertAuthoritativeCharacterSyncCompletion(pending)
+            return pending
+        }
+        const commitOperationId = commitOperationIdFromSyncOperationId(operationId)
+        if (!commitOperationId) return null
+        const stored = readStoredBlueprintCommit(commitOperationId)
+        if (!stored) return null
+        const operation = characterSyncOperationFromState(commitOperationId, stored.state)
+        if (operation.status !== 'completed') return null
+        assertAuthoritativeCharacterSyncCompletion(operation)
         return operation
     }
 
@@ -685,28 +732,45 @@ export class BlueprintRepository {
         const db = requireProjectDb()
         ensureBlueprintCommitSchema(db)
         const tx = db.transaction(() => {
-            const operation = readCharacterSyncOperation(db, operationId)
-            if (!operation) throw new Error('待处理蓝图角色同步操作不存在')
-            if (operation.status === 'completed') {
-                assertAuthoritativeCharacterSyncCompletion(db, operation)
-                return operation
+            const pending = readCharacterSyncOperation(db, operationId)
+            if (pending) {
+                if (pending.status === 'completed') {
+                    assertAuthoritativeCharacterSyncCompletion(pending)
+                    return pending
+                }
+                const completionReceipt = authoritativeCharacterSyncCompletionReceipt(pending)
+                const stored = readStoredBlueprintCommit(pending.blueprintCommitOperationId)
+                if (!stored) throw new Error('蓝图提交幂等回执不存在')
+                const completedAt = new Date().toISOString()
+                const nextState: StoredBlueprintCommitState = {
+                    ...stored.state,
+                    sync: {
+                        ...stored.state.sync,
+                        completedAt,
+                        completionReceipt,
+                    },
+                }
+                IdempotencyRepository.updateResponse(
+                    IDEMPOTENCY_SCOPES.blueprintCommit,
+                    pending.blueprintCommitOperationId,
+                    nextState,
+                )
+                // 队列语义：完成后删除待办行，完成回执已合并进幂等结果。
+                db.prepare(`
+                  DELETE FROM blueprint_character_sync_operations
+                  WHERE operation_id = ? AND status = 'pending'
+                `).run(operationId)
+                return characterSyncOperationFromState(pending.blueprintCommitOperationId, nextState)
             }
-            const completionReceipt = authoritativeCharacterSyncCompletionReceipt(db, operation)
-            const result = db.prepare(`
-              UPDATE blueprint_character_sync_operations
-              SET
-                status = 'completed',
-                completion_receipt = ?,
-                completed_at = datetime('now'),
-                updated_at = datetime('now')
-              WHERE operation_id = ? AND status = 'pending'
-            `).run(JSON.stringify(canonicalize(completionReceipt)), operationId)
-            if (result.changes !== 1) throw new Error('蓝图角色同步完成状态更新失败')
-            const completed = readCharacterSyncOperation(db, operationId)
-            if (!completed || completed.status !== 'completed' || !completed.completionReceipt) {
-                throw new Error('蓝图角色同步完成回执回读失败')
+
+            const commitOperationId = commitOperationIdFromSyncOperationId(operationId)
+            if (!commitOperationId) throw new Error('待处理蓝图角色同步操作不存在')
+            const stored = readStoredBlueprintCommit(commitOperationId)
+            if (!stored || !stored.state.sync.completionReceipt) {
+                throw new Error('待处理蓝图角色同步操作不存在')
             }
-            assertAuthoritativeCharacterSyncCompletion(db, completed)
+            const completed = characterSyncOperationFromState(commitOperationId, stored.state)
+            assertAuthoritativeCharacterSyncCompletion(completed)
             return completed
         })
         return tx()

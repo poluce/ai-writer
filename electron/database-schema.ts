@@ -5,8 +5,11 @@ import { createCipheriv, createHash, randomBytes } from "node:crypto"
 import type BetterSqlite3 from "better-sqlite3"
 import { loadApplicationImportSourceSecret } from "./services/import-source-identity-secret"
 import { countDraftUnits } from "../src/shared/draft-units"
+import { parseHumanConfirmedReviewSnapshot } from "../src/shared/human-confirmed-review"
 import { migrateDraftUnitCounts } from "./services/draft-unit-migration"
 import { ensureCharacterRosterSchema } from "./repositories/character-roster-schema"
+import { migrateLegacyReceiptTables } from "./services/receipt-table-migration"
+import { IDEMPOTENCY_RETENTION_DAYS } from "../src/shared/idempotency"
 
 export function ensureProjectSchema(db: BetterSqlite3.Database, importSourceSecret?: Buffer) {
   db.exec(`
@@ -216,24 +219,19 @@ export function ensureProjectSchema(db: BetterSqlite3.Database, importSourceSecr
     CREATE INDEX IF NOT EXISTS idx_chapter_deletion_status
       ON chapter_deletion_operations(status);
 
-    -- Imported finalized chapters are committed as one idempotent unit. The
-    -- stored receipt is replayed only after the immutable draft/outbox facts
-    -- have been verified again.
-    CREATE TABLE IF NOT EXISTS finalized_draft_import_operations (
-      operation_id TEXT PRIMARY KEY,
-      payload_hash TEXT NOT NULL,
-      receipt_json TEXT NOT NULL,
-      created_at TEXT DEFAULT (datetime('now'))
+    -- 通用幂等键：所有需要“重试只生效一次”的写操作共用一张表，
+    -- (scope, key) 唯一定位，request_hash 防止同 key 绑定不同载荷，
+    -- response_json 保存首次执行结果；仅保留 90 天。
+    CREATE TABLE IF NOT EXISTS idempotency_keys (
+      scope TEXT NOT NULL,
+      key TEXT NOT NULL,
+      request_hash TEXT NOT NULL,
+      response_json TEXT NOT NULL DEFAULT '{}',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (scope, key)
     );
-
-    -- Global facts inferred during import are committed as one idempotent
-    -- unit: project core plus the authoritative structured character roster.
-    CREATE TABLE IF NOT EXISTS import_global_fact_operations (
-      operation_id TEXT PRIMARY KEY,
-      payload_hash TEXT NOT NULL,
-      receipt_json TEXT NOT NULL,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
+    CREATE INDEX IF NOT EXISTS idx_idempotency_keys_created
+      ON idempotency_keys(created_at);
 
     -- ============================================================
     -- 6. revisions — 修稿（派生自 draft）
@@ -272,6 +270,8 @@ export function ensureProjectSchema(db: BetterSqlite3.Database, importSourceSecr
       source_draft_version INTEGER,               -- 审稿时冻结源稿版本
       source_draft_status TEXT,                   -- 审稿时冻结源稿状态
       source_content TEXT,                        -- 审稿时冻结源稿正文
+      kind TEXT NOT NULL DEFAULT 'review',        -- review=AI 审稿报告 | confirmation=人工确认快照
+      source_review_id INTEGER,                   -- confirmation 指向的原始审稿报告
       content_id INTEGER NOT NULL,                -- FK -> contents
       created_at TEXT DEFAULT (datetime('now')),
       FOREIGN KEY (base_draft_id) REFERENCES drafts(id) ON DELETE CASCADE,
@@ -605,6 +605,38 @@ export function ensureProjectSchema(db: BetterSqlite3.Database, importSourceSecr
     addSourceColumn('source_draft_version', 'INTEGER')
     addSourceColumn('source_draft_status', 'TEXT')
     addSourceColumn('source_content', 'TEXT')
+  }
+
+  // 审稿报告与人工确认快照是两类记录：确认快照是派生数据，必须随来源审稿一起清理。
+  // 历史库需要从快照正文的显式 kind 字段回填 kind/source_review_id，不能靠猜测。
+  {
+    const reviewColumns = new Set(
+      (db.prepare('PRAGMA table_info(reviews)').all() as Array<{ name: string }>).map(column => column.name),
+    )
+    const needsKindBackfill = !reviewColumns.has('kind')
+    if (needsKindBackfill) {
+      db.exec("ALTER TABLE reviews ADD COLUMN kind TEXT NOT NULL DEFAULT 'review'")
+    }
+    if (!reviewColumns.has('source_review_id')) {
+      db.exec('ALTER TABLE reviews ADD COLUMN source_review_id INTEGER')
+    }
+    if (needsKindBackfill) {
+      const legacyRows = db.prepare(`
+        SELECT reviews.id AS id, contents.body AS body
+        FROM reviews
+        JOIN contents ON contents.id = reviews.content_id
+      `).all() as Array<{ id: number; body: string }>
+      const updateClassification = db.prepare(
+        'UPDATE reviews SET kind = ?, source_review_id = ? WHERE id = ?',
+      )
+      for (const row of legacyRows) {
+        const snapshot = parseHumanConfirmedReviewSnapshot(row.body)
+        if (snapshot) {
+          updateClassification.run('confirmation', snapshot.sourceReviewId, row.id)
+        }
+      }
+    }
+    db.exec('CREATE INDEX IF NOT EXISTS idx_reviews_source ON reviews(source_review_id)')
   }
 
   // Durable continuity facts were added to the existing summary projection so
@@ -1038,6 +1070,12 @@ export function ensureProjectSchema(db: BetterSqlite3.Database, importSourceSecr
   } catch (error) {
     console.warn('[Vela DB] skipped cs_updated_at_chapter sentinel migration', error)
   }
+
+  // 旧版领域收据表迁移到通用幂等表（幂等：旧表不存在时跳过）。
+  migrateLegacyReceiptTables(db)
+  // 幂等键只保留最近 90 天，项目打开时统一清理，避免再次只增不减。
+  db.prepare("DELETE FROM idempotency_keys WHERE created_at < datetime('now', ?)")
+    .run(`-${IDEMPOTENCY_RETENTION_DAYS} days`)
 
   migrateDraftUnitCounts(db)
 }

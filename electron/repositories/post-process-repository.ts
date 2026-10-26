@@ -27,6 +27,13 @@ export class PostProcessRepository {
         const runId = randomUUID()
 
         const tx = db.transaction(() => {
+            // 同一触发源只保留最新一次跑批：旧 run 不再被任何界面读取，
+            // 重新定稿/架构提取时直接清理，避免后处理历史无限增长。
+            db.prepare(`
+        DELETE FROM post_process_runs
+        WHERE trigger_source_type = ? AND trigger_source_id = ?
+      `).run(params.triggerSourceType, params.triggerSourceId)
+
             db.prepare(`
         INSERT INTO post_process_runs (id, trigger_source_type, trigger_source_id, source_label)
         VALUES (?, ?, ?, ?)

@@ -119,6 +119,15 @@ export async function getLLMHistory(
   )) as unknown as LLMCallRecord[]
 }
 
+/** 清空本项目的模型调用记录 */
+export async function clearLLMHistory(projectSession: ProjectSessionContext): Promise<{ success: boolean; deleted: number }> {
+  return ipc.invokeWithProjectSession(
+    projectSession,
+    'db:llm-calls-clear',
+    projectSession.projectPath,
+  )
+}
+
 /** 同时加载统计和历史（常用组合） */
 export async function loadLLMData(
   projectSession: ProjectSessionContext,

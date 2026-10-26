@@ -613,6 +613,13 @@ export interface DatabaseChannels {
   }
   'db:import-run-get': { args: [runId: string, expectedProjectPath: string]; return: ImportRunSnapshot | null }
   'db:import-run-list-resumable': { args: [expectedProjectPath: string]; return: ImportRunSnapshot[] }
+  /** 最近导入运行（含已完成/取消/失败），用于导入历史管理。 */
+  'db:import-run-list-recent': { args: [limit: number | undefined, expectedProjectPath: string]; return: ImportRunSnapshot[] }
+  /** 删除一条不再运行中的导入记录（不删除已导入内容）。 */
+  'db:import-run-delete': {
+    args: [runId: string, expectedProjectPath: string]
+    return: { success: boolean; errorCode?: 'IMPORT_RUN_NOT_FOUND' | 'IMPORT_RUN_RUNNING'; error?: string }
+  }
   'db:import-run-list-chapters': {
     args: [runId: string, afterChapterNumber: number, limit: number, expectedProjectPath: string]
     return: ImportRunChapterSnapshot[]
@@ -839,11 +846,19 @@ export interface DatabaseChannels {
   }
 
   // 6. reviews
-  'db:review-create': { args: [params: { baseDraftId: number; reviewIndex?: number; content: string; expectedSource?: ExpectedDraftSource }, expectedProjectPath: string]; return: { success: boolean; id?: number; reviewIndex?: number; errorCode?: SourceDraftGuardErrorCode; error?: string } }
+  'db:review-create': { args: [params: { baseDraftId: number; reviewIndex?: number; content: string; expectedSource?: ExpectedDraftSource; kind?: 'review' | 'confirmation'; sourceReviewId?: number }, expectedProjectPath: string]; return: { success: boolean; id?: number; reviewIndex?: number; errorCode?: SourceDraftGuardErrorCode; error?: string } }
   'db:review-list': { args: [baseDraftId: number, expectedProjectPath: string]; return: ReviewMeta[] }
   'db:review-get-latest': { args: [baseDraftId: number, expectedProjectPath: string]; return: ReviewFull | null }
   'db:review-get-full': { args: [id: number, expectedProjectPath: string]; return: ReviewFull | null }
   'db:review-next-index': { args: [baseDraftId: number, expectedProjectPath: string]; return: number }
+  'db:review-delete': {
+    args: [reviewId: number, expectedProjectPath: string]
+    return: {
+      success: boolean
+      errorCode?: 'REVIEW_NOT_FOUND' | 'REVIEW_IN_USE_BY_PENDING_REVISION'
+      error?: string
+    }
+  }
 
   // 7. post_process
   'db:post-process-create-run': { args: [params: { triggerSourceType: string; triggerSourceId: string; sourceLabel: string; steps: Array<{ key: string; label: string; critical: boolean }> }, expectedProjectPath: string]; return: { success: boolean; id?: string; error?: string } }
@@ -867,6 +882,8 @@ export interface DatabaseChannels {
     }
   }
   'db:get-llm-history': { args: [limit: number | undefined, expectedProjectPath: string]; return: unknown[] }
+  /** 手动清空本项目的模型调用记录；返回删除条数。 */
+  'db:llm-calls-clear': { args: [expectedProjectPath: string]; return: { success: boolean; deleted: number } }
   'db:save-summary-snapshot': { args: [chapterNumber: number, characterStates: string, expectedProjectPath: string]; return: { success: boolean } }
 }
 

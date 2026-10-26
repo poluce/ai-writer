@@ -59,3 +59,23 @@ describe('LLMHistoryRepository safe finish reasons', () => {
     expect(JSON.stringify(history)).not.toMatch(/Authorization|Bearer|private-provider-error/u)
   })
 })
+
+describe('LLMHistoryRepository lifecycle bounds', () => {
+  it('keeps only the newest call records so the log cannot grow without bound', () => {
+    for (let index = 0; index < 1005; index += 1) log(true)
+
+    const count = db.prepare('SELECT COUNT(*) AS count FROM llm_calls').get() as { count: number }
+    expect(count.count).toBe(1000)
+    const oldest = db.prepare('SELECT MIN(id) AS id FROM llm_calls').get() as { id: number }
+    expect(oldest.id).toBe(6)
+  })
+
+  it('clears every call record for an explicit reset and reports the deleted count', () => {
+    log(true)
+    log(false, 'finish:error')
+
+    expect(LLMHistoryRepository.clearAll()).toBe(2)
+    expect(db.prepare('SELECT COUNT(*) AS count FROM llm_calls').get()).toEqual({ count: 0 })
+    expect(LLMHistoryRepository.clearAll()).toBe(0)
+  })
+})

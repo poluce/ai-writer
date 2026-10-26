@@ -341,7 +341,7 @@ describe('AgentSessionManager', () => {
     const result = await manager.delegateTask({
       target: 'architect',
       task: '完善千机阁设定',
-      context: '暗夜渊势力',
+      instructions: '暗夜渊势力',
     }, 'parent-conv-1')
 
     expect(result.success).toBe(true)
@@ -443,5 +443,29 @@ describe('AgentSessionManager', () => {
     expect(result.success).toBe(true)
     expect(result.conversationId).toMatch(/^blueprint-/)
     expect(openMock).toHaveBeenCalledWith(expect.stringMatching(/^blueprint-/), { create: true })
+  })
+
+  it('creates a new review conversation and delegates task when target assistant is review', async () => {
+    const openMock = vi.fn(async (id: string) => ({
+      metadata: { id },
+      setName: vi.fn(),
+    }))
+    const store = fakeStore({
+      listConversations: vi.fn(async () => []),
+      open: openMock,
+    })
+    const { manager } = buildManager(store as never)
+
+    const result = await manager.delegateTask({
+      target: 'review',
+      task: '审查草稿',
+      chapter_number: 1,
+      instructions: '检查逻辑漏洞',
+    }, 'parent-conv-1')
+
+    expect(result.success).toBe(true)
+    expect(result.conversationId).toMatch(/^review-/)
+    expect(openMock).toHaveBeenCalledWith(expect.stringMatching(/^review-/), { create: true })
+    expect(result.result).toBe('mocked text')
   })
 })

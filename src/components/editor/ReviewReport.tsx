@@ -1,31 +1,14 @@
 /**
  * 审稿报告查看器 — 组合根。
- * 纯逻辑、严重度展示与修稿对话框已拆至同目录各模块。
+ *
+ * 布局：左侧「原文批注视图」（草稿正文 + 行内批注），右侧「分类看板」（总览 / 分类 / 意见卡片 /
+ * 人工确认修稿清单）。所有审稿确认、快照持久化与修稿工作流逻辑仍集中在本容器。
  */
-import { useEffect, useState } from 'react'
-import {
-  CheckCircle,
-  CircleMinus,
-  FileCheck2,
-  HelpCircle,
-  Info,
-  ListChecks,
-  Pencil,
-  Plus,
-  Quote,
-  RotateCcw,
-  Sparkles,
-  X,
-} from 'lucide-react'
-import { cn } from '../../lib/utils'
-import { Button } from '../ui/Button'
-import { Input } from '../ui/Input'
-import { Label } from '../ui/Label'
-import { NativeSelect } from '../ui/NativeSelect'
-import { Textarea } from '../ui/Textarea'
+import { useEffect, useMemo, useState } from 'react'
 import { captureProjectSession, isProjectSessionCurrent, isProjectSessionPath } from '../project-session-gate'
 import { useProjectStore } from '../../stores/project-store'
 import { useLocaleStore } from '../../stores/locale-store'
+import { useEditorStore } from '../../stores/editor-store'
 import { useLLMStore } from '../../stores/llm-store'
 import { ipc } from '../../services/ipc-client'
 import { requireIpcSuccess } from '../../services/ipc-result'
@@ -41,16 +24,19 @@ import {
   type ConfirmedChecklist,
   type EditableReviewItem,
   availableGenerationModelId,
-  chapterGoalStatusLabel,
   confirmationSourceReviewId,
   editableItemsFromReview,
   isReviewId,
   matchesReviewSource,
-  normalizeSeverity,
   parseReport,
 } from './review-report-shared'
-import { SEVERITY_META, SeverityIcon, severityCopy } from './ReviewSeverityBadge'
 import { ConfirmedRevisionDialog } from './ConfirmedRevisionDialog'
+import { globalEventBus } from '../../shared/event-bus'
+import { confirm } from '../ui/Confirm'
+import { toast } from '../ui/Toast'
+import ReviewBoard from './ReviewBoard'
+import ReviewDraftView, { type ReviewDraftLoadState } from './ReviewDraftView'
+import { buildReviewDocument } from './review-annotations'
 
 interface ReviewReportProps {
   /** 原始审稿报告文本（JSON 或旧版 markdown） */
@@ -117,11 +103,136 @@ function ReviewReportSession({
   const [confirming, setConfirming] = useState(false)
   const [showRevisionDialog, setShowRevisionDialog] = useState(false)
   const [processing, setProcessing] = useState(false)
-  const [showLegend, setShowLegend] = useState(false)
   const sourceReviewId = confirmationSourceReviewId(initialSnapshot, reviewId)
   const summary = initialSnapshot?.summary ?? parsedReport.summary
   const goalReview = confirmed?.snapshot.goalReview ?? initialSnapshot?.goalReview ?? parsedReport.goalReview
   const canManageChecklist = Boolean(draftPath && chapterDir)
+
+  const [draftContent, setDraftContent] = useState('')
+  const [draftMeta, setDraftMeta] = useState<{ chapterNumber: number; chapterTitle?: string; version: number } | null>(null)
+  const [draftLoadState, setDraftLoadState] = useState<ReviewDraftLoadState>(
+    draftPath && chapterDir ? 'loading' : 'idle',
+  )
+  const [activeCategory, setActiveCategory] = useState('overview')
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
+  const [scrollTarget, setScrollTarget] = useState<{ blockIndex: number; nonce: number } | null>(null)
+
+  const reviewDocument = useMemo(() => buildReviewDocument(items, draftContent), [items, draftContent])
+
+  useEffect(() => {
+    if (!draftPath || !chapterDir) return
+    let cancelled = false
+    void (async () => {
+      const [{ parseDraftMeta }, { readDraftBody }] = await Promise.all([
+        import('../../services/workflows/chapter-workflow'),
+        import('../../stores/draft-store'),
+      ])
+      if (cancelled) return
+      const projectSession = captureProjectSession(useProjectStore.getState().currentProject)
+      if (!projectSession || !isProjectSessionPath(projectSession, projectKey)) {
+        setDraftLoadState('error')
+        return
+      }
+      const meta = await parseDraftMeta(draftPath, projectSession.projectPath, projectSession)
+      if (cancelled || !isProjectSessionCurrent(projectSession)) return
+      if (meta) {
+        setDraftMeta({
+          chapterNumber: meta.chapterNumber,
+          chapterTitle: meta.chapterTitle,
+          version: meta.version,
+        })
+      }
+      const content = await readDraftBody(draftPath, projectSession.projectPath, projectSession)
+      if (cancelled || !isProjectSessionCurrent(projectSession)) return
+      setDraftContent(content)
+      setDraftLoadState(content ? 'ready' : 'error')
+    })().catch(() => {
+      if (!cancelled) setDraftLoadState('error')
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [draftPath, chapterDir, projectKey])
+
+  const scrollToAnnotation = (itemId: string) => {
+    const annotation = reviewDocument.annotationByItemId.get(itemId)
+    if (!annotation) return
+    setScrollTarget({ blockIndex: annotation.blockIndex, nonce: Date.now() })
+  }
+
+  const selectFinding = (itemId: string) => {
+    setSelectedItemId(itemId)
+    scrollToAnnotation(itemId)
+  }
+
+  const selectCategory = (category: string) => {
+    setActiveCategory(category)
+    if (category === 'overview') return
+    const firstLocated = items.find(item =>
+      item.category === category && reviewDocument.annotationByItemId.has(item.id),
+    )
+    if (firstLocated) selectFinding(firstLocated.id)
+  }
+
+  const removeAuthorItem = (itemId: string) => {
+    setItems(current => current.filter(item => item.id !== itemId))
+  }
+
+  const [deletingReport, setDeletingReport] = useState(false)
+  const deleteReport = async () => {
+    if (!isReviewId(reviewId)) return
+    const projectSession = captureProjectSession(useProjectStore.getState().currentProject)
+    if (!projectSession || !isProjectSessionPath(projectSession, projectKey)) return
+    const confirmedDelete = await confirm(
+      text(
+        '确认删除这份审查报告？\n删除不可撤销；其人工确认清单等派生记录会一并清理，已用于修稿的记录会保留修稿结果但解除溯源关联。',
+        'Delete this review report?\nThis cannot be undone. Derived confirmation records are removed; revision results are kept, but provenance links are detached.',
+      ),
+      {
+        title: text('删除审查报告', 'Delete review report'),
+        confirmText: text('删除', 'Delete'),
+        danger: true,
+      },
+    )
+    if (!confirmedDelete || !isProjectSessionCurrent(projectSession)) return
+    setDeletingReport(true)
+    try {
+      const result = await ipc.invokeWithProjectSession(projectSession, 'db:review-delete', reviewId, projectKey)
+      if (!isProjectSessionCurrent(projectSession)) return
+      if (!result.success) {
+        toast.error(result.errorCode === 'REVIEW_IN_USE_BY_PENDING_REVISION'
+          ? text(
+            '该审查报告正在用于修稿，请等待修稿完成后再删除。',
+            'This review report is being used by an in-progress revision. Delete it after the revision finishes.',
+          )
+          : text(
+            `删除审查报告失败\n\n${result.error ?? ''}`,
+            `Could not delete the review report\n\n${result.error ?? ''}`,
+          ))
+        return
+      }
+      const editor = useEditorStore.getState()
+      for (const tab of editor.tabs) {
+        if (tab.type === 'review-report' && tab.projectKey === projectKey && tab.reviewId === reviewId) {
+          editor.closeTab(tab.id)
+        }
+      }
+      globalEventBus.emit('REFRESH_RESOURCE', {
+        resources: ['reviews'],
+        projectPath: projectKey,
+        projectSession,
+      })
+      toast.success(text('已删除审查报告', 'Review report deleted'))
+    } catch (error) {
+      if (!isProjectSessionCurrent(projectSession)) return
+      toast.error(text(
+        `删除审查报告失败\n\n${error instanceof Error ? error.message : String(error)}`,
+        `Could not delete the review report\n\n${error instanceof Error ? error.message : String(error)}`,
+      ))
+    } finally {
+      if (isProjectSessionCurrent(projectSession)) setDeletingReport(false)
+    }
+  }
 
   useEffect(() => {
     if (initialSnapshot || !draftPath || !chapterDir || !isReviewId(reviewId)) return
@@ -173,15 +284,6 @@ function ReviewReportSession({
     list.push(item)
     categories.set(item.category, list)
   }
-
-  // 统计
-  const errorCount = items.filter((i) => i.severity === 'error').length
-  const warningCount = items.filter((i) => i.severity === 'warning').length
-  const passCount = items.filter((i) => i.severity === 'pass').length
-  const unknownCount = items.filter((i) => i.severity === 'unknown').length
-  const errorCopy = severityCopy('error', text)
-  const warningCopy = severityCopy('warning', text)
-  const passCopy = severityCopy('pass', text)
 
   const updateItem = (itemId: string, patch: Partial<EditableReviewItem>) => {
     setItems(current => current.map(item => item.id === itemId ? { ...item, ...patch } : item))
@@ -325,6 +427,9 @@ function ReviewReportSession({
           reviewIndex,
           content,
           expectedSource: sourceReview.sourceDraft,
+          // 确认快照是派生记录：随来源报告一起清理，不进「审查报告 #N」清单。
+          kind: 'confirmation',
+          sourceReviewId,
         }, projectSession.projectPath)
       if (createResponse.errorCode === 'SOURCE_DRAFT_CHANGED') {
         throw new Error(text(
@@ -484,386 +589,69 @@ function ReviewReportSession({
   }
 
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="max-w-2xl mx-auto px-6 py-4">
-        {/* 统计栏 */}
-        <div className="flex items-center gap-4 mb-4 pb-3 border-b border-[var(--color-border)]">
-          <h3 className="text-base font-bold text-[var(--color-text)]">{text('审稿报告', 'Review report')}</h3>
-          <div className="flex items-center gap-3 text-xs ml-auto">
-            {errorCount > 0 && (
-              <span className="flex items-center gap-1 px-2 py-0.5 rounded bg-red-500/20 text-[var(--color-error-text)]">
-                <SeverityIcon severity="error" /> {errorCount} {errorCopy.countLabel}
-              </span>
-            )}
-            {warningCount > 0 && (
-              <span className="flex items-center gap-1 px-2 py-0.5 rounded bg-yellow-500/20 text-[var(--color-warning-text)]">
-                <SeverityIcon severity="warning" /> {warningCount} {warningCopy.countLabel}
-              </span>
-            )}
-            {unknownCount > 0 && (
-              <span className="flex items-center gap-1 text-[var(--color-text-muted)]">
-                <SeverityIcon severity="unknown" /> {unknownCount} {text('待核实', 'unverified')}
-              </span>
-            )}
-            <span className="flex items-center gap-1 px-2 py-0.5 rounded bg-green-500/20 text-[var(--color-success-text)]">
-              <SeverityIcon severity="pass" /> {passCount} {passCopy.countLabel}
-            </span>
-            {/* 图例帮助按钮 */}
-            <button
-              className="flex items-center justify-center rounded-full hover:bg-[var(--color-hover)] transition-colors"
-              style={{ width: 22, height: 22 }}
-              onClick={() => setShowLegend(!showLegend)}
-              title={text('颜色说明', 'Color legend')}
-            >
-              <HelpCircle size={14} style={{ color: 'var(--color-text-muted)' }} />
-            </button>
-          </div>
-        </div>
+    <div
+      className="flex h-full min-h-0 w-full overflow-hidden"
+      style={{ backgroundColor: 'var(--color-editor-bg)' }}
+    >
+      <ReviewDraftView
+        text={text}
+        chapterNumber={draftMeta?.chapterNumber ?? chapterNumber}
+        chapterTitle={draftMeta?.chapterTitle}
+        draftVersion={draftMeta?.version}
+        characterCount={reviewDocument.characterCount}
+        blocks={reviewDocument.blocks}
+        annotations={reviewDocument.annotations}
+        activeCategory={activeCategory === 'overview' ? null : activeCategory}
+        selectedItemId={selectedItemId}
+        loadState={draftLoadState}
+        scrollTarget={scrollTarget}
+        onSelectAnnotation={setSelectedItemId}
+      />
 
-        {/* 颜色图例说明 */}
-        {showLegend && (
-          <div
-            className="mb-4 rounded-lg border p-3 text-xs space-y-2"
-            style={{
-              backgroundColor: 'var(--color-bg-elevated)',
-              borderColor: 'var(--color-border)',
-            }}
-          >
-            <div className="font-medium text-[var(--color-text)] mb-1.5">{text('颜色标记说明', 'Color legend')}</div>
-            {(['error', 'warning', 'unknown', 'pass'] as const).map(sev => {
-              const meta = SEVERITY_META[sev]
-              const copy = severityCopy(sev, text)
-              return (
-                <div key={sev} className="flex items-center gap-2">
-                  <span className={cn(
-                    'inline-flex items-center gap-1 px-2 py-0.5 rounded',
-                    meta.bgClass, meta.colorClass
-                  )}>
-                    <SeverityIcon severity={sev} /> {copy.label}
-                  </span>
-                  <span style={{ color: 'var(--color-text-secondary)' }}>
-                    — {copy.actionLabel}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-        )}
-
-        {/* 总体评价（如有） */}
-        {summary && (
-          <div
-            className="mb-4 px-4 py-3 rounded-lg border text-sm"
-            style={{
-              backgroundColor: 'var(--color-bg-elevated)',
-              borderColor: 'var(--color-border)',
-              color: 'var(--color-text)',
-            }}
-          >
-            <span className="font-medium">{text('总体评价：', 'Overall assessment:')}</span>
-            <span style={{ color: 'var(--color-text-secondary)' }}>{summary}</span>
-          </div>
-        )}
-
-        {goalReview && (
-          <p className="mb-4 text-xs text-[var(--color-text-muted)]">
-            {goalReview.coverage === 'complete'
-              ? text('本章目标已逐项检查；覆盖完整不代表全部完成。', 'Chapter goals checked individually; full coverage does not mean all goals are completed.')
-              : goalReview.coverage === 'not_configured'
-                ? text('本章未配置可检查的目标，未进行目标验收。', 'No chapter goals are configured; goal acceptance was not performed.')
-                : text('本章目标检查不完整，尚有待核实项。', 'Chapter goal review is incomplete and needs verification.')}
-          </p>
-        )}
-        {/* 分类展示 */}
-        {items.length === 0 ? (
-          <div className="text-center py-8 text-[var(--color-text-muted)] text-sm">
-            <CheckCircle size={32} className="mx-auto mb-2" style={{ color: 'var(--color-success)' }} />
-            {goalReview && goalReview.coverage !== 'complete'
-              ? text('暂无已确认的检查结果', 'No confirmed review results yet')
-              : text('审稿通过，未发现问题', 'Review passed. No issues found.')}
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {Array.from(categories.entries()).map(([category, items]) => (
-              <div key={category}>
-                <h4 className="text-sm font-semibold text-[var(--color-text)] mb-2 flex items-center gap-1.5">
-                  <Info size={14} className="text-[var(--color-text-muted)]" />
-                  {category}
-                </h4>
-                <div className="space-y-1.5 pl-1">
-                  {items.map((item) => {
-                    const meta = SEVERITY_META[item.severity]
-                    const copy = severityCopy(item.severity, text)
-                    const isPass = item.severity === 'pass'
-                    const goal = goalReview?.items.find(goal => goal.id === item.goalId)
-                    const isEmptyAuthorIssue = item.origin === 'author' && !item.description.trim()
-                    return (
-                      <div
-                        key={item.id}
-                        className={cn(
-                          'px-3 py-2 rounded-md border text-xs leading-relaxed',
-                          meta.borderClass, meta.bgClass
-                        )}
-                      >
-                        <div className="flex items-start gap-2">
-                          <SeverityIcon severity={item.severity} />
-                          <div className="flex-1 min-w-0 space-y-2">
-                            {goal && (
-                              <div className="space-y-1" aria-label={text('本章目标与证据', 'Chapter goal and evidence')}>
-                                <p className="font-medium">
-                                  {text('本章目标：', 'Chapter goal: ')}{goal.text}
-                                  {' — '}{chapterGoalStatusLabel(goal.status, text)}
-                                </p>
-                                {goal.evidence.map((evidence, index) => (
-                                  <blockquote key={index} className="border-l-2 border-[var(--color-border)] pl-2">
-                                    <Quote size={10} className="inline mr-1" />{evidence.quote}
-                                  </blockquote>
-                                ))}
-                                {goal.evidence.length === 0 && <p>{text('暂无可定位正文证据', 'No locatable chapter evidence')}</p>}
-                              </div>
-                            )}
-                            {editingChecklist && !isPass ? (
-                              <>
-                                <div className="grid grid-cols-[minmax(0,1fr)_130px] gap-2">
-                                  <Input
-                                    aria-label={text('问题分类', 'Issue category')}
-                                    value={item.category}
-                                    onChange={(event) => updateItem(item.id, { category: event.target.value })}
-                                  />
-                                  <NativeSelect
-                                    aria-label={text('严重程度', 'Severity')}
-                                    value={item.severity}
-                                    onChange={(event) => {
-                                      const severity = normalizeSeverity(event.target.value)
-                                      updateItem(item.id, {
-                                        severity,
-                                        ...(severity === 'unknown' ? { decision: 'ignore' } : {}),
-                                      })
-                                    }}
-                                  >
-                                    <option value="error">{text('严重问题', 'Critical issue')}</option>
-                                    <option value="warning">{text('改进建议', 'Improvement')}</option>
-                                    <option value="unknown">{text('待核实', 'Needs verification')}</option>
-                                  </NativeSelect>
-                                </div>
-                                <Textarea
-                                  aria-label={text('审稿问题', 'Review issue')}
-                                  aria-invalid={isEmptyAuthorIssue || undefined}
-                                  aria-describedby={isEmptyAuthorIssue ? `author-issue-hint-${item.id}` : undefined}
-                                  value={item.description}
-                                  placeholder={item.origin === 'author' ? text(
-                                    '请填写需要纳入本次修稿的具体问题',
-                                    'Describe the specific issue to include in this revision',
-                                  ) : undefined}
-                                  onChange={(event) => updateItem(item.id, { description: event.target.value })}
-                                />
-                                {isEmptyAuthorIssue && (
-                                  <p
-                                    id={`author-issue-hint-${item.id}`}
-                                    className="text-[0.7rem] text-[var(--color-warning-text)]"
-                                  >
-                                    {text(
-                                      '请填写具体问题，或移除这一项。',
-                                      'Describe the issue, or remove this item.',
-                                    )}
-                                  </p>
-                                )}
-                                <Input
-                                  aria-label={text('相关原文（可选）', 'Related text (optional)')}
-                                  value={item.quote ?? ''}
-                                  placeholder={text('相关原文（可选）', 'Related text (optional)')}
-                                  onChange={(event) => updateItem(item.id, { quote: event.target.value })}
-                                />
-                              </>
-                            ) : (
-                              <div>
-                                <span className="text-[var(--color-text-secondary)]">{item.description}</span>
-                                <span className={cn('ml-2 text-[0.65rem] opacity-70', meta.colorClass)}>
-                                  [{copy.actionLabel}]
-                                </span>
-                              </div>
-                            )}
-                            {item.sourceChapter && (
-                              <p className="text-[0.7rem] text-[var(--color-text-muted)]">
-                                {text(
-                                  `来源：第${item.sourceChapter}章`,
-                                  `Source: Chapter ${item.sourceChapter}`,
-                                )}
-                              </p>
-                            )}
-                            {!isPass && editingChecklist && (
-                              <div className="flex items-center justify-between gap-2">
-                                <span className={cn('text-[0.7rem]', meta.colorClass)}>
-                                  {item.decision === 'apply'
-                                    ? text('已纳入本次修稿', 'Included in this revision')
-                                    : text('已忽略，不会传给模型', 'Ignored; not sent to the model')}
-                                </span>
-                                <div className="flex items-center gap-1">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => updateItem(item.id, {
-                                      decision: item.decision === 'apply' ? 'ignore' : 'apply',
-                                    })}
-                                  >
-                                    {item.decision === 'apply'
-                                      ? <CircleMinus size={12} />
-                                      : <RotateCcw size={12} />}
-                                    {item.decision === 'apply'
-                                      ? text('忽略', 'Ignore')
-                                      : item.goalId || item.severity === 'unknown' ? text('明确纳入修稿', 'Explicitly include in revision') : text('恢复', 'Restore')}
-                                  </Button>
-                                  {item.origin === 'author' && (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => setItems(current => current.filter(candidate => candidate.id !== item.id))}
-                                      title={text('移除人工问题', 'Remove author issue')}
-                                    >
-                                      <X size={12} />
-                                      {text('移除', 'Remove')}
-                                    </Button>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        {/* 引用原文（如有） */}
-                        {!editingChecklist && item.quote && (
-                          <div
-                            className="mt-1.5 ml-5 pl-2 text-[0.7rem] italic"
-                            style={{
-                              borderLeft: '2px solid var(--color-border)',
-                              color: 'var(--color-text-muted)',
-                            }}
-                          >
-                            <Quote size={10} className="inline mr-1 opacity-60" />
-                            {item.quote}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <section className="mt-6 rounded-lg border border-[var(--color-border)] p-4 space-y-3">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h4 className="text-sm font-semibold text-[var(--color-text)] flex items-center gap-1.5">
-                <ListChecks size={15} className="text-[var(--color-accent)]" />
-                {text('人工确认修稿清单', 'Human-confirmed revision checklist')}
-              </h4>
-              <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-                {editingChecklist
-                  ? text('普通错误和建议默认纳入；本章目标与待核实项默认忽略，只有明确选择才纳入；“通过”仅展示。', 'General issues and suggestions are included by default; chapter goals and unverified items require explicit inclusion; passed checks are display-only.')
-                  : text('已保存为新的不可变确认快照；原始 AI 审稿未被修改。', 'Saved as a new immutable confirmation snapshot; the original AI review was not modified.')}
-              </p>
-            </div>
-            {confirmed && !editingChecklist && (
-              <span className="inline-flex items-center gap-1 text-xs text-[var(--color-success-text)]">
-                <FileCheck2 size={14} />
-                {text('已确认', 'Confirmed')}
-              </span>
-            )}
-          </div>
-
-          {editingChecklist && (
-            <>
-              <div>
-                <Label htmlFor="review-author-guidance">
-                  {text('总体修稿指导（可选）', 'Overall revision guidance (optional)')}
-                </Label>
-                <Textarea
-                  id="review-author-guidance"
-                  value={authorGuidance}
-                  onChange={(event) => setAuthorGuidance(event.target.value)}
-                  placeholder={text(
-                    '例如：优先修复角色动机的前后不一致，保持本章克制的叙事节奏。',
-                    'For example: prioritize inconsistent character motivation while keeping this chapter’s restrained pace.',
-                  )}
-                />
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button variant="outline" size="sm" onClick={addAuthorItem}>
-                  <Plus size={13} />
-                  {text('新增人工问题', 'Add author issue')}
-                </Button>
-                {canManageChecklist ? (
-                  <Button variant="ai" size="sm" onClick={confirmChecklist} disabled={confirming}>
-                    <FileCheck2 size={13} />
-                    {confirmed
-                      ? text('重新确认审稿清单', 'Confirm updated checklist')
-                      : text('确认审稿清单', 'Confirm review checklist')}
-                  </Button>
-                ) : (
-                  <span className="text-xs text-[var(--color-text-muted)]">
-                    {text('关联草稿后可确认清单。', 'Link this report to a draft to confirm the checklist.')}
-                  </span>
-                )}
-              </div>
-            </>
-          )}
-
-          {confirmed && !editingChecklist && (
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setEditingChecklist(true)
-                  setChecklistError(null)
-                }}
-              >
-                <Pencil size={13} />
-                {text('编辑清单', 'Edit checklist')}
-              </Button>
-              <Button
-                variant="ai"
-                size="sm"
-                onClick={() => {
-                  if (!hasIncludedReviewItems(confirmed.snapshot)) {
-                    setChecklistError(text(
-                      '未纳入任何审稿项，无法启动修稿。请恢复至少一项错误或建议后重新确认。',
-                      'No review item is included. Restore at least one issue or suggestion, then confirm again before revising.',
-                    ))
-                    return
-                  }
-                  setChecklistError(null)
-                  setShowRevisionDialog(true)
-                }}
-                disabled={processing}
-              >
-                <Sparkles size={13} />
-                {text('按确认意见修稿', 'Revise from confirmed checklist')}
-              </Button>
-            </div>
-          )}
-
-          {checklistError && (
-            <p role="alert" className="text-xs text-[var(--color-error-text)]">
-              {checklistError}
-            </p>
-          )}
-        </section>
-
-        {/* 原始文本折叠 */}
-        <details className="mt-6">
-          <summary className="text-xs text-[var(--color-text-muted)] cursor-pointer hover:text-[var(--color-text)]">
-            {text(
-              initialSnapshot ? '查看此确认记录原文' : '查看原始 AI 审稿文本',
-              initialSnapshot ? 'View this confirmation record' : 'View original AI review text',
-            )}
-          </summary>
-          <pre className="mt-2 text-xs whitespace-pre-wrap font-mono leading-5 text-[var(--color-text-secondary)] bg-[var(--color-sidebar)] rounded-md p-3 border border-[var(--color-border)]">
-            {reportText}
-          </pre>
-        </details>
-      </div>
+      <ReviewBoard
+        text={text}
+        items={items}
+        goalReview={goalReview}
+        summary={summary}
+        activeCategory={activeCategory}
+        onCategoryChange={selectCategory}
+        selectedItemId={selectedItemId}
+        onSelectItem={selectFinding}
+        annotations={reviewDocument.annotations}
+        editingChecklist={editingChecklist}
+        authorGuidance={authorGuidance}
+        onAuthorGuidanceChange={setAuthorGuidance}
+        onUpdateItem={updateItem}
+        onAddAuthorItem={addAuthorItem}
+        onRemoveAuthorItem={removeAuthorItem}
+        onConfirmChecklist={() => {
+          void confirmChecklist()
+        }}
+        confirming={confirming}
+        canManageChecklist={canManageChecklist}
+        checklistError={checklistError}
+        confirmed={Boolean(confirmed)}
+        onEditChecklist={() => {
+          setEditingChecklist(true)
+          setChecklistError(null)
+        }}
+        onStartRevision={() => {
+          if (!confirmed) return
+          if (!hasIncludedReviewItems(confirmed.snapshot)) {
+            setChecklistError(text(
+              '未纳入任何审稿项，无法启动修稿。请恢复至少一项错误或建议后重新确认。',
+              'No review item is included. Restore at least one issue or suggestion, then confirm again before revising.',
+            ))
+            return
+          }
+          setChecklistError(null)
+          setShowRevisionDialog(true)
+        }}
+        processing={processing}
+        reportText={reportText}
+        hasConfirmedSnapshot={Boolean(initialSnapshot)}
+        {...(isReviewId(reviewId) ? { onDeleteReport: () => { void deleteReport() }, deletingReport } : {})}
+      />
 
       {showRevisionDialog && confirmed && (
         <ConfirmedRevisionDialog
@@ -876,4 +664,3 @@ function ReviewReportSession({
     </div>
   )
 }
-

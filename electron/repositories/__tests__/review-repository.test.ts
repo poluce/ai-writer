@@ -40,11 +40,21 @@ beforeEach(() => {
       source_draft_version INTEGER,
       source_draft_status TEXT,
       source_content TEXT,
+      kind TEXT NOT NULL DEFAULT 'review',
+      source_review_id INTEGER,
       content_id INTEGER NOT NULL,
       created_at TEXT DEFAULT (datetime('now')),
       FOREIGN KEY (base_draft_id) REFERENCES drafts(id) ON DELETE CASCADE,
       FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE RESTRICT,
       UNIQUE(base_draft_id, review_index)
+    );
+    CREATE TABLE revisions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      base_draft_id INTEGER NOT NULL,
+      revision_index INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      review_source_id INTEGER,
+      content_id INTEGER NOT NULL
     );
   `)
   vi.mocked(getProjectDb).mockReturnValue(db)
@@ -129,5 +139,99 @@ describe('ReviewRepository.create', () => {
       content: '{"summary":"legacy"}',
       sourceDraft: null,
     })
+  })
+})
+
+describe('ReviewRepository report / confirmation lifecycle', () => {
+  const frozenSource = {
+    id: 1,
+    chapterNumber: 1,
+    version: 1,
+    status: 'draft' as const,
+    content: '原稿',
+  }
+
+  function createReport(content = '{"summary":"report"}'): { id: number; reviewIndex: number } {
+    return ReviewRepository.create({
+      baseDraftId: 1,
+      content,
+      expectedSource: frozenSource,
+    })
+  }
+
+  it('keeps human confirmation snapshots out of the report list', () => {
+    const report = createReport()
+    const confirmation = ReviewRepository.create({
+      baseDraftId: 1,
+      content: JSON.stringify({ kind: 'human-confirmed-review', schemaVersion: 1, sourceReviewId: report.id }),
+      expectedSource: frozenSource,
+      kind: 'confirmation',
+      sourceReviewId: report.id,
+    })
+
+    expect(ReviewRepository.getMeta(confirmation.id)).toMatchObject({
+      kind: 'confirmation',
+      sourceReviewId: report.id,
+    })
+    expect(ReviewRepository.listByDraft(1).map(row => row.kind)).toEqual(['review', 'confirmation'])
+    expect(ReviewRepository.listSummaries({ chapterNumber: 1 }).map(row => row.id)).toEqual([report.id])
+  })
+
+  it('rejects a confirmation snapshot that does not point at a review on the same draft', () => {
+    expect(() => ReviewRepository.create({
+      baseDraftId: 1,
+      content: '{"kind":"human-confirmed-review"}',
+      expectedSource: frozenSource,
+      kind: 'confirmation',
+      sourceReviewId: 999,
+    })).toThrow('确认快照的来源审稿不存在')
+  })
+
+  it('deletes derived confirmations together with their source report and reclaims both bodies', () => {
+    const report = createReport()
+    const confirmation = ReviewRepository.create({
+      baseDraftId: 1,
+      content: '{"kind":"human-confirmed-review"}',
+      expectedSource: frozenSource,
+      kind: 'confirmation',
+      sourceReviewId: report.id,
+    })
+    const reportContentId = ReviewRepository.getMeta(report.id)!.contentId
+    const confirmationContentId = ReviewRepository.getMeta(confirmation.id)!.contentId
+    const revision = db.prepare(`
+      INSERT INTO revisions (base_draft_id, revision_index, status, review_source_id, content_id)
+      VALUES (1, 1, 'merged', ?, ?)
+    `).run(confirmation.id, ContentRepository.create('修稿结果'))
+    expect(revision.lastInsertRowid).toBeTruthy()
+
+    expect(ReviewRepository.deleteById(report.id)).toEqual({ success: true })
+
+    expect(ReviewRepository.getMeta(report.id)).toBeNull()
+    expect(ReviewRepository.getMeta(confirmation.id)).toBeNull()
+    expect(ContentRepository.getBody(reportContentId)).toBeNull()
+    expect(ContentRepository.getBody(confirmationContentId)).toBeNull()
+    expect(db.prepare('SELECT review_source_id FROM revisions WHERE id = ?')
+      .get(revision.lastInsertRowid)).toEqual({ review_source_id: null })
+  })
+
+  it('refuses to delete while a pending revision still references the report or its confirmation', () => {
+    const report = createReport()
+    const confirmation = ReviewRepository.create({
+      baseDraftId: 1,
+      content: '{"kind":"human-confirmed-review"}',
+      expectedSource: frozenSource,
+      kind: 'confirmation',
+      sourceReviewId: report.id,
+    })
+    db.prepare(`
+      INSERT INTO revisions (base_draft_id, revision_index, status, review_source_id, content_id)
+      VALUES (1, 1, 'pending', ?, ?)
+    `).run(confirmation.id, ContentRepository.create('在途修稿'))
+
+    expect(ReviewRepository.deleteById(report.id)).toMatchObject({
+      success: false,
+      errorCode: 'REVIEW_IN_USE_BY_PENDING_REVISION',
+    })
+    expect(ReviewRepository.listByDraft(1)).toHaveLength(2)
   })
 })

@@ -22,6 +22,7 @@ import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
 import { Label } from '../ui/Label'
 import { useLocaleStore } from '../../stores/locale-store'
+import ImportRunHistory from './ImportRunHistory'
 import { captureProjectSession, isProjectSessionCurrent } from '../project-session-gate'
 import { randomUUID } from '../../utils/id'
 
@@ -710,6 +711,18 @@ export default function ImportNovelDialog({ open, onClose }: ImportNovelDialogPr
                 )}
               </div>
             </div>
+          )}
+
+          {targetMode === 'current' && currentProject && (
+            <ImportRunHistory
+              purpose={purpose}
+              onDeleted={runId => {
+                setResumableState(previous => previous
+                  ? { ...previous, runs: previous.runs.filter(run => run.id !== runId) }
+                  : previous)
+                setSelectedResumableRunId(selected => (selected === runId ? '' : selected))
+              }}
+            />
           )}
 
           {/* ===== 文件选择 ===== */}

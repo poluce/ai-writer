@@ -38,6 +38,7 @@ export type BuiltinEditorTarget =
 export type RendererAction =
   | { type: 'open_editor'; target: 'builtin'; editor: BuiltinEditorTarget }
   | { type: 'open_editor'; target: 'file'; filePath: string; content: string; fileName: string }
+  | { type: 'open_editor'; target: 'draft'; chapterNumber: number; draftId?: number }
   | {
       type: 'replace_draft_excerpt'
       chapterNumber: number
@@ -51,6 +52,13 @@ export type RendererAction =
   | { type: 'refresh_architecture'; section?: string }
   | { type: 'refresh_character_roster' }
   | { type: 'sync_draft_content'; chapterNumber: number; draftId: number; content: string; isNewVersion: boolean }
+  /**
+   * 关闭主工作区中匹配的编辑器 Tab。
+   * 目前用于审稿报告生命周期收尾（修稿完成后自动关闭，或助手按用户要求关闭）。
+   */
+  | { type: 'close_editor_tab'; target: 'review-report'; reviewId?: number; chapterNumber?: number }
+  /** 请求渲染层重新拉取审稿列表（新增/删除审稿报告后刷新侧栏节点）。 */
+  | { type: 'refresh_reviews' }
   /** 打开审稿助手刚写入的审稿报告 Tab（原始报告与人工确认快照都以此为来源）。 */
   | {
       type: 'open_review_report'

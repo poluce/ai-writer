@@ -7,13 +7,8 @@ import type {
 } from '../../src/shared/import-global-facts'
 import { getProjectDb } from '../database'
 import { CharacterRosterRepository } from './character-roster-repository'
+import { IdempotencyRepository, IDEMPOTENCY_SCOPES } from './idempotency-repository'
 import { ProjectCoreRepository } from './project-core-repository'
-
-interface OperationRow {
-  operation_id: string
-  payload_hash: string
-  receipt_json: string
-}
 
 const CORE_TEXT_FIELDS = [
   'genre', 'subGenre', 'targetAudience', 'plotStructure', 'narrativePov',
@@ -82,27 +77,18 @@ function coreSnapshot(): ImportGlobalFactsCore {
   }
 }
 
-function parseReceipt(row: OperationRow): ImportGlobalFactsReceipt {
+function parseReceipt(
+  operationId: string,
+  payloadHash: string,
+  responseJson: string,
+): ImportGlobalFactsReceipt {
   try {
-    const parsed = JSON.parse(row.receipt_json) as ImportGlobalFactsReceipt
-    if (parsed.operationId !== row.operation_id || parsed.payloadHash !== row.payload_hash) throw new Error()
+    const parsed = JSON.parse(responseJson) as ImportGlobalFactsReceipt
+    if (parsed.operationId !== operationId || parsed.payloadHash !== payloadHash) throw new Error()
     return parsed
   } catch {
     throw new Error('导入全局事实收据损坏，已拒绝重放')
   }
-}
-
-function ensureLedger(): void {
-  const db = getProjectDb()
-  if (!db) throw new Error('项目数据库未打开')
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS import_global_fact_operations (
-      operation_id TEXT PRIMARY KEY,
-      payload_hash TEXT NOT NULL,
-      receipt_json TEXT NOT NULL,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    )
-  `)
 }
 
 /** Atomic import seam for config, non-character architecture and roster facts. */
@@ -110,15 +96,9 @@ export class ImportGlobalFactsRepository {
   /** Read-only authoritative evidence for a previously committed import operation. */
   static getCommittedOperation(operationId: string): ImportGlobalFactsReceipt | null {
     if (!operationId.trim()) throw new Error('导入全局事实 operationId 无效')
-    const db = getProjectDb()
-    if (!db) throw new Error('项目数据库未打开')
-    ensureLedger()
-    const row = db.prepare(`
-      SELECT operation_id, payload_hash, receipt_json
-      FROM import_global_fact_operations WHERE operation_id = ?
-    `).get(operationId) as OperationRow | undefined
-    if (!row) return null
-    const stored = parseReceipt(row)
+    const record = IdempotencyRepository.find(IDEMPOTENCY_SCOPES.importGlobalFacts, operationId)
+    if (!record) return null
+    const stored = parseReceipt(operationId, record.requestHash, record.responseJson)
     const currentCore = coreSnapshot()
     const currentRoster = CharacterRosterRepository.read()
     if (
@@ -131,18 +111,17 @@ export class ImportGlobalFactsRepository {
   static commit(candidate: ImportGlobalFactsRequest): ImportGlobalFactsReceipt {
     const db = getProjectDb()
     if (!db) throw new Error('项目数据库未打开')
-    ensureLedger()
     const request = normalizedRequest(candidate)
     const payloadHash = hashRequest(request)
 
     return db.transaction(() => {
-      const existing = db.prepare(`
-        SELECT operation_id, payload_hash, receipt_json
-        FROM import_global_fact_operations WHERE operation_id = ?
-      `).get(request.operationId) as OperationRow | undefined
+      const existing = IdempotencyRepository.find(
+        IDEMPOTENCY_SCOPES.importGlobalFacts,
+        request.operationId,
+      )
       if (existing) {
-        if (existing.payload_hash !== payloadHash) throw new Error('导入全局事实 operationId 已绑定不同载荷')
-        const stored = parseReceipt(existing)
+        if (existing.requestHash !== payloadHash) throw new Error('导入全局事实 operationId 已绑定不同载荷')
+        const stored = parseReceipt(request.operationId, existing.requestHash, existing.responseJson)
         const currentCore = coreSnapshot()
         const currentRoster = CharacterRosterRepository.read()
         if (
@@ -171,10 +150,12 @@ export class ImportGlobalFactsRepository {
         core: coreSnapshot(),
         roster,
       }
-      db.prepare(`
-        INSERT INTO import_global_fact_operations (operation_id, payload_hash, receipt_json)
-        VALUES (?, ?, ?)
-      `).run(request.operationId, payloadHash, JSON.stringify(receipt))
+      IdempotencyRepository.put(
+        IDEMPOTENCY_SCOPES.importGlobalFacts,
+        request.operationId,
+        payloadHash,
+        receipt,
+      )
       return receipt
     })()
   }

@@ -82,6 +82,7 @@ describe('buildAgentTools', () => {
       // harness 自带的执行工具同样逐次确认。
       'bash',
       'delegate_to_assistant',
+      'delete_review_report',
       'edit',
       'manage_characters',
       'manage_drafts',
@@ -101,11 +102,13 @@ describe('buildAgentTools', () => {
     expect([...sequentialToolNames()].sort()).toEqual([
       'bash',
       'delegate_to_assistant',
+      'delete_review_report',
       'edit',
       'manage_characters',
       'manage_drafts',
       'manage_knowledge_base',
       'manage_mcp',
+      'manage_review_reports',
       'manage_skills',
       'novel_config',
       'open_editor',
@@ -174,6 +177,7 @@ describe('buildBlueprintAgentTools', () => {
     // 包含的核心工具
     expect(names).toContain('propose_chapter_blueprint')
     expect(names).toContain('read_blueprint')
+    expect(names).toContain('read_continuity_facts')
     expect(names).toContain('read_project_state')
     expect(names).toContain('read_architecture')
     expect(names).toContain('manage_characters')

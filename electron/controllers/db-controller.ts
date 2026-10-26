@@ -106,12 +106,15 @@ const MUTATING_DATABASE_CHANNELS = new Set([
   'db:finalization-link-knowledge-document',
   'db:revision-replace-pending',
   'db:review-create',
+  'db:review-delete',
   'db:consistency-exemption-save',
   'db:consistency-exemption-revoke',
   'db:post-process-create-run',
   'db:post-process-mark-step-ok',
   'db:post-process-mark-step-failed',
   'db:save-summary-snapshot',
+  'db:llm-calls-clear',
+  'db:import-run-delete',
   'db:narrative-thread-plan-create',
   'db:narrative-thread-plan-update',
   'db:narrative-thread-plan-delete',
@@ -341,6 +344,16 @@ export function registerDatabaseController() {
   ipcMain.handle('db:import-run-list-resumable', async (_event, expectedProjectPath: string) => {
     assertCurrentProjectPath(expectedProjectPath)
     return ImportRunRepository.listResumable()
+  })
+
+  ipcMain.handle('db:import-run-list-recent', async (_event, limit: number | undefined, expectedProjectPath: string) => {
+    assertCurrentProjectPath(expectedProjectPath)
+    return ImportRunRepository.listRecent(limit ?? 20)
+  })
+
+  ipcMain.handle('db:import-run-delete', async (_event, runId: string, expectedProjectPath: string) => {
+    assertCurrentProjectPath(expectedProjectPath)
+    return ImportRunRepository.deleteTerminal(runId)
   })
 
   ipcMain.handle('db:import-run-list-chapters', async (
@@ -1060,6 +1073,16 @@ export function registerDatabaseController() {
     return ReviewRepository.getNextIndex(baseDraftId)
   })
 
+  ipcMain.handle('db:review-delete', async (_event, reviewId: number, expectedProjectPath: string) => {
+    try {
+      assertCurrentProjectPath(expectedProjectPath)
+      return ReviewRepository.deleteById(reviewId)
+    } catch (err) {
+      console.error('[db:review-delete] 失败:', err)
+      return { success: false, error: String(err) }
+    }
+  })
+
   // ============================================================
   // 7. post_process — 后处理跑批
   // ============================================================
@@ -1125,6 +1148,11 @@ export function registerDatabaseController() {
   ipcMain.handle('db:get-llm-history', async (_event, limit: number | undefined, expectedProjectPath: string) => {
     assertCurrentProjectPath(expectedProjectPath)
     return LLMHistoryRepository.getHistory(limit ?? 50)
+  })
+
+  ipcMain.handle('db:llm-calls-clear', async (_event, expectedProjectPath: string) => {
+    assertCurrentProjectPath(expectedProjectPath)
+    return { success: true, deleted: LLMHistoryRepository.clearAll() }
   })
 
   ipcMain.handle('db:save-summary-snapshot', async (_event, chapterNumber: number, characterStates: string, expectedProjectPath: string) => {
