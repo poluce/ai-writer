@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>UI 设计 v2 · 空态主界面</title>
+<link rel="stylesheet" href="design.css">
+</head>
+<body>
+<script src="../concepts/icons.js"></script>
+<script src="../light/icons-extra.js"></script>
+
+<div class="window">
+  <header class="titlebar">
+    <span class="brand"><img src="../../../public/logo.svg" alt="AI Writer"></span>
+    <button class="icon-btn"><svg class="i"><use href="#i-menu"/></svg></button>
+    <div class="project">
+      <span class="label">当前项目</span>
+      <button class="name">未打开项目<svg class="i"><use href="#i-chev-down"/></svg></button>
+    </div>
+    <div class="tb-actions">
+      <button class="btn btn-outline btn-sm"><svg class="i"><use href="#i-file-plus"/></svg>新建</button>
+      <button class="btn btn-ghost btn-sm"><svg class="i"><use href="#i-folder"/></svg>打开</button>
+      <button class="btn btn-quiet btn-sm"><svg class="i"><use href="#i-more"/></svg>更多<span class="pin">1</span></button>
+    </div>
+    <div class="tb-right">
+      <span class="zoom">
+        <button><svg class="i"><use href="#i-minus"/></svg></button>
+        <span class="val">100%</span>
+        <button><svg class="i"><use href="#i-plus"/></svg></button>
+      </span>
+      <button class="theme-btn"><svg class="i"><use href="#i-palette"/></svg>浅色<svg class="i caret"><use href="#i-chev-down"/></svg></button>
+      <button class="icon-btn" style="font-size:11px;font-weight:600">EN</button>
+      <button class="icon-btn"><svg class="i"><use href="#i-settings"/></svg></button>
+      <span class="win-controls">
+        <button class="icon-btn"><svg class="i"><use href="#i-minus"/></svg></button>
+        <button class="icon-btn"><svg class="i"><use href="#i-square"/></svg></button>
+        <button class="icon-btn"><svg class="i"><use href="#i-x"/></svg></button>
+      </span>
+    </div>
+  </header>
+
+  <div class="body">
+    <nav class="rail">
+      <button class="rail-item"><svg class="i"><use href="#i-home"/></svg><span>首页</span></button>
+      <button class="rail-item on"><svg class="i"><use href="#i-folder"/></svg><span>项目</span><span class="pin" style="position:absolute;right:4px;top:4px;margin:0">2</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-globe"/></svg><span>架构</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-map"/></svg><span>情节</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-branch"/></svg><span>蓝图</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-thread"/></svg><span>剧情</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-users"/></svg><span>人物</span></button>
+      <button class="rail-item"><svg class="i"><use href="#i-book-open"/></svg><span>知识库</span></button>
+      <span class="rail-sp"></span>
+      <span class="rail-div"></span>
+      <button class="rail-item"><svg class="i"><use href="#i-settings"/></svg><span>设置</span></button>
+    </nav>
+
+    <aside class="sidebar">
+      <div class="side-head">
+        <span class="t">项目结构<span class="pin">3</span></span>
+        <div class="acts"><button class="icon-btn"><svg class="i"><use href="#i-chevrons-left"/></svg></button></div>
+      </div>
+      <div class="tree">
+        <div class="tree-item" style="color:var(--muted)"><svg class="i"><use href="#i-folder"/></svg>尚未打开项目</div>
+        <div style="padding:10px 8px 4px;font-size:10.5px;color:var(--muted)">打开项目后，这里显示小说配置、故事架构、章节蓝图、草稿箱与正文章节。</div>
+        <div style="display:flex;gap:6px;padding:6px 8px">
+          <button class="mini-btn"><svg class="i"><use href="#i-file-plus"/></svg>新建项目</button>
+          <button class="mini-btn"><svg class="i"><use href="#i-folder"/></svg>打开</button>
+        </div>
+      </div>
+    </aside>
+
+    <main class="center">
+      <div class="content">
+        <div class="welcome">
+          <div class="mark"><svg class="i"><use href="#i-book"/></svg></div>
+          <h1>开始一部长篇<span class="pin">4</span></h1>
+          <p>从设定到定稿都在本地完成，模型由你自行配置</p>
+          <div class="entry-row">
+            <button class="entry">
+              <span class="ic"><svg class="i"><use href="#i-file-plus"/></svg></span>
+              <span class="et">新建项目</span>
+              <span class="ed">从空白开始，配置题材与篇幅</span>
+            </button>
+            <button class="entry">
+              <span class="ic"><svg class="i"><use href="#i-folder"/></svg></span>
+              <span class="et">打开项目</span>
+              <span class="ed">继续已有工程，恢复上次会话</span>
+            </button>
+            <button class="entry">
+              <span class="ic"><svg class="i"><use href="#i-import"/></svg></span>
+              <span class="et">拆解仿写</span>
+              <span class="ed">导入参考小说，建立文风与结构</span>
+            </button>
+          </div>
+
+          <div class="recent">
+            <div class="rh"><span>最近项目</span><span>查看全部</span></div>
+            <div class="recent-item"><svg class="i"><use href="#i-book"/></svg>雾城档案<span class="when">昨天 14:32</span></div>
+            <div class="recent-item"><svg class="i"><use href="#i-book"/></svg>潮汐之下<span class="when">3 天前</span></div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="assistant">
+      <div class="asst-head">
+        <span class="title">AI 助手</span>
+        <div class="acts">
+          <button class="icon-btn"><svg class="i"><use href="#i-plus"/></svg></button>
+          <button class="icon-btn"><svg class="i"><use href="#i-history"/></svg></button>
+          <button class="icon-btn"><svg class="i"><use href="#i-more"/></svg></button>
+        </div>
+      </div>
+
+      <div class="switch">
+        <span class="pin" style="margin:0 2px 0 0">5</span><span class="seg on"><svg class="i"><use href="#i-bot"/></svg><span>写作</span></span>
+        <span class="seg"><svg class="i"><use href="#i-compass"/></svg><span>架构</span></span>
+        <span class="seg"><svg class="i"><use href="#i-list"/></svg><span>蓝图</span></span>
+        <span class="seg"><svg class="i"><use href="#i-clipboard-check"/></svg><span>审稿</span></span>
+        <span class="seg"><svg class="i"><use href="#i-workflow"/></svg><span>输出</span></span>
+      </div>
+
+      <div class="asst-body">
+        <div class="asst-empty">
+          <div class="mark"><svg class="i"><use href="#i-bot"/></svg></div>
+          <h4>助手需要一个项目</h4>
+          <p>打开或新建项目后，我就能读取设定、蓝图和正文，直接帮你写。</p>
+          <div class="acts"><span class="pin">6</span>
+            <button class="btn btn-primary btn-sm">新建项目</button>
+            <button class="btn btn-outline btn-sm">打开项目</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="composer">
+        <div class="ph">打开项目后可输入消息，@ 提及设定，/ 使用工作流</div>
+        <div class="row">
+          <button class="round-btn" disabled style="opacity:.4"><svg class="i"><use href="#i-plus"/></svg></button>
+          <button class="chip-btn" style="opacity:.4">计划<svg class="i"><use href="#i-chev-down"/></svg></button>
+          <button class="model-btn" style="opacity:.5"><span class="name">gemini-3.8-flash</span><span class="think">思考 关</span><svg class="i"><use href="#i-chev-down"/></svg></button>
+          <button class="send" style="background:var(--border-strong)"><svg class="i"><use href="#i-arrow-right"/></svg></button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <section class="bottom collapsed">
+    <div class="btabs">
+      <span class="btab on"><svg class="i"><use href="#i-checks"/></svg>任务<span class="pin">7</span></span>
+      <span class="btab"><svg class="i"><use href="#i-file"/></svg>日志</span>
+      <span class="btab"><svg class="i"><use href="#i-cpu"/></svg>模型调用</span>
+      <span class="right"><button class="icon-btn"><svg class="i"><use href="#i-chev-down"/></svg></button></span>
+    </div>
+  </section>
+
+  <footer class="statusbar">
+    <span class="st">未打开项目</span>
+    <span class="sep"></span>
+    <span class="st">v0.1.4</span>
+    <span class="right">
+      <span class="st">未配置模型</span>
+    </span>
+  </footer>
+
+</div>
+</body>
+</html>

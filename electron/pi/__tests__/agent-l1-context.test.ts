@@ -8,7 +8,7 @@ describe('buildL1AgentContext', () => {
       tabs: [],
       project: { open: false },
       layout: {
-        sidebarView: 'home',
+        sidebarView: 'project',
         rightView: 'agent',
         bottomPanelOpen: false,
         bottomTab: 'tasks',
@@ -21,7 +21,7 @@ describe('buildL1AgentContext', () => {
 
     expect(text).toContain('## 应用状态')
     expect(text).toContain('当前小说项目：未打开')
-    expect(text).toContain('左侧栏: 主页')
+    expect(text).toContain('左侧栏: 项目')
   })
 
   it('names the file the user is viewing without injecting its body', () => {

@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>UI 设计 v2 · 现状与新版对照</title>
+<style>
+  @font-face { font-family: 'Inter'; src: url('../../../public/fonts/Inter-VariableFont_opsz,wght.ttf') format('truetype'); font-weight: 100 900; }
+  @font-face { font-family: 'NotoSans'; src: url('../../../public/fonts/NotoSansSC-VariableFont_wght.ttf') format('truetype'); font-weight: 100 900; }
+  @font-face { font-family: 'NotoSerif'; src: url('../../../public/fonts/NotoSerifSC-VariableFont_wght.ttf') format('truetype'); font-weight: 100 900; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    width: 1480px; height: 1000px;
+    background: #DDE2EA;
+    font-family: 'Inter', 'NotoSans', 'Microsoft YaHei', sans-serif;
+    color: #12141A;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 30px 24px;
+    gap: 18px;
+  }
+  .head { text-align: center; }
+  .head h1 { margin: 0; font-family: 'NotoSerif', 'NotoSans', serif; font-size: 26px; font-weight: 600; letter-spacing: 0.01em; }
+  .head p { margin: 6px 0 0; font-size: 13px; color: #4A5160; }
+
+  .compare { display: flex; gap: 22px; align-items: flex-start; }
+  .col { width: 664px; }
+  .label { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
+  .badge {
+    font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
+    background: #FFFFFF; color: #4A5160; border: 1px solid #D2D8E2;
+  }
+  .badge.new { background: #3B6FE0; color: #FFFFFF; border-color: #3B6FE0; }
+  .label .t { font-size: 12px; color: #4A5160; }
+  .shot {
+    width: 664px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #C9D0DB;
+    box-shadow: 0 18px 40px -24px rgba(16,24,40,.45);
+    background: #FFFFFF;
+  }
+  .shot img { width: 100%; display: block; }
+
+  .notes { display: flex; gap: 10px; width: 1350px; margin-top: 4px; }
+  .note {
+    flex: 1; background: #FFFFFF; border: 1px solid #D2D8E2; border-radius: 10px;
+    padding: 12px 13px; font-size: 12px; line-height: 1.6; color: #4A5160;
+    box-shadow: 0 1px 2px rgba(16,24,40,.05);
+  }
+  .note b { display: block; color: #12141A; font-size: 12.5px; margin-bottom: 4px; }
+  .note .n {
+    display: inline-grid; place-items: center; width: 17px; height: 17px; border-radius: 50%;
+    background: #111827; color: #fff; font-size: 10px; font-weight: 600; margin-right: 6px;
+    vertical-align: 1px;
+  }
+</style>
+</head>
+<body>
+  <div class="head">
+    <h1>主界面：现状 vs 设计 v2</h1>
+    <p>同一功能、同一文案，只调整分区、层级与入口</p>
+  </div>
+
+  <div class="compare">
+    <div class="col">
+      <div class="label"><span class="badge">现状 0.1.4</span><span class="t">真实运行截图（浅色默认）</span></div>
+      <div class="shot"><img src="../../assets/readme/captures-0.1.4/zh-02-light-default.png" alt="现状"></div>
+    </div>
+    <div class="col">
+      <div class="label"><span class="badge new">设计 v2</span><span class="t">调整后（含 7 处标注）</span></div>
+      <div class="shot"><img src="v2-empty.png" alt="设计 v2"></div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note"><b><span class="n">1</span>标题栏降噪</b>只留 新建 / 打开 / 更多；导入原稿、拆解仿写、导出、备份收进「更多」。主题从单图标循环改为「浅色 ⌄」菜单。</div>
+    <div class="note"><b><span class="n">2</span>左栏只留内容维度</b>11 项减到 9 项，任务 / 日志 / 模型移到它们真正生效的底部面板，行高 66 → 54。</div>
+    <div class="note"><b><span class="n">3</span>表面层级拉开</b>页面底 #F4F6F9、侧栏 #FAFBFC、内容面纯白；一档投影区分「面」，不再只靠 1px 灰线。</div>
+    <div class="note"><b><span class="n">4</span>空态收口</b>主区承担唯一引导（新建 / 打开 / 拆解 + 最近项目），侧栏与助手不再重复说「未打开项目」。</div>
+  </div>
+
+  <div class="notes">
+    <div class="note"><b><span class="n">5</span>助手切换器取代右栏</b>原 30px 竖栏的 5 个入口并入助手面板头部，省一条分区，编辑区更宽；同名不同义的「架构 / 蓝图」不再出现两处。</div>
+    <div class="note"><b><span class="n">6</span>助手空态给动作</b>「打开项目后可用」变成一句说明 + 两个按钮，空面板不再是死胡同。</div>
+    <div class="note"><b><span class="n">7</span>底部三 tab 归位</b>任务 / 日志 / 模型调用常驻底部条，折叠后仍可切换，和左栏内容导航职责分离。</div>
+    <div class="note"><b>字号与圆角收敛</b>字号收到 11 / 12 / 13 / 20 四档，圆角 6 / 8 / 10 / 14，间距按 4 的倍数。</div>
+  </div>
+</body>
+</html>

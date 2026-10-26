@@ -17,7 +17,6 @@ import VersionHistory from '../editor/VersionHistory'
 import ReviewReport from '../editor/ReviewReport'
 import NarrativeThreadEditor from '../editor/NarrativeThreadEditor'
 import ThreeWayMerge from '../editor/ThreeWayMerge'  // 保留引用以防其他入口使用
-import WelcomePage from '../pages/WelcomePage'
 import KnowledgeOverview from '../pages/KnowledgeOverview'
 import { OpenProjectFirstPage } from './OpenProjectFirstPage'
 import { useProjectStore } from '../../stores/project-store'
@@ -168,6 +167,15 @@ function ProseEditorWrapper({
 }
 
 /** 中间主编辑区 */
+/** 无项目时，各内容工作区的空态标题（项目工作区走启动页，不在表里）。 */
+const EMPTY_WORKSPACE_TITLES: Record<string, readonly [string, string]> = {
+  blueprint: ['章节蓝图', 'Chapter blueprint'],
+  characters: ['角色', 'Cast'],
+  world: ['故事架构', 'Story architecture'],
+  'plot-tree': ['剧情树', 'Plot tree'],
+  knowledge: ['知识库', 'Knowledge base'],
+}
+
 export default function EditorArea() {
   const text = useLocaleStore(s => s.text)
   const currentProject = useProjectStore((s) => s.currentProject)
@@ -432,40 +440,12 @@ export default function EditorArea() {
 
   // ===== 条件渲染 =====
 
-  // 侧栏为「主页」时，中间区域显示欢迎页
-  if (sidebarView === 'home') {
-    return (
-      <WelcomePage
-        onNewProject={() => {
-          useLayoutStore.getState().openNewProject()
-        }}
-        onOpenProject={async () => {
-          const folder = await ipc.invoke('dialog:select-folder')
-          if (folder) {
-            useProjectStore.getState().openProject(folder)
-          }
-        }}
-        onImportNovel={() => {
-          useLayoutStore.getState().openNovelDeconstruction()
-        }}
-      />
-    )
-  }
-
-  // 未打开项目时：首页仍是欢迎页；蓝图与小说用同一套「请先打开项目」页。
+  // 未打开项目时：项目工作区给启动页，其它工作区给自己的空态说明。
   if (!currentProject) {
-    const emptyTitle = activeRailItem === 'blueprint'
-      ? text('章节蓝图', 'Chapter blueprint')
-      : activeRailItem === 'characters'
-        ? text('角色', 'Cast')
-        : activeRailItem === 'world'
-          ? text('故事架构', 'Story architecture')
-          : activeRailItem === 'plot-tree'
-            ? text('剧情树', 'Plot tree')
-            : activeRailItem === 'project'
-              ? text('项目', 'Project')
-              : text('知识库', 'Knowledge base')
-    return <OpenProjectFirstPage title={emptyTitle} />
+    const workspace = EMPTY_WORKSPACE_TITLES[activeRailItem]
+    return workspace
+      ? <OpenProjectFirstPage mode="workspace" title={text(workspace[0], workspace[1])} />
+      : <OpenProjectFirstPage mode="launcher" />
   }
 
   // 侧栏为「角色管理」时，中间区域固定展示角色编辑器（跳过 Tab 系统）
@@ -541,8 +521,14 @@ export default function EditorArea() {
             <div
               key={tab.id}
               ref={tab.id === activeTabId ? activeTabRef : undefined}
-              className="flex items-center gap-1.5 px-3 h-full text-sm cursor-pointer group flex-shrink-0 relative transition-colors"
+              className="group relative flex flex-shrink-0 cursor-pointer items-center transition-colors"
               style={{
+                height: 28,
+                gap: 7,
+                padding: '0 10px',
+                marginTop: 1,
+                fontSize: 12,
+                borderRadius: '6px 6px 0 0',
                 backgroundColor: activeTabId === tab.id
                   ? 'var(--color-tab-active)'
                   : 'transparent',

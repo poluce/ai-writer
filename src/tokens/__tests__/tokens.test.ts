@@ -9,27 +9,27 @@ const root = postcss.parse(css, { from: cssPath })
 
 /**
  * 默认（:root）与 .light 共享的浅色运行时调色板。
- * 2026-09-18 起默认浅色主题改为纯白冷灰 + 科技蓝，与 DSH 默认亮色主题对齐；
+ * 浅灰白页面底（#F4F6F9）+ 纯白内容面 + 科技蓝，作为应用默认主题；
  * 宣纸墨韵整套移到 .paper，两套皮肤各自完整、互不回落。
  */
 const approvedLightPalette = {
-  '--color-bg': '#FFFFFF',
+  '--color-bg': '#F4F6F9',
   '--color-raised': '#FFFFFF',
-  '--color-sidebar': '#F9FAFB',
-  '--color-panel': '#F9FAFB',
+  '--color-sidebar': '#FAFBFC',
+  '--color-panel': '#FAFBFC',
   '--color-titlebar': '#FFFFFF',
-  '--color-activity-bar': '#F3F4F6',
-  '--color-hover': '#F3F4F6',
-  '--color-active': '#E5E7EB',
-  '--color-text': '#0F1115',
-  '--color-text-secondary': '#4B5563',
-  '--color-text-muted': '#525866',
-  '--color-border': '#E5E7EB',
-  '--color-accent': '#4176E6',
-  '--color-accent-hover': '#3364CB',
+  '--color-activity-bar': '#EDF0F4',
+  '--color-hover': '#EDF0F5',
+  '--color-active': '#E3E7EE',
+  '--color-text': '#12141A',
+  '--color-text-secondary': '#4A5160',
+  '--color-text-muted': '#5F6773',
+  '--color-border': '#E3E7EE',
+  '--color-accent': '#3B6FE0',
+  '--color-accent-hover': '#2F5FCC',
   '--color-editor-bg': '#FFFFFF',
-  '--color-statusbar': '#F9FAFB',
-  '--color-titlebar-text': '#0F1115',
+  '--color-statusbar': '#FAFBFC',
+  '--color-titlebar-text': '#12141A',
 }
 
 const approvedPaperPalette = {

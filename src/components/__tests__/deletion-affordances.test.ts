@@ -99,12 +99,12 @@ describe('generated content deletion affordances', () => {
   })
 
   it('supports deleting recent and current projects through persisted IPC', () => {
-    const homeSidebar = source('src/components/panels/sidebar/HomeSidebarPanel.tsx')
+    const projectTree = source('src/components/panels/sidebar/ProjectTree.tsx')
     const projectStore = source('src/stores/project-store.ts')
     const projectController = source('electron/controllers/project-controller.ts')
     const ipcChannels = source('src/shared/ipc-channels.ts')
 
-    expect(homeSidebar).toContain('删除项目')
+    expect(projectTree).toContain('删除项目')
     expect(projectStore).toContain('deleteProject')
     expect(projectController).toContain("'project:delete'")
     expect(ipcChannels).toContain("'project:delete'")

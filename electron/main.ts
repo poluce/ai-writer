@@ -1,4 +1,10 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron'
+
+// 开发期可选：设置 VELA_DEBUG_CDP_PORT 后开放 CDP，便于脚本化验证渲染层（打包版永不开启）。
+const debugCdpPort = process.env.VELA_DEBUG_CDP_PORT
+if (debugCdpPort && !app.isPackaged) {
+  app.commandLine.appendSwitch('remote-debugging-port', debugCdpPort)
+}
 import { createRequire } from 'node:module'
 import { registerIPCHandlers } from './ipc-handlers'
 import { registerMCPHandlers } from './mcp/mcp-ipc-bridge'
@@ -186,7 +192,8 @@ function createWindow(): void {
     icon: appIcon as never,
     // 使用应用内自绘标题栏，避免 Windows 原生标题栏与棕色标题栏重复显示。
     frame: false,
-    backgroundColor: '#1e1e1e',
+    // 与 index.html 预加载背景一致：浅色为默认主题，避免启动瞬时的暗色闪跳
+    backgroundColor: '#F7F8FA',
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
       // 安全性设置

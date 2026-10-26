@@ -125,8 +125,8 @@ type PersistedThemeState = Pick<
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set, get) => ({
-      theme: 'paper',
-      resolvedTheme: 'paper',
+      theme: 'light',
+      resolvedTheme: 'light',
       zoom: 1.0,
       writingFont: 'lxgw-wenkai',
       uiFont: 'noto-sans-sc',

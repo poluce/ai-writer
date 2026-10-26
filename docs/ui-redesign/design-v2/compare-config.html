@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>小说配置：真实 0.1.4 vs 设计 v2</title>
+<style>
+  @font-face { font-family: 'Inter'; src: url('../../../public/fonts/Inter-VariableFont_opsz,wght.ttf') format('truetype'); font-weight: 100 900; }
+  @font-face { font-family: 'NotoSans'; src: url('../../../public/fonts/NotoSansSC-VariableFont_wght.ttf') format('truetype'); font-weight: 100 900; }
+  @font-face { font-family: 'NotoSerif'; src: url('../../../public/fonts/NotoSerifSC-VariableFont_wght.ttf') format('truetype'); font-weight: 100 900; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    width: 1480px; height: 820px;
+    background: #DDE2EA;
+    font-family: 'Inter', 'NotoSans', 'Microsoft YaHei', sans-serif;
+    color: #12141A;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 26px 24px; gap: 16px;
+  }
+  .head { text-align: center; }
+  .head h1 { margin: 0; font-family: 'NotoSerif', 'NotoSans', serif; font-size: 24px; font-weight: 600; }
+  .head p { margin: 6px 0 0; font-size: 13px; color: #4A5160; }
+  .compare { display: flex; gap: 20px; }
+  .col { width: 672px; }
+  .label { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .badge { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: #FFF; color: #4A5160; border: 1px solid #D2D8E2; }
+  .badge.new { background: #3B6FE0; color: #FFF; border-color: #3B6FE0; }
+  .label .t { font-size: 12px; color: #4A5160; }
+  .shot { width: 672px; border-radius: 10px; overflow: hidden; border: 1px solid #C9D0DB; box-shadow: 0 18px 40px -24px rgba(16,24,40,.45); background: #FFF; }
+  .shot img { width: 100%; display: block; }
+  .notes { display: flex; gap: 10px; width: 1360px; }
+  .note { flex: 1; background: #FFF; border: 1px solid #D2D8E2; border-radius: 10px; padding: 11px 12px; font-size: 12px; line-height: 1.6; color: #4A5160; }
+  .note b { display: block; color: #12141A; font-size: 12.5px; margin-bottom: 3px; }
+  .keep { color: #12805C; }
+  .change { color: #A65A05; }
+</style>
+</head>
+<body>
+  <div class="head">
+    <h1>小说配置：真实 0.1.4 vs 设计 v2</h1>
+    <p>结构、字段、按钮全部按真实页面重做；差异只在表面层级、字号与间距</p>
+  </div>
+
+  <div class="compare">
+    <div class="col">
+      <div class="label"><span class="badge">真实 0.1.4</span><span class="t">你截图的新版配置页</span></div>
+      <div class="shot"><img src="real-config-0.1.4.jpg" alt="真实 0.1.4 配置页"></div>
+    </div>
+    <div class="col">
+      <div class="label"><span class="badge new">设计 v2</span><span class="t">同一结构，重做视觉</span></div>
+      <div class="shot"><img src="v2-project.png" alt="设计 v2 配置页"></div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note"><b class="keep">保持不变</b>标题「小说配置」+ 副标题 + 右侧仅「保存」；基本信息一张分组卡；7 个文档式分区（核心大纲 → 世界观 → 金手指 → 主角人设 → 全局写作要求 → 文风配置 → 参考作品），每段带「清除 / AI 生成」；字段与 ⓘ 提示、写作语言、沉寂提醒阈值 + 恢复默认图标一个不少。</div>
+    <div class="note"><b class="change">改了什么</b>页面底改为浅灰 <code>#F4F6F9</code>、内容面纯白、分组卡用极浅灰 <code>#F7F9FB</code>，三段表面终于分得开；字号收到 11/12/13/20；分区标题 16 → 14px 并把动作按钮对齐到同一基线；输入框圆角与边框统一。</div>
+    <div class="note"><b class="change">顺手修的</b>标签页右侧补上真实的 ‹ › ⋯ 溢出控制；状态栏补字数与保存时间；助手面板把思考等级写成独立 chip「思考 关」，不再是一个孤立的「关」字。</div>
+  </div>
+</body>
+</html>

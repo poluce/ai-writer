@@ -12,7 +12,6 @@ import { useProjectStore } from '../../stores/project-store'
 import { ContextMenu } from '../ui/ContextMenu'
 import { EmptyState } from '../ui/EmptyState'
 import KnowledgePanel from './KnowledgePanel'
-import HomeSidebarPanel from './sidebar/HomeSidebarPanel'
 import ProjectTree from './sidebar/ProjectTree'
 import CharactersView from './sidebar/CharactersView'
 import {
@@ -47,7 +46,7 @@ export default function Sidebar() {
     'plot-tree': text('剧情树', 'Plot tree'),
   }
   const headerTitle = viewTitles[activeRailItem] ?? viewTitles[sidebarView]
-  const workspaceNeedsProject = !currentProject && activeRailItem !== 'home' && activeRailItem !== 'project'
+  const workspaceNeedsProject = !currentProject && activeRailItem !== 'project'
 
   return (
     <div
@@ -59,16 +58,39 @@ export default function Sidebar() {
     >
       <div className="panel-header">
         <span>{headerTitle}</span>
+        <button
+          type="button"
+          onClick={() => useLayoutStore.getState().toggleSidebar()}
+          title={text('收起侧边栏', 'Collapse sidebar')}
+          aria-label={text('收起侧边栏', 'Collapse sidebar')}
+          className="ml-auto flex h-6 w-6 items-center justify-center rounded transition-colors hover:bg-[var(--color-hover)]"
+          style={{ color: 'var(--color-text-muted)' }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="m11 17-5-5 5-5" />
+            <path d="m18 17-5-5 5-5" />
+          </svg>
+        </button>
       </div>
       <div className="flex-1 overflow-y-auto py-1">
-        {sidebarView === 'home' && <HomeSidebarPanel />}
+        {/* 空态收口：动作只在主区出现一次，这里只说明「打开项目后有什么」 */}
         {workspaceNeedsProject && (
           <EmptyState
-            icon={<BookOpen size={36} />}
-            message={text('请先打开项目', 'Open a project first')}
-            className="pb-[15vh]"
-            opacity={0.4}
-          />
+            icon={<BookOpen size={28} />}
+            message={text('未打开项目', 'No project open')}
+            className="pb-[15vh] p-4"
+            opacity={1}
+          >
+            <span
+              className="text-xs text-center mt-0.5 leading-relaxed"
+              style={{ color: 'var(--color-text-muted)' }}
+            >
+              {text(
+                '打开项目后，这里显示当前视图的内容。',
+                'Once a project is open, this view shows its content.',
+              )}
+            </span>
+          </EmptyState>
         )}
         {!workspaceNeedsProject && sidebarView === 'project' && <ProjectTree />}
         {!workspaceNeedsProject && sidebarView === 'knowledge' && <KnowledgePanel />}

@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type MouseEvent } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import {
   Archive,
   CheckCircle2,
@@ -10,6 +10,7 @@ import {
   Menu,
   Minus,
   Moon,
+  MoreHorizontal,
   ScrollText,
   Settings,
   Sparkles,
@@ -41,6 +42,8 @@ import {
 } from '../ui/Dialog'
 import { Button } from '../ui/Button'
 import { alertError } from '../ui/AlertDialog'
+import { MenuItem } from '../ui/MenuItem'
+import { useOutsideClick } from '../../hooks/useOutsideClick'
 
 const isMac = navigator.userAgent.includes('Mac')
 
@@ -50,7 +53,6 @@ const themeIcons: Record<Theme, typeof Sun> = {
   paper: ScrollText,
   dark: Moon,
 }
-const themeOrder: Theme[] = ['galaxy', 'dark', 'light', 'paper']
 const themeLabelKeys: Record<Theme, MessageKey> = {
   light: 'theme.light',
   galaxy: 'theme.galaxy',
@@ -157,46 +159,43 @@ export default function TitleBar() {
     }
   }
 
-  const ThemeIcon = themeIcons[theme] || Sun
-  const cycleTheme = (e: MouseEvent) => {
-    const nextTheme = themeOrder[(themeOrder.indexOf(theme) + 1) % themeOrder.length]
+  const [showMoreMenu, setShowMoreMenu] = useState(false)
+  const [showThemeMenu, setShowThemeMenu] = useState(false)
+  const moreMenuRef = useRef<HTMLDivElement>(null)
+  const themeMenuRef = useRef<HTMLDivElement>(null)
+  const themeMenuPoint = useRef({ x: 0, y: 0 })
+  useOutsideClick(moreMenuRef, () => setShowMoreMenu(false), showMoreMenu)
+  useOutsideClick(themeMenuRef, () => setShowThemeMenu(false), showThemeMenu)
 
+  /** 从点击位置做圆形展开的主题切换；不支持 View Transition 时直接切换。 */
+  const switchTheme = (next: Theme, point: { x: number; y: number }) => {
     if (
       !('startViewTransition' in document) ||
       window.matchMedia('(prefers-reduced-motion: reduce)').matches
     ) {
-      setTheme(nextTheme)
+      setTheme(next)
       return
     }
 
-    const x = e.clientX
-    const y = e.clientY
-    const endRadius = Math.hypot(
-      Math.max(x, innerWidth - x),
-      Math.max(y, innerHeight - y)
-    )
-
-    const transition = (document as Document & { startViewTransition?: (cb: () => void) => { ready: Promise<void> } }).startViewTransition!(() => {
-      setTheme(nextTheme)
-    })
+    const { x, y } = point
+    const endRadius = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y))
+    const transition = (document as Document & {
+      startViewTransition?: (cb: () => void) => { ready: Promise<void> }
+    }).startViewTransition!(() => setTheme(next))
 
     transition.ready.then(() => {
-      const clipPath = [
-        `circle(0px at ${x}px ${y}px)`,
-        `circle(${endRadius}px at ${x}px ${y}px)`,
-      ]
-
       document.documentElement.animate(
-        { clipPath },
+        { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${endRadius}px at ${x}px ${y}px)`] },
         {
           duration: 450,
           easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
           pseudoElement: '::view-transition-new(root)',
-        }
+        },
       )
     })
   }
 
+  const ThemeIcon = themeIcons[theme] || Sun
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey
@@ -238,10 +237,10 @@ export default function TitleBar() {
     >
       <div className="flex items-center gap-2 flex-shrink-0 min-w-0">
         <div
-          className="writer-brand-mark flex h-8 w-8 items-center justify-center rounded-md overflow-hidden"
+          className="writer-brand-mark flex h-[30px] w-[30px] items-center justify-center overflow-hidden"
           title={locale === 'zh-CN' ? APP_BRAND.zhName : APP_BRAND.enName}
         >
-          <img src={publicAssetUrl('logo.svg')} alt="logo" className="h-6 w-6 object-contain" />
+          <img src={publicAssetUrl('logo.svg')} alt="logo" className="h-full w-full object-cover" />
         </div>
       </div>
 
@@ -270,22 +269,7 @@ export default function TitleBar() {
 
         <div className="writer-command-divider h-5 w-px" />
 
-        <button className="writer-command-button" title={t('project.backupUnavailable')} disabled>
-          <Archive size={14} strokeWidth={1.75} />
-          {t('common.backup')}
-        </button>
-        <button className="writer-command-button" title={text('导入作者原稿为权威定稿', 'Import author manuscript')} onClick={openAuthorManuscriptImport}>
-          <FileText size={14} strokeWidth={1.75} />
-          {text('导入原稿', 'Import Manuscript')}
-        </button>
-        <button className="writer-command-button" title={t('project.imitation')} onClick={openNovelDeconstruction}>
-          <Import size={14} strokeWidth={1.75} />
-          {t('project.imitationShort')}
-        </button>
-        <button className="writer-command-button" title={t('project.export')} onClick={openExport}>
-          <Upload size={14} strokeWidth={1.75} />
-          {t('common.export')}
-        </button>
+        {/* 高频动作留在标题栏 */}
         <button className="writer-command-button" title={t('project.new')} onClick={openNewProject}>
           <FilePlus2 size={14} strokeWidth={1.75} />
           {t('common.new')}
@@ -294,6 +278,53 @@ export default function TitleBar() {
           <FolderOpen size={14} strokeWidth={1.75} />
           {t('common.open')}
         </button>
+
+        {/* 低频动作收进「更多」，标题栏不再一排同级按钮 */}
+        <div className="relative" ref={moreMenuRef}>
+          <button
+            className="writer-command-button"
+            title={text('更多操作', 'More actions')}
+            onClick={() => setShowMoreMenu(v => !v)}
+          >
+            <MoreHorizontal size={14} strokeWidth={1.75} />
+            {text('更多', 'More')}
+          </button>
+          {showMoreMenu && (
+            <div
+              role="menu"
+              aria-label={text('更多操作', 'More actions')}
+              className="absolute left-0 top-full z-50 mt-1 w-44 rounded-lg py-1"
+              style={{
+                backgroundColor: 'var(--color-sidebar)',
+                border: '1px solid var(--color-border)',
+                boxShadow: 'var(--shadow-popover)',
+                WebkitAppRegion: 'no-drag',
+              } as CSSProperties}
+            >
+              <MenuItem
+                label={t('common.backup')}
+                icon={<Archive size={13} />}
+                disabled
+                onClick={() => {}}
+              />
+              <MenuItem
+                label={text('导入原稿', 'Import Manuscript')}
+                icon={<FileText size={13} />}
+                onClick={() => { setShowMoreMenu(false); openAuthorManuscriptImport() }}
+              />
+              <MenuItem
+                label={t('project.imitationShort')}
+                icon={<Import size={13} />}
+                onClick={() => { setShowMoreMenu(false); openNovelDeconstruction() }}
+              />
+              <MenuItem
+                label={t('common.export')}
+                icon={<Upload size={13} />}
+                onClick={() => { setShowMoreMenu(false); openExport() }}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="flex items-center gap-1 flex-shrink-0">
@@ -321,14 +352,50 @@ export default function TitleBar() {
         >
           <ZoomIn size={13} strokeWidth={1.5} />
         </button>
-        <button
-          onClick={cycleTheme}
-          title={t('theme.label', { name: t(themeLabelKeys[theme]) })}
-          className="writer-command-button"
-          style={{ minHeight: 24, padding: '0 7px' }}
-        >
-          <ThemeIcon size={13} strokeWidth={1.5} />
-        </button>
+        {/* 主题：从「单图标循环」改为可见的四选一菜单 */}
+        <div className="relative" ref={themeMenuRef}>
+          <button
+            onClick={() => setShowThemeMenu(v => !v)}
+            title={t('theme.label', { name: t(themeLabelKeys[theme]) })}
+            className="writer-command-button"
+            style={{ minHeight: 24, padding: '0 7px' }}
+          >
+            <ThemeIcon size={13} strokeWidth={1.5} />
+            <span className="text-xs">{t(themeLabelKeys[theme])}</span>
+          </button>
+          {showThemeMenu && (
+            <div
+              role="menu"
+              aria-label={t('theme.label', { name: t(themeLabelKeys[theme]) })}
+              className="absolute right-0 top-full z-50 mt-1 w-36 rounded-lg py-1"
+              onPointerDown={event => {
+                themeMenuPoint.current = { x: event.clientX, y: event.clientY }
+              }}
+              style={{
+                backgroundColor: 'var(--color-sidebar)',
+                border: '1px solid var(--color-border)',
+                boxShadow: 'var(--shadow-popover)',
+                WebkitAppRegion: 'no-drag',
+              } as CSSProperties}
+            >
+              {(Object.keys(themeIcons) as Theme[]).map(name => {
+                const Icon = themeIcons[name]
+                return (
+                  <MenuItem
+                    key={name}
+                    label={t(themeLabelKeys[name])}
+                    icon={<Icon size={13} />}
+                    onClick={() => {
+                      setShowThemeMenu(false)
+                      if (name === theme) return
+                      switchTheme(name, themeMenuPoint.current)
+                    }}
+                  />
+                )
+              })}
+            </div>
+          )}
+        </div>
         <button
           onClick={() => void toggleLocale()}
           title={t('language.switch')}

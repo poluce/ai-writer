@@ -3,9 +3,9 @@ import { page } from 'vitest/browser'
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 
-import { useLocaleStore } from '../../../../stores/locale-store'
-import { useProjectStore } from '../../../../stores/project-store'
-import HomeSidebarPanel from '../HomeSidebarPanel'
+import { useLocaleStore } from '../../../stores/locale-store'
+import { useProjectStore } from '../../../stores/project-store'
+import { OpenProjectFirstPage } from '../OpenProjectFirstPage'
 
 const originalLocaleState = useLocaleStore.getState()
 const originalProjectState = useProjectStore.getState()
@@ -43,7 +43,7 @@ beforeEach(async () => {
   container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
-  await act(async () => root.render(<HomeSidebarPanel />))
+  await act(async () => root.render(<OpenProjectFirstPage title="项目" />))
 })
 
 afterEach(async () => {
@@ -54,7 +54,7 @@ afterEach(async () => {
   useProjectStore.setState(originalProjectState)
 })
 
-describe('HomeSidebarPanel recent project removal', () => {
+describe('OpenProjectFirstPage recent project removal', () => {
   it('removes a stale recent-project record without deleting project data', async () => {
     await act(async () => page.getByRole('button', { name: '从最近项目移除' }).click())
     await expect.element(page.getByRole('dialog')).toBeVisible()

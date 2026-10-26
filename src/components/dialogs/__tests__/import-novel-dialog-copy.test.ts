@@ -11,12 +11,14 @@ describe('import novel imitation entry copy', () => {
     const dialog = source('src/components/dialogs/ImportNovelDialog.tsx')
     const zhCatalog = source('src/i18n/messages/zh-CN.ts')
     const enCatalog = source('src/i18n/messages/en-US.ts')
-    const welcome = source('src/components/pages/WelcomePage.tsx')
+    const titleBar = source('src/components/layout/TitleBar.tsx')
 
     expect(dialog).toContain('小说拆解与仿写')
     expect(dialog).toContain('结构拆解、文风提取、蓝图反推')
     expect(zhCatalog).toContain('拆解仿写')
     expect(enCatalog).toContain('Analyze & imitate')
-    expect(welcome).toContain('拆解仿写')
+    // 首页删除后，「拆解仿写」入口统一收在标题栏「更多」里
+    expect(titleBar).toContain('openNovelDeconstruction')
+    expect(titleBar).toContain("t('project.imitationShort')")
   })
 })

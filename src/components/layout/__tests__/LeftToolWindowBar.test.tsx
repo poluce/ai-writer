@@ -19,8 +19,16 @@ describe('LeftToolWindowBar', () => {
   it('renders visible Chinese labels for every left navigation item', () => {
     const html = renderToString(<LeftToolWindowBar />)
 
-    for (const label of ['首页', '项目', '架构', '情节', '蓝图', '剧情', '人物', '知识库', '任务', '设置']) {
+    for (const label of ['项目', '架构', '情节', '蓝图', '剧情', '人物', '知识库', '设置']) {
       expect(html).toContain(label)
+    }
+  })
+
+  it('keeps bottom panel tabs out of the content rail', () => {
+    const html = renderToString(<LeftToolWindowBar />)
+    // 任务/日志/模型 属于底部页签条（BottomPanelTabs），不应再占用左侧内容导航
+    for (const label of ['任务', '日志', '模型']) {
+      expect(html).not.toContain(`<span class="left-nav-label">${label}</span>`)
     }
   })
 
@@ -57,7 +65,7 @@ describe('LeftToolWindowBar', () => {
     const empty = readFileSync(resolve(process.cwd(), 'src/components/panels/OpenProjectFirstPage.tsx'), 'utf8')
     expect(rail).toContain('if (!hasOpenProject) return')
     expect(rail).toContain("openBuiltinEditor('world-building-editor'")
-    expect(empty).toContain("text('请先打开项目', 'Open a project first')")
+    expect(empty).toContain("text('开始一部长篇', 'Start a long-form project')")
     const sidebar = readFileSync(resolve(process.cwd(), 'src/components/panels/Sidebar.tsx'), 'utf8')
     expect(sidebar).toContain('workspaceNeedsProject')
     expect(sidebar).toContain("activeRailItem !== 'project'")
@@ -75,8 +83,8 @@ describe('LeftToolWindowBar', () => {
       expect(html).toMatch(pattern)
     }
 
-    // Home must remain enabled
-    const homePattern = new RegExp(`<button(?! disabled)[^>]*>[\\s\\S]*?<span class="left-nav-label">首页<\\/span>`, 'u')
-    expect(html).toMatch(homePattern)
+    // 项目入口必须保持可用（无项目时它是启动页）
+    const projectPattern = new RegExp(`<button(?! disabled)[^>]*>[\\s\\S]*?<span class="left-nav-label">项目<\\/span>`, 'u')
+    expect(html).toMatch(projectPattern)
   })
 })

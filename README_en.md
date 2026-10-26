@@ -24,9 +24,7 @@
   <a href="https://github.com/poluce/ai-writer/releases/latest">Download desktop (Windows x64)</a>
 </p>
 
-<p align="center">
-  <img src="docs/assets/readme/hero-en-v2.png" alt="AI Writer — a local-first desktop workspace for long-form fiction" width="100%" />
-</p>
+> **Interface screenshots are pending an update.** The old v0.8.5 screenshots no longer match the current 0.1.4 UI and have been removed; new screenshots will be added from the actual build.
 
 > ## v0.1.4 — read-only review assistant & architectural decoupling
 >
@@ -59,7 +57,7 @@
 - The story map shows main and side-story progress and links to the supporting chapter.
 - Planning material can be imported so blueprints and later writing share the same settings.
 - The character roster adds explicitly confirmed blueprint characters and tracks their state.
-- The Chinese long-form workflow connects blueprints, drafts, reviews, revisions, and final chapters.
+- The Chinese long-form workflow connects blueprints, drafts, revisions, and final chapters; review is handled by the read-only review assistant.
 - Windows users receive an in-app reminder for new releases and can download, restart, and finish the update in one flow.
 
 See the [bilingual 0.1.4 notes](.release/notes/v0.1.4.md) for each change. Official installers are published through this repository's [GitHub Releases](https://github.com/poluce/ai-writer/releases/latest).
@@ -98,7 +96,7 @@ flowchart LR
 
 ## Interface preview
 
-![AI Writer main window showing the project structure, welcome page, AI writing assistant and task panel](docs/assets/readme/ui-en.png)
+> Interface screenshots are pending an update: the old v0.8.5 screenshots no longer match the current 0.1.4 UI and have been removed. New screenshots will be added from the actual interface.
 
 ## Core capabilities
 
@@ -107,7 +105,7 @@ flowchart LR
 | Structured writing workflow | Organizes premises, characters, worldbuilding, blueprints, drafts, reviews, revisions, and finals by stage. |
 | Chapter-level generation | Builds context around the current chapter blueprint and related material to reduce cross-chapter drift. |
 | Failed-generation recovery | If chapter generation fails after producing visible prose, the app saves it as a project-local recovery candidate; it is not a formal draft and cannot be continued after its source blueprint or draft changes, but it can be discarded. |
-| Review and revision | Produces structured review information for a draft and uses that report as revision input. |
+| Review assistant | Since 0.1.4, review is handled by a read-only review assistant: it reads the draft, settings, blueprints, and continuity facts, then produces a structured review report. Its only write action is `submit_chapter_review`, bound to the reviewed draft version; revision itself stays in the writing assistant or the editor. |
 | Character cards and project material | Maintains characters, worldbuilding, blueprints, drafts, and finals in the project. Project sessions prevent an old window from writing into a newly reopened project. |
 | Plot tree and narrative threads | Shows main plots, subplots, and source progress on chapter tracks. The plot tree is a rebuildable read-only snapshot, not a replacement for author facts. |
 | Writing Skills and prompt templates | Binds supplemental methods by writing stage and customizes Chinese or English creative guidance while hidden contracts preserve language, output structure, and tool protocols. |
@@ -115,7 +113,7 @@ flowchart LR
 | Reference text and knowledge base | Imports common text formats as reference material. SQLite FTS remains available when no embedding model is configured. |
 | Batch writing task | A separate batch chapter task supports 1–10 chapters, pause, and cancel; downstream processing failure stops later chapters. |
 | Chinese and English UI | The first launch can follow the system locale; a manual choice is persisted. |
-| Writing assistant | The side panel offers two assistants. The **project assistant** works on the open project — it can read project material, start workflows, and read or write files and run commands inside the project folder (each one needs your confirmation), keeping its conversations inside the project folder. The **app assistant** needs no project, is always available, works in its own `~/.vela/workspace`, and keeps its conversations in the app data folder. Opening a project switches to the project assistant automatically. Skill instructions are loaded on demand: the listing carries names and descriptions only. |
+| Assistant system | The right panel offers four assistants: the **writing assistant** (project scope; reads and writes project material, starts workflows, and calls tools with confirmation), the **architecture assistant** (worldbuilding and whole-book outline), the **blueprint assistant** (chapter beats and scene plans), and the **review assistant** (read-only review with a structured report). The writing assistant can delegate tasks to the architecture and blueprint assistants; their sessions are reused and queued when busy. A project-independent **app assistant** is also available in the global scope. |
 
 When generating a plot outline, you can enter an explicit chapter range in “Generate story architecture.” Projects longer than 20 chapters default to Chapters 1–20. After one batch finishes, continue from the next chapter; if generation stops with a valid checkpoint, resume from it. If you edit the existing outline or any source settings or guidance used for generation, the old checkpoint cannot continue directly into the new content; regenerate the affected range instead.
 

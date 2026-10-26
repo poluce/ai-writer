@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>合并「首页」与「项目」对照图</title>
+<style>
+  @font-face { font-family: 'Inter'; src: url('../../../public/fonts/Inter-VariableFont_opsz,wght.ttf') format('truetype'); font-weight: 100 900; }
+  @font-face { font-family: 'NotoSans'; src: url('../../../public/fonts/NotoSansSC-VariableFont_wght.ttf') format('truetype'); font-weight: 100 900; }
+  @font-face { font-family: 'NotoSerif'; src: url('../../../public/fonts/NotoSerifSC-VariableFont_wght.ttf') format('truetype'); font-weight: 100 900; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; width: 1500px; padding: 28px 30px 34px;
+    background: #DDE2EA;
+    font-family: 'Inter', 'NotoSans', 'Microsoft YaHei', sans-serif;
+    color: #12141A;
+  }
+  h1 { margin: 0 0 6px; font-family: 'NotoSerif', 'NotoSans', serif; font-size: 26px; font-weight: 600; }
+  .sub { margin: 0 0 22px; font-size: 13px; color: #4A5160; }
+
+  .block { margin-bottom: 22px; }
+  .head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .badge { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 999px; }
+  .badge.before { background: #FFF; color: #A5372A; border: 1px solid #E7BDB5; }
+  .badge.after { background: #3B6FE0; color: #FFF; border: 1px solid #3B6FE0; }
+  .head .t { font-size: 12.5px; color: #4A5160; }
+
+  .shot { position: relative; border-radius: 10px; overflow: hidden; border: 1px solid #C6CDD8; box-shadow: 0 16px 40px -26px rgba(16,24,40,.5); background: #fff; }
+  .shot img { width: 100%; display: block; }
+
+  .pin {
+    position: absolute; width: 22px; height: 22px; border-radius: 50%;
+    display: grid; place-items: center; font-size: 12px; font-weight: 700; color: #fff;
+    box-shadow: 0 0 0 3px rgba(255,255,255,.9);
+  }
+  .pin.red { background: #C0392B; }
+  .pin.blue { background: #3B6FE0; }
+
+  .ring { position: absolute; border: 2px dashed; border-radius: 8px; pointer-events: none; }
+  .ring.red { border-color: #C0392B; background: rgba(192,57,43,.05); }
+  .ring.green { border-color: #1D7A4D; background: rgba(29,122,77,.05); }
+
+  .strike { position: absolute; border-radius: 6px; background: rgba(192,57,43,.14); }
+  .strike::before, .strike::after {
+    content: ''; position: absolute; left: 8%; right: 8%; top: 50%; height: 2px;
+    background: #C0392B; transform-origin: center;
+  }
+  .strike::before { transform: rotate(28deg); }
+  .strike::after { transform: rotate(-28deg); }
+  .strike span {
+    position: absolute; left: 50%; top: 100%; transform: translate(-50%, 4px);
+    font-size: 10px; font-weight: 700; color: #C0392B; white-space: nowrap;
+  }
+
+  .notes { display: flex; gap: 12px; margin-top: 26px; }
+  .note { flex: 1; background: #FFF; border: 1px solid #CDD4DE; border-radius: 10px; padding: 12px 14px; font-size: 12.5px; line-height: 1.65; color: #4A5160; }
+  .note b { display: block; color: #12141A; font-size: 13px; margin-bottom: 4px; }
+  .note code { font-family: 'Consolas', monospace; font-size: 11.5px; background: #EEF1F6; padding: 1px 4px; border-radius: 3px; }
+  .list { margin: 8px 0 0; padding-left: 0; list-style: none; display: flex; gap: 18px; font-size: 12px; color: #4A5160; }
+  .list li { display: flex; gap: 6px; align-items: baseline; }
+  .list li::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: #8A93A3; flex: none; transform: translateY(-2px); }
+  .after-list li::before { background: #1D7A4D; }
+</style>
+</head>
+<body>
+  <h1>合并「首页」与「项目」</h1>
+  <p class="sub">同一屏里「新建项目 / 打开项目 / 最近项目」出现了两遍；点开「项目」还没打开项目时，主区又是这一套。合并成一个入口。</p>
+
+  <div class="block">
+    <div class="head">
+      <span class="badge before">合并前</span>
+      <span class="t">左栏第 1 项「首页」—— 侧栏一套、主区又一套</span>
+    </div>
+    <div class="shot">
+      <img src="before-home.png" alt="合并前的首页">
+      <!-- ① 侧栏：新建 / 打开 / 最近项目 -->
+      <div class="ring red" style="left: 5%; top: 4.8%; width: 15.5%; height: 22.5%"></div>
+      <span class="pin red" style="left: 3.2%; top: 4.2%">1</span>
+      <!-- ② 主区：同一组操作卡 -->
+      <div class="ring red" style="left: 36.5%; top: 4.8%; width: 31%; height: 12.5%"></div>
+      <span class="pin red" style="left: 35.2%; top: 4.2%">2</span>
+      <!-- ③ 主区：最近项目（与侧栏完全重复） -->
+      <div class="ring red" style="left: 36.5%; top: 44.5%; width: 31%; height: 16%"></div>
+      <span class="pin red" style="left: 35.2%; top: 43.9%">3</span>
+      <!-- ④ 应用更新卡片：只在首页出现，合并时要搬走 -->
+      <div class="ring green" style="left: 36.5%; top: 30.5%; width: 31%; height: 9%"></div>
+      <span class="pin blue" style="left: 35.2%; top: 29.9%">4</span>
+    </div>
+    <ul class="list">
+      <li>① 侧栏：新建 / 打开 / 最近项目（带删除）</li>
+      <li>② 主区：新建 / 打开 / 拆解仿写</li>
+      <li>③ 主区：最近项目，与 ① 内容一模一样</li>
+      <li>④ 应用更新：只在这里出现，不能丢</li>
+    </ul>
+  </div>
+
+  <div class="block">
+    <div class="head">
+      <span class="badge after">合并后（示意）</span>
+      <span class="t">删掉「首页」，只留「项目」；没打开项目时它就是启动页</span>
+    </div>
+    <div class="shot">
+      <img src="after-project.png" alt="合并后：项目入口在无项目时的形态">
+      <!-- 左栏「首页」被移除 -->
+      <div class="strike" style="left: 0.4%; top: 6.1%; width: 4.2%; height: 4.2%">
+        <span>移除</span>
+      </div>
+      <span class="pin blue" style="left: 4.4%; top: 6.0%">2</span>
+      <!-- 全屏唯一一处新建 / 打开 / 最近项目 -->
+      <div class="ring green" style="left: 17.6%; top: 17.6%; width: 50%; height: 41%"></div>
+      <span class="pin blue" style="left: 16.8%; top: 16.9%">1</span>
+    </div>
+    <ul class="list after-list">
+      <li>① 全屏只有一处「新建 / 打开 / 最近项目」</li>
+      <li>② 左栏 9 项 → 8 项，只剩内容维度</li>
+      <li>打开项目后同一个入口直接进编辑器，不再有「首页」把人带走</li>
+    </ul>
+  </div>
+
+  <div class="notes">
+    <div class="note">
+      <b>删掉什么</b>
+      <code>WelcomePage.tsx</code>、<code>HomeSidebarPanel.tsx</code> 两套首页 UI；左栏「首页」按钮；<code>sidebarView === 'home'</code> 分支与对应类型值。
+    </div>
+    <div class="note">
+      <b>保住什么</b>
+      「应用更新」搬进「设置 › 关于」，放在版本号下面；「删除项目（含目录）」搬进项目树标题栏的 ⋯ 菜单，和「清除全部」相邻；「拆解仿写」标题栏「更多」里已有。
+    </div>
+    <div class="note">
+      <b>行为怎么变</b>
+      启动仍是「项目」（现状默认就是它）。有项目时点「项目」= 回到小说配置；没项目时点「项目」= 启动页。只有一个心智模型：去我的作品。
+    </div>
+  </div>
+</body>
+</html>

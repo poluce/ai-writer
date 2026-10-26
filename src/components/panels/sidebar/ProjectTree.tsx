@@ -5,18 +5,18 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { ChevronRight, ChevronDown, RefreshCw, CheckCircle2, Circle, FolderOpen, Copy, FolderTree, Trash2, FileText } from 'lucide-react'
+import { ChevronRight, ChevronDown, RefreshCw, CheckCircle2, Circle, FolderOpen, Copy, FolderTree, Trash2, FileText, MoreHorizontal } from 'lucide-react'
 import { useProjectStore } from '../../../stores/project-store'
 import { useWorkflowStore } from '../../../stores/workflow-store'
 import { useDraftStore } from '../../../stores/draft-store'
 import { useEditorStore } from '../../../stores/editor-store'
-import { useLayoutStore } from '../../../stores/layout-store'
-import { ipc } from '../../../services/ipc-client'
 import { Button } from '../../ui/Button'
 import { EmptyState } from '../../ui/EmptyState'
 import { confirm } from '../../ui/Confirm'
 import { toast } from '../../ui/Toast'
 import ClearProjectDataDialog from '../../dialogs/ClearProjectDataDialog'
+import { MenuItem } from '../../ui/MenuItem'
+import { useOutsideClick } from '../../../hooks/useOutsideClick'
 
 
 
@@ -66,6 +66,9 @@ export default function ProjectTree() {
   const [blueprintCount, setBlueprintCount] = useState<number>(-1)
   const [refreshing, setRefreshing] = useState(false)
   const [clearDialogOpen, setClearDialogOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+  useOutsideClick(menuRef, () => setMenuOpen(false), menuOpen)
   const refreshRequestGate = useRef(new LatestRequestGate())
 
   /** 统一刷新：文件树 + 架构状态 + 草稿列表 + 蓝图数量 */
@@ -174,42 +177,24 @@ export default function ProjectTree() {
   }, [workflowKey, currentProject?.path, refreshAll]) // eslint-disable-line react-hooks/exhaustive-deps -- currentProject 对象引用变化不触发，仅 path 变化需响应
 
   if (!currentProject) {
+    // 空态收口：动作只在主区出现一次，侧栏只说明「这里会显示什么」。
     return (
       <div className="writer-project-tree h-full">
         <EmptyState
-          icon={<span className="text-4xl opacity-60" style={{ color: 'var(--color-text-muted)' }}><FolderOpen size={36} /></span>}
+          icon={<span className="opacity-60" style={{ color: 'var(--color-text-muted)' }}><FolderOpen size={28} /></span>}
           message={text('未打开项目', 'No project open')}
           className="p-4 pb-[15vh]"
           opacity={1}
         >
           <span
-            className="text-xs text-center mt-0.5"
+            className="text-xs text-center mt-0.5 leading-relaxed"
             style={{ color: 'var(--color-text-muted)' }}
           >
-            {text('新建或打开一个项目', 'Create or open a project to begin.')}
+            {text(
+              '打开项目后，这里显示小说配置、故事架构、章节蓝图与正文章节。',
+              'Once a project is open, its configuration, architecture, blueprints, and chapters appear here.',
+            )}
           </span>
-          {/* 操作按钮 */}
-          <div className="flex flex-col gap-2 mt-3 w-full">
-            <Button
-              variant="default"
-              className="w-full"
-              onClick={() => useLayoutStore.getState().openNewProject()}
-            >
-              {text('新建项目', 'New project')}
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={async () => {
-                const folder = await ipc.invoke('dialog:select-folder')
-                if (folder) {
-                  useProjectStore.getState().openProject(folder)
-                }
-              }}
-            >
-              {text('打开项目', 'Open project')}
-            </Button>
-          </div>
         </EmptyState>
       </div>
     )
@@ -235,6 +220,27 @@ export default function ProjectTree() {
   // 故事架构进度
   const archDone = ARCH_FILES.filter(f => archStatus[f.key]).length
   const clearDisabled = activeRuns.length > 0
+
+  /** 删除整个项目（含目录）：从首页搬到这里，与「清除全部」相邻 */
+  const handleDeleteProject = async () => {
+    setMenuOpen(false)
+    const ok = await confirm(
+      text(
+        `确认删除项目「${currentProject.name}」？\n此操作会删除该项目目录下的小说正文、故事架构、角色、蓝图、知识库和所有项目数据。`,
+        `Delete project “${currentProject.name}”?\nThis removes its manuscripts, architecture, characters, blueprints, knowledge base, and all project data.`,
+      ),
+      {
+        title: text('删除项目', 'Delete project'),
+        confirmText: text('删除项目', 'Delete project'),
+        danger: true,
+      },
+    )
+    if (!ok) return
+    const success = await useProjectStore.getState().deleteProject(currentProject.path)
+    if (success) {
+      toast.success(text(`项目「${currentProject.name}」已删除`, `Project “${currentProject.name}” deleted`))
+    }
+  }
   const openConfigEditor = () => useEditorStore.getState().openFile({
     id: 'config',
     name: text('小说配置', 'Novel configuration'),
@@ -271,6 +277,41 @@ export default function ProjectTree() {
           >
             <RefreshCw size={12} />
           </Button>
+          <div className="relative" ref={menuRef}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setMenuOpen(v => !v)}
+              title={text('更多项目操作', 'More project actions')}
+            >
+              <MoreHorizontal size={12} />
+            </Button>
+            {menuOpen && (
+              <div
+                role="menu"
+                aria-label={text('更多项目操作', 'More project actions')}
+                className="absolute right-0 top-full z-50 mt-1 w-44 rounded-lg py-1"
+                style={{
+                  backgroundColor: 'var(--color-sidebar)',
+                  border: '1px solid var(--color-border)',
+                  boxShadow: 'var(--shadow-popover)',
+                }}
+              >
+                <MenuItem
+                  label={text('刷新项目数据', 'Refresh project data')}
+                  icon={<RefreshCw size={13} />}
+                  disabled={refreshing}
+                  onClick={() => { setMenuOpen(false); void refreshAll() }}
+                />
+                <MenuItem
+                  label={text('删除项目', 'Delete project')}
+                  icon={<Trash2 size={13} />}
+                  danger
+                  onClick={() => void handleDeleteProject()}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

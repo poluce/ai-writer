@@ -38,7 +38,7 @@ export const SETTINGS_SECTIONS: SectionItem[] = [
   { id: 'prompts', label: '提示词模板', labelEn: 'Prompt templates', icon: <MessageSquare size={16} />, description: '自定义 AI 创作各环节使用的提示词模板', descriptionEn: 'Customize guidance for each AI writing stage' },
   { id: 'skills', label: '写作 Skills', labelEn: 'Writing skills', icon: <BookOpen size={16} />, description: '检查并安装提示词型写作 Skill', descriptionEn: 'Inspect and install prompt-only writing skills' },
   { id: 'mcp', label: 'MCP 服务器', labelEn: 'MCP servers', icon: <Server size={16} />, description: '添加、修改或删除项目助手可用的 MCP 服务器', descriptionEn: 'Add, edit, or delete MCP servers for the project assistant' },
-  { id: 'about', label: '关于', labelEn: 'About', icon: <Info size={16} />, description: '版本、定位与本地部署说明', descriptionEn: 'Version, positioning, and local deployment' },
+  { id: 'about', label: '关于', labelEn: 'About', icon: <Info size={16} />, description: '版本、更新与本地部署说明', descriptionEn: 'Version, updates, and local deployment' },
 ]
 
 function resolveRequestedSettingsSection(rawSection: SettingsSection): SettingsModalSection {

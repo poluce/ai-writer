@@ -15,6 +15,7 @@ import {
 import { Button } from '../ui/Button'
 import { toast } from '../ui/Toast'
 import { LLMDataRequestGate } from './llm-data-request-gate'
+import { BottomPanelTabs } from './BottomPanelTabs'
 import { diagnosticWorkflowForCall, type LLMCallRecord } from '../../services/stats-service'
 import {
   coarseRuntimePlatform,
@@ -22,98 +23,16 @@ import {
   type SafeDiagnosticWorkflow,
 } from '../../services/safe-call-diagnostic'
 
-/** 底部面板 Tab 名称映射 */
-const TAB_LABELS: Record<string, readonly [string, string]> = {
-  tasks:  ['任务', 'Tasks'],
-  log:    ['日志', 'Logs'],
-  models: ['模型调用', 'Model calls'],
-}
-
 /** 下方工具窗口 */
 export default function BottomPanel() {
-  const text = useLocaleStore(s => s.text)
-  const bottomPanelOpen = useLayoutStore(s => s.bottomPanelOpen)
   const bottomTab = useLayoutStore(s => s.bottomTab)
-  const toggleBottomPanel = useLayoutStore(s => s.toggleBottomPanel)
-  // 只订阅 activeRuns，不订阅 globalLogs 等高频字段
-  const activeRuns = useWorkflowStore(s => s.activeRuns)
-
-  // A) 懒卸载：面板关闭时保持挂载，仅视觉隐藏，避免切换时的短暂状态错乱
-  const [visible, setVisible] = useState(bottomPanelOpen)
-  useEffect(() => {
-    if (bottomPanelOpen) {
-      /* intentionally deferred to avoid cascading render */
-      setTimeout(() => setVisible(true), 0)
-    } else {
-      // 等待动画完成后再卸载
-      const t = setTimeout(() => setVisible(false), 300)
-      return () => clearTimeout(t)
-    }
-  }, [bottomPanelOpen])
-
-  if (!visible) return null
 
   const activeTab = bottomTab || 'tasks'
-  const tabLabel = TAB_LABELS[activeTab]
-  const label = tabLabel ? text(...tabLabel) : activeTab
-  // 任何活跃任务运行中
-  const hasRunning = activeRuns.some(r => r.status === 'running')
-  const hasWaiting = activeRuns.some(r => r.status === 'waiting')
-  const hasPaused = activeRuns.some(r => r.status === 'paused')
-  const hasCancelling = activeRuns.some(r => r.status === 'cancelling')
 
   return (
-    <div
-      className="writer-task-table w-full h-full flex flex-col overflow-hidden"
-      style={{
-        // A) 懒卸载过渡：关闭时先动画淡出再完全隐藏
-        opacity: bottomPanelOpen ? 1 : 0,
-        transition: 'opacity 0.25s ease',
-        pointerEvents: bottomPanelOpen ? 'auto' : 'none',
-      }}
-    >
-      {/* 面板标题头 */}
-      <div
-        className="no-select flex items-center justify-between flex-shrink-0 px-3"
-        style={{ height: 'var(--height-panel-header)', borderBottom: '1px solid var(--color-border)' }}
-      >
-        {/* 左侧：面板名称 + 可选状态点 */}
-        <div className="flex items-center gap-2">
-          <span
-            className="text-xs font-semibold uppercase tracking-widest"
-            style={{ color: 'var(--color-text-muted)' }}
-          >
-            {label}
-          </span>
-          {/* 运行中指示 */}
-          {activeTab === 'tasks' && hasRunning && (
-            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: 'var(--color-accent)' }} />
-          )}
-          {activeTab === 'tasks' && hasWaiting && !hasRunning && (
-            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: 'var(--color-warning)' }} />
-          )}
-          {activeTab === 'tasks' && hasPaused && !hasRunning && !hasWaiting && (
-            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--color-warning)' }} />
-          )}
-          {activeTab === 'tasks' && hasCancelling && !hasRunning && !hasWaiting && !hasPaused && (
-            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: 'var(--color-warning)' }} />
-          )}
-          {/* 活跃任务数徽章 */}
-          {activeTab === 'tasks' && activeRuns.length > 0 && (
-            <span
-              className="text-[0.68rem] font-mono px-1 rounded"
-              style={{ backgroundColor: 'rgba(var(--color-accent-rgb), 0.12)', color: 'var(--color-accent)' }}
-            >
-              {activeRuns.length}
-            </span>
-          )}
-        </div>
-
-        {/* 右侧：关闭按钮 */}
-        <button onClick={toggleBottomPanel} title={text('关闭面板', 'Close panel')} className="icon-btn" style={{ width: 18, height: 18 }}>
-          <X size={12} strokeWidth={1.5} />
-        </button>
-      </div>
+    <div className="writer-task-table w-full h-full flex flex-col overflow-hidden">
+      {/* 页签条：任务 / 日志 / 模型调用常驻在这里，不再占用左侧内容导航 */}
+      <BottomPanelTabs />
 
       {/* 内容区 */}
       <div className="flex-1 overflow-hidden">

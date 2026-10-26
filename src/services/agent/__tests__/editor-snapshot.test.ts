@@ -9,7 +9,7 @@ describe('captureAgentEditorSnapshot', () => {
     resetAgentSnapshotSurfaceForTests()
     useProjectStore.setState({ currentProject: null, recentProjects: [] })
     useLayoutStore.setState({
-      sidebarView: 'home',
+      sidebarView: 'project',
       rightView: 'agent',
       bottomPanelOpen: false,
       bottomTab: 'tasks',
@@ -23,7 +23,7 @@ describe('captureAgentEditorSnapshot', () => {
   it('always reports whether a novel is open', () => {
     const snapshot = captureAgentEditorSnapshot()
     expect(snapshot.project).toEqual({ open: false })
-    expect(snapshot.layout?.sidebarView).toBe('home')
+    expect(snapshot.layout?.sidebarView).toBe('project')
   })
 
   it('records a project switch on the next capture', () => {
