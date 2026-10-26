@@ -232,11 +232,19 @@ export class RecoveryCandidateRepository {
       `).get(candidateId) as RecoveryCandidateRow | undefined
       if (!row || !sourceIsCurrent(row)) throw new Error('恢复候选的源章节已变化，已拒绝继续')
     }
-    const result = db.prepare(`
-      UPDATE recovery_candidates
-      SET status = ?, resolved_at = datetime('now')
-      WHERE candidate_id = ? AND status = 'pending'
-    `).run(status, candidateId)
-    if (result.changes !== 1) throw new Error('恢复候选不存在或已处理')
+    // 处理即清理：已决候选不会再出现在任何界面，保留只会让候选正文无限累积。
+    // 替代链上若有更新候选引用本行，先解除引用再删除，避免 FK 约束把清理卡住。
+    const remove = db.transaction(() => {
+      db.prepare(`
+        UPDATE recovery_candidates
+        SET replaces_candidate_id = NULL
+        WHERE replaces_candidate_id = ?
+      `).run(candidateId)
+      return db.prepare(`
+        DELETE FROM recovery_candidates
+        WHERE candidate_id = ? AND status = 'pending'
+      `).run(candidateId).changes
+    })
+    if (remove() !== 1) throw new Error('恢复候选不存在或已处理')
   }
 }

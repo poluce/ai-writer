@@ -1265,3 +1265,41 @@ describe('ImportRunRepository', () => {
     `).get()).toEqual({ count: 0 })
   })
 })
+
+describe('ImportRunRepository history lifecycle', () => {
+  it('lists recent runs and deletes a finished record with its chapter snapshots', () => {
+    const prepared = ImportRunRepository.prepare(request())
+    const runId = prepared.run!.id
+    markRunCompleted(runId)
+
+    expect(ImportRunRepository.listRecent(10).map(run => run.id)).toContain(runId)
+    expect(getProjectDb()!.prepare('SELECT COUNT(*) AS count FROM import_run_chapters WHERE run_id = ?')
+      .get(runId)).toEqual({ count: 1 })
+
+    expect(ImportRunRepository.deleteTerminal(runId)).toEqual({ success: true })
+
+    expect(ImportRunRepository.get(runId)).toBeNull()
+    expect(getProjectDb()!.prepare('SELECT COUNT(*) AS count FROM import_run_chapters WHERE run_id = ?')
+      .get(runId)).toEqual({ count: 0 })
+    expect(ImportRunRepository.listRecent(10).map(run => run.id)).not.toContain(runId)
+  })
+
+  it('refuses to delete a running import record', () => {
+    const prepared = ImportRunRepository.prepare(request())
+    const runId = prepared.run!.id
+    ImportRunRepository.startOrResume(runId, 'history-test-runner')
+
+    expect(ImportRunRepository.deleteTerminal(runId)).toMatchObject({
+      success: false,
+      errorCode: 'IMPORT_RUN_RUNNING',
+    })
+    expect(ImportRunRepository.get(runId)).not.toBeNull()
+  })
+
+  it('reports a missing import record instead of silently succeeding', () => {
+    expect(ImportRunRepository.deleteTerminal('missing-import-run')).toMatchObject({
+      success: false,
+      errorCode: 'IMPORT_RUN_NOT_FOUND',
+    })
+  })
+})

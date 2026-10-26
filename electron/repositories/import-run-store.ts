@@ -540,6 +540,55 @@ export function getRun(runId: string): ImportRunSnapshot | null {
     return row ? rowToSnapshot(row) : null
   }
 
+export type ImportRunDeleteErrorCode = 'IMPORT_RUN_NOT_FOUND' | 'IMPORT_RUN_RUNNING'
+
+export type ImportRunDeleteResult =
+  | { success: true }
+  | { success: false; errorCode: ImportRunDeleteErrorCode; error: string }
+
+/**
+ * 删除一条不再运行中的导入记录（成功/失败/取消/就绪均可）。
+ *
+ * 只删运行记录与它的章节/收据（FK 级联），不会删除已导入到项目里的知识文档、
+ * 蓝图或原稿；指纹去重映射表也保留，避免删除历史后重复导入。
+ */
+export function deleteTerminalRun(runId: string, now = Date.now()): ImportRunDeleteResult {
+  const database = db()
+  const row = database.prepare(`
+    SELECT status, execution_owner, lease_expires_at
+    FROM import_runs WHERE id = ?
+  `).get(runId) as {
+    status: ImportRunStatus
+    execution_owner: string
+    lease_expires_at: number
+  } | undefined
+  if (!row) {
+    return { success: false, errorCode: 'IMPORT_RUN_NOT_FOUND', error: `导入记录不存在：${runId}` }
+  }
+  const leaseActive = row.status === 'running'
+    || (row.execution_owner !== '' && row.lease_expires_at > now)
+  if (leaseActive) {
+    return {
+      success: false,
+      errorCode: 'IMPORT_RUN_RUNNING',
+      error: '导入仍在运行中，请先取消并等它停止后再删除记录',
+    }
+  }
+  database.prepare('DELETE FROM import_runs WHERE id = ?').run(runId)
+  return { success: true }
+}
+
+/** 最近的导入运行记录（含已完成/取消/失败），供“导入历史”管理。 */
+export function listRecent(limit = 20): ImportRunSnapshot[] {
+  const bounded = Math.max(1, Math.min(100, Math.floor(limit)))
+  const rows = db().prepare(`
+    SELECT * FROM import_runs
+    ORDER BY updated_at DESC, rowid DESC
+    LIMIT ?
+  `).all(bounded) as ImportRunRow[]
+  return rows.map(rowToSnapshot)
+}
+
 export function listResumable(): ImportRunSnapshot[] {
     const rows = db().prepare(`
       SELECT * FROM import_runs

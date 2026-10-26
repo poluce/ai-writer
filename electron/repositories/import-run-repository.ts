@@ -16,6 +16,8 @@ import {
   getRun,
   listResumable,
   listChapterBatch,
+  deleteTerminalRun,
+  listRecent,
 } from './import-run-store'
 import {
   getEffectReceipt,
@@ -51,6 +53,8 @@ export class ImportRunRepository {
   static finalizeParsing = finalizeParsing
   static prepare = prepare
   static get = getRun
+  static deleteTerminal = deleteTerminalRun
+  static listRecent = listRecent
   static listResumable = listResumable
   static listChapterBatch = listChapterBatch
   static getEffectReceipt = getEffectReceipt

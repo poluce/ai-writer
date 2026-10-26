@@ -191,6 +191,13 @@ export class ChapterDeletionRepository {
         return existing.operation_id
       }
 
+      // 已完成的操作记录只用于事后核对；保留 30 天后清理，避免每次删章都留一行。
+      db.prepare(`
+        DELETE FROM chapter_deletion_operations
+        WHERE status = 'completed' AND completed_at <> ''
+          AND completed_at < datetime('now', '-30 days')
+      `).run()
+
       const target = requireFinalizedTarget(db, input.draftId, input.chapterNumber)
       const postProcessRunIds = listPostProcessRunIds(db, input.chapterNumber)
 

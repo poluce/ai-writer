@@ -86,6 +86,20 @@ describe('PostProcessRepository retry receipts', () => {
     expect(PostProcessRepository.getLatestRun('chapter_finalize', 'chapter-1')).toBeNull()
   })
 
+  it('keeps only the latest run for the same trigger source', () => {
+    const firstRunId = createCriticalRun()
+    PostProcessRepository.markStepOk(firstRunId, 'kb_import')
+    const secondRunId = createCriticalRun()
+
+    expect(secondRunId).not.toBe(firstRunId)
+    expect(PostProcessRepository.getSteps(firstRunId)).toEqual([])
+    expect(PostProcessRepository.getSteps(secondRunId)).toEqual([
+      expect.objectContaining({ stepKey: 'kb_import', ok: false }),
+    ])
+    expect(PostProcessRepository.getLatestRun('chapter_finalize', 'chapter-1')?.id).toBe(secondRunId)
+    expect(db.prepare('SELECT COUNT(*) AS count FROM post_process_runs').get()).toEqual({ count: 1 })
+  })
+
   it('atomically clears the previous failure when the same step retry succeeds', () => {
     const runId = createCriticalRun()
     PostProcessRepository.markStepFailed(runId, 'kb_import', '第一次安全错误')

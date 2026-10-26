@@ -1,5 +1,8 @@
 import { getProjectDb } from '../database'
 
+/** 调用日志只用于模型面板/诊断，保留最近这些条即可，避免无限增长。 */
+const MAX_LLM_CALL_RECORDS = 1000
+
 export class LLMHistoryRepository {
   /** 记录一次 LLM 调用 */
   static logCall(call: {
@@ -24,6 +27,19 @@ export class LLMHistoryRepository {
       call.promptTokens, call.completionTokens, call.totalTokens,
       call.durationMs, call.success ? 1 : 0, call.errorMessage ?? ''
     )
+
+    // 写入即裁剪：只保留最近 MAX_LLM_CALL_RECORDS 条，让调用日志有界。
+    db.prepare(`
+      DELETE FROM llm_calls
+      WHERE id NOT IN (SELECT id FROM llm_calls ORDER BY id DESC LIMIT ?)
+    `).run(MAX_LLM_CALL_RECORDS)
+  }
+
+  /** 清空当前项目的调用记录，返回删除条数。 */
+  static clearAll(): number {
+    const db = getProjectDb()
+    if (!db) return 0
+    return db.prepare('DELETE FROM llm_calls').run().changes
   }
 
   /** 获取调用统计 */
