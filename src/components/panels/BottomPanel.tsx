@@ -14,6 +14,7 @@ import {
 } from '../../shared/project-session-context'
 import { Button } from '../ui/Button'
 import { toast } from '../ui/Toast'
+import { confirm } from '../ui/Confirm'
 import { LLMDataRequestGate } from './llm-data-request-gate'
 import { diagnosticWorkflowForCall, type LLMCallRecord } from '../../services/stats-service'
 import {
@@ -686,6 +687,35 @@ function ModelsView() {
     () => projectSessionContextFromProject(currentProject),
     [currentProject],
   )
+  const clearCalls = async () => {
+    if (!projectSession) return
+    const confirmed = await confirm(
+      text(
+        '确认清空本项目的模型调用记录？\n只删除统计与诊断日志，不影响任何小说内容。',
+        'Clear model call records for this project?\nOnly statistics and diagnostics are removed; novel content is untouched.',
+      ),
+      {
+        title: text('清空调用记录', 'Clear call records'),
+        confirmText: text('清空', 'Clear'),
+        danger: true,
+      },
+    )
+    if (!confirmed) return
+    try {
+      const { clearLLMHistory } = await import('../../services/stats-service')
+      const result = await clearLLMHistory(projectSession)
+      if (result.success) {
+        toast.success(text(`已清空 ${result.deleted} 条调用记录`, `Cleared ${result.deleted} call records`))
+      } else {
+        toast.error(text('清空调用记录失败', 'Could not clear call records'))
+      }
+    } catch (error) {
+      toast.error(text(
+        `清空调用记录失败\n\n${error instanceof Error ? error.message : String(error)}`,
+        `Could not clear call records\n\n${error instanceof Error ? error.message : String(error)}`,
+      ))
+    }
+  }
   const [requestGate] = useState(() => new LLMDataRequestGate())
   const activeWorkflowRuns = useWorkflowStore(s => s.activeRuns)
   const workflowHistory = useWorkflowStore(s => s.history)
@@ -763,6 +793,18 @@ function ModelsView() {
           <div className="text-[0.7rem] text-[var(--color-text-muted)]">
             {text('输出', 'Output')} <span className="font-mono text-[var(--color-text-secondary)]">{stats.totalCompletionTokens == null ? text('未知', 'Unknown') : `${(stats.totalCompletionTokens / 1000).toFixed(1)}k`}</span>
           </div>
+          <div className="flex-1" />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => { void clearCalls() }}
+            title={text('清空调用记录', 'Clear call records')}
+            aria-label={text('清空调用记录', 'Clear call records')}
+            data-testid="clear-llm-calls"
+            className="text-[var(--color-text-muted)]"
+          >
+            <Trash2 size={13} />
+          </Button>
         </div>
       )}
       <div className="flex-1 overflow-y-auto font-mono text-xs">

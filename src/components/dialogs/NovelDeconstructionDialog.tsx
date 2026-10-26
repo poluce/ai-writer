@@ -13,6 +13,7 @@ import { Input } from '../ui/Input'
 import { useProjectStore } from '../../stores/project-store'
 import { useWorkflowStore } from '../../stores/workflow-store'
 import { useLocaleStore } from '../../stores/locale-store'
+import ImportRunHistory from './ImportRunHistory'
 import { ipc } from '../../services/ipc-client'
 import type {
   ImportInspectionSummary,
@@ -278,6 +279,18 @@ export default function NovelDeconstructionDialog({ open, onClose }: NovelDecons
                 </Button>
               </div>
             </div>
+          )}
+
+          {currentProject && (
+            <ImportRunHistory
+              purpose="reference"
+              onDeleted={runId => {
+                setResumableState(previous => previous
+                  ? { ...previous, runs: previous.runs.filter(run => run.id !== runId) }
+                  : previous)
+                setSelectedResumableRunId(selected => (selected === runId ? '' : selected))
+              }}
+            />
           )}
 
           <div>
