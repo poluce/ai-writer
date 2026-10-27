@@ -117,15 +117,20 @@ function readFromDir(
   return null
 }
 
+export interface ResolvedAssistantPromptModule {
+  template: PromptTemplate
+  source: 'builtin' | 'global' | 'project'
+}
+
 /**
  * Resolve one assistant prompt module with Settings precedence:
  * project override → global override → built-in.
  */
-export function loadAssistantPromptModule(
+export function resolveAssistantPromptModule(
   key: string,
   language: WritingLanguage,
   options: AssistantPromptLoadOptions = {},
-): PromptTemplate {
+): ResolvedAssistantPromptModule {
   const writingLanguage = resolveWritingLanguage(language)
   if (options.projectPath) {
     const projectTemplate = readFromDir(
@@ -135,14 +140,22 @@ export function loadAssistantPromptModule(
       'project',
       options.projectPath,
     )
-    if (projectTemplate) return projectTemplate
+    if (projectTemplate) return { template: projectTemplate, source: 'project' }
   }
   const globalDir = options.globalPromptsDir ?? path.join(VELA_HOME, 'prompts')
   const globalTemplate = readFromDir(globalDir, key, writingLanguage, 'global', globalDir)
-  if (globalTemplate) return globalTemplate
+  if (globalTemplate) return { template: globalTemplate, source: 'global' }
   const builtin = getBuiltinPromptTemplate(key, writingLanguage)
   if (!builtin) throw new Error(`Missing assistant prompt template: ${key}`)
-  return builtin
+  return { template: builtin, source: 'builtin' }
+}
+
+export function loadAssistantPromptModule(
+  key: string,
+  language: WritingLanguage,
+  options: AssistantPromptLoadOptions = {},
+): PromptTemplate {
+  return resolveAssistantPromptModule(key, language, options).template
 }
 
 /** 兼容入口：解析主助手身份模板。 */

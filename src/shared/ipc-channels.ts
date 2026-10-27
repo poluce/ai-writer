@@ -10,6 +10,7 @@ import type {
 import type { ModelProviderResourceId } from './model-provider-resources'
 import type { WritingLanguage } from './writing-language'
 import type { AgentSkillCatalogEntry } from './agent-skills'
+import type { AssistantPromptBlockView } from './agent-prompt'
 import type { AgentEditorSnapshot, PiAgentEvent, RendererAction, RendererActionResult } from './agent-events'
 import type { AgentPromptHistoryTurn, AssistantType } from './agent-conversation-archive'
 import type { AssistantThinkingLevel } from './agent-runtime'
@@ -1088,7 +1089,13 @@ export interface AgentChannels {
   }
   'agent:system-prompt': {
     args: [skills?: AgentSkillCatalogEntry[], assistantType?: AssistantType]
-    return: { success: boolean; prompt?: string; error?: string }
+    return: {
+      success: boolean
+      prompt?: string
+      /** 按块拆解，供设置页的最终提示词预览。 */
+      blocks?: AssistantPromptBlockView[]
+      error?: string
+    }
   }
   'agent:renderer-action-result': {
     args: [requestId: string, result: RendererActionResult]

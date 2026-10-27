@@ -31,8 +31,8 @@ export function buildAssistantSystemPrompt(
   skills?: readonly AgentSkillCatalogEntry[],
 ): string {
   const language: WritingLanguage = core?.writingLanguage ?? 'zh-CN'
-  const l0 = buildL0ProjectContext(core, language)
-  const skillCatalog = buildSkillCatalogBlock(skills, language)
+  const l0 = buildAssistantProjectFactsBlock(core, language)
+  const skillCatalog = buildAssistantSkillCatalogBlock(skills, language)
   return [blocks.hardRules, blocks.identity, blocks.workRules, skillCatalog, l0]
     .map(part => part?.trim() ?? '')
     .filter((part): part is string => part.length > 0)
@@ -44,7 +44,7 @@ export function buildAssistantSystemPrompt(
  * Pi cannot know: in this app skills are not read by the assistant, they take
  * effect through `/技能名` and workflow stage bindings only.
  */
-function buildSkillCatalogBlock(
+export function buildAssistantSkillCatalogBlock(
   skills: readonly AgentSkillCatalogEntry[] | undefined,
   language: WritingLanguage,
 ): string | null {
@@ -88,7 +88,7 @@ function skillInvocationNote(language: WritingLanguage): string {
   )
 }
 
-function buildL0ProjectContext(core: ProjectCoreData | null, language: WritingLanguage): string | null {
+export function buildAssistantProjectFactsBlock(core: ProjectCoreData | null, language: WritingLanguage): string | null {
   if (!core) return null
   const modelFacts = localizeNovelConfigFacts({
     genre: core.genre,

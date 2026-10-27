@@ -23,9 +23,7 @@ import {
 import { getCurrentProjectPath } from '../database'
 import { logFailure } from '../../src/shared/fail-log'
 import { ProjectCoreRepository } from '../repositories/project-core-repository'
-import { buildAssistantSystemPrompt } from './agent-system-prompt'
-import { resolveAssistantPromptBlocks } from './assistant-prompt'
-import { filterAgentSkillCatalog } from '../../src/shared/agent-skills'
+import { buildAssistantPromptPreview } from './assistant-prompt'
 import type { GlobalConfig, ModelProfile } from '../../src/shared/ipc-channels'
 import {
   DEFAULT_WRITING_LANGUAGE,
@@ -77,13 +75,13 @@ function resolveSystemPrompt(
   const core = ProjectCoreRepository.get()
   const projectPath = getCurrentProjectPath()
   const language = core?.writingLanguage ?? DEFAULT_WRITING_LANGUAGE
-  const blocks = resolveAssistantPromptBlocks(assistantType, language, { projectPath })
-  // 四个助手都注入技能目录；按助手阶段 / audience 过滤后交给装配器。
-  return buildAssistantSystemPrompt(
-    blocks,
+  return buildAssistantPromptPreview({
+    assistantType,
+    language,
     core,
-    filterAgentSkillCatalog(skills ?? [], assistantType),
-  )
+    skills,
+    projectPath,
+  }).prompt
 }
 
 /**
@@ -263,9 +261,20 @@ export function registerAgentController(): void {
   ipcMain.handle('agent:system-prompt', async (_event, skills?: unknown, assistantType?: unknown) => {
     try {
       const resolvedType: AssistantType = isAssistantType(assistantType) ? assistantType : 'general'
+      const catalog = acceptedSkillCatalog(skills)
+      const core = ProjectCoreRepository.get()
+      const language = core?.writingLanguage ?? DEFAULT_WRITING_LANGUAGE
+      const preview = buildAssistantPromptPreview({
+        assistantType: resolvedType,
+        language,
+        core,
+        skills: catalog,
+        projectPath: getCurrentProjectPath(),
+      })
       return {
         success: true,
-        prompt: resolveSystemPrompt(acceptedSkillCatalog(skills), resolvedType),
+        prompt: preview.prompt,
+        blocks: preview.blocks,
       }
     } catch (error) {
       return {
