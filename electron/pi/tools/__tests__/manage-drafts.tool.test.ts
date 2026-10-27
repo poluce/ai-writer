@@ -192,6 +192,29 @@ describe('manage_drafts tool', () => {
       expect(text).toContain('环境描写不够凝重，加一点肃杀感')
     })
 
+    it('can include already resolved annotations on request', async () => {
+      vi.mocked(DraftRepository.listByChapter).mockReturnValue([
+        { id: 4, chapterNumber: 2, version: 1, status: 'draft', source: 'write', contentId: 4, wordCount: 2000, sourceDependencies: [], dependenciesStale: false, createdAt: '2026-09-18', updatedAt: '2026-09-18' },
+      ])
+      vi.mocked(DraftRepository.getLatestByChapter).mockReturnValue({
+        id: 4, chapterNumber: 2, version: 1, status: 'draft', source: 'write', contentId: 4, wordCount: 2000, sourceDependencies: [], dependenciesStale: false, createdAt: '2026-09-18', updatedAt: '2026-09-18',
+      })
+      vi.mocked(DraftAnnotationRepository.list).mockReturnValue([
+        { id: 'ann-3', from: 0, to: 4, quote: '旧码头', note: '已处理', createdAt: 1700000002000, resolved: true },
+      ])
+
+      const tool = createManageDraftsTool('zh-CN', rendererAction)
+      const res = await tool.execute('c-ann-resolved', {
+        action: 'list_annotations',
+        chapter_number: 2,
+        include_resolved: true,
+      })
+
+      expect(DraftAnnotationRepository.list).toHaveBeenCalledWith(4, { includeResolved: true })
+      expect(textOf(res)).toContain('含已解决')
+      expect(textOf(res)).toContain('（已解决）')
+    })
+
     it('reports friendly notice when draft has no annotations', async () => {
       vi.mocked(DraftRepository.listByChapter).mockReturnValue([
         { id: 5, chapterNumber: 2, version: 1, status: 'draft', source: 'write', contentId: 5, wordCount: 2000, sourceDependencies: [], dependenciesStale: false, createdAt: '2026-09-18', updatedAt: '2026-09-18' },

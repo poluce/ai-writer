@@ -4,6 +4,8 @@ import { Type, StringEnum } from '@earendil-works/pi-ai'
 import { ProjectCoreRepository } from '../../repositories/project-core-repository'
 import { BlueprintRepository } from '../../repositories/blueprint-repository'
 import { DraftRepository } from '../../repositories/draft-repository'
+import { FinalizationRepository } from '../../repositories/finalization-repository'
+import { PostProcessRepository } from '../../repositories/post-process-repository'
 import { localizeNovelConfigFacts } from '../../../src/shared/novel-config-localization'
 import {
   writingLanguageText,
@@ -37,7 +39,7 @@ function chapterProgressRow(
   return `| ${chapterNumber} | ${presenceMark(hasBlueprint)} | ${presenceMark(hasDraft)} | ${presenceMark(hasFinalized)} |`
 }
 
-const ALL_SECTIONS = ['config', 'progress', 'recent_notes', 'blueprints'] as const
+const ALL_SECTIONS = ['config', 'progress', 'recent_notes', 'blueprints', 'health'] as const
 type SectionKey = (typeof ALL_SECTIONS)[number]
 
 const SECTION_ALIASES: Record<string, SectionKey> = {
@@ -56,7 +58,7 @@ const SECTION_ALIASES: Record<string, SectionKey> = {
 }
 
 const Section = StringEnum(ALL_SECTIONS, {
-  description: 'Project state section: "config", "progress", "recent_notes", or "blueprints".',
+  description: 'Project state section: "config", "progress", "recent_notes", "blueprints", or "health" (finalization and post-processing status).',
 })
 
 const Schema = Type.Object({
@@ -69,8 +71,8 @@ export function createReadProjectStateTool(
   const english = language === 'en-US'
   const text = (zhCN: string, enUS: string) => writingLanguageText(language, zhCN, enUS)
   const description = english
-    ? 'Read the project overview: novel configuration, chapter progress (blueprint/draft/finalized per chapter), recent chapter notes, and the blueprint list. This is the single entry point for "where does this project stand"; read a specific chapter with read_blueprint.'
-    : '读取项目总览：小说配置、章节进度（每章是否有蓝图/草稿/定稿）、近章要点与蓝图清单。了解「项目现在写到哪了」用这一个工具即可；单章细节用 read_blueprint。'
+    ? 'Read the project overview: novel configuration, chapter progress (blueprint/draft/finalized per chapter), recent chapter notes, the blueprint list, and finalization/post-processing health (pending publications and failed steps). This is the single entry point for "where does this project stand"; read a specific chapter with read_blueprint.'
+    : '读取项目总览：小说配置、章节进度（每章是否有蓝图/草稿/定稿）、近章要点、蓝图清单，以及定稿与后处理健康状态（待发布、发布失败与后处理失败步骤）。了解「项目现在写到哪了」用这一个工具即可；单章细节用 read_blueprint。'
 
   return {
     name: 'read_project_state',
@@ -171,6 +173,54 @@ export function createReadProjectStateTool(
         }
       }
 
+      if (wants('health')) {
+        const finalizations = FinalizationRepository.listRecent(100)
+        const pendingFinalizations = finalizations.filter(record => (
+          record.publicationStatus !== 'published' || Boolean(record.lastError)
+        ))
+        const postProcessRuns = PostProcessRepository.listRuns(100)
+        const failedRuns = postProcessRuns
+          .map(run => ({
+            run,
+            failedSteps: PostProcessRepository.getSteps(run.id).filter(step => !step.ok),
+          }))
+          .filter(entry => entry.failedSteps.length > 0)
+
+        if (pendingFinalizations.length === 0 && failedRuns.length === 0) {
+          parts.push(english
+            ? '## Finalization and post-processing\nNo pending publications or failed post-processing steps.'
+            : '## 定稿与后处理状态\n当前没有待发布的定稿，也没有失败的后处理步骤。')
+        } else {
+          const healthLines: string[] = [english ? '## Finalization and post-processing' : '## 定稿与后处理状态']
+          if (pendingFinalizations.length > 0) {
+            healthLines.push(english
+              ? `### Pending or failed publications (${pendingFinalizations.length})`
+              : `### 待发布 / 发布失败（${pendingFinalizations.length} 条）`)
+            for (const record of pendingFinalizations) {
+              healthLines.push(english
+                ? `- Chapter ${record.chapterNumber} ${record.chapterTitle || ''} · ${record.publicationStatus}${record.lastError ? ` · ${record.lastError}` : ''}`
+                : `- 第${record.chapterNumber}章 ${record.chapterTitle || ''} · ${record.publicationStatus === 'published' ? '已发布' : '待发布'}${record.lastError ? ` · ${record.lastError}` : ''}`)
+            }
+          }
+          if (failedRuns.length > 0) {
+            healthLines.push(english
+              ? `### Failed post-processing (${failedRuns.length})`
+              : `### 后处理失败（${failedRuns.length} 条）`)
+            for (const { run, failedSteps } of failedRuns) {
+              healthLines.push(english
+                ? `- ${run.sourceLabel || run.triggerSourceId} · run at ${run.createdAt}`
+                : `- ${run.sourceLabel || run.triggerSourceId} · 运行于 ${run.createdAt}`)
+              for (const step of failedSteps) {
+                healthLines.push(english
+                  ? `  - ${step.label || step.stepKey}${step.critical ? ' (critical)' : ''}${step.errorMsg ? `: ${step.errorMsg}` : ''}`
+                  : `  - ${step.label || step.stepKey}${step.critical ? '（关键）' : ''}${step.errorMsg ? `：${step.errorMsg}` : ''}`)
+              }
+            }
+          }
+          parts.push(healthLines.join('\n'))
+        }
+      }
+
       if (wants('blueprints')) {
         if (blueprints.length === 0) {
           parts.push(text('## 蓝图清单\n⚠️ 蓝图为空。建议先通过工作流生成章节蓝图。', '## Blueprints\n⚠️ There are no blueprints yet. Generate chapter blueprints with the workflow first.'))
@@ -193,7 +243,20 @@ export function createReadProjectStateTool(
 
       return {
         content: [{ type: 'text', text: parts.join('\n\n') }],
-        details: { sections, chapters: blueprints.length },
+        details: {
+          sections,
+          chapters: blueprints.length,
+          ...(wants('health')
+            ? {
+              finalizationPending: FinalizationRepository.listRecent(100).filter(record => (
+                record.publicationStatus !== 'published' || Boolean(record.lastError)
+              )).length,
+              postProcessFailures: PostProcessRepository.listRuns(100).filter(run => (
+                PostProcessRepository.getSteps(run.id).some(step => !step.ok)
+              )).length,
+            }
+            : {}),
+        },
       }
     },
   }

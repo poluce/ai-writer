@@ -280,6 +280,16 @@ export class FinalizationRepository {
     return transaction()
   }
 
+  /** 最近的定稿提交记录（按章节倒序），用于项目健康检查。 */
+  static listRecent(limit = 100): FinalizationRecord[] {
+    const db = requireDatabase()
+    const rows = db.prepare(`
+      SELECT * FROM finalization_outbox
+      ORDER BY chapter_number DESC LIMIT ?
+    `).all(limit) as FinalizationRow[]
+    return rows.map(rowToRecord)
+  }
+
   static get(finalizationId: string): FinalizationRecord | null {
     const db = requireDatabase()
     const row = db.prepare(`

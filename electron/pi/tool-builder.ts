@@ -23,6 +23,7 @@ import { createWebFetchTool } from './tools/web-fetch.tool'
 import { buildMcpAgentTools } from './tools/mcp.tool'
 import { createReadContinuityFactsTool } from './tools/read-continuity-facts.tool'
 import { createReadNarrativeThreadsTool } from './tools/read-narrative-threads.tool'
+import { createManageNarrativeThreadsTool } from './tools/manage-narrative-threads.tool'
 import { createSubmitChapterReviewTool } from './tools/submit-chapter-review.tool'
 import { createDelegateToAssistantTool, type AssistantDelegateHandler, type DelegatableAssistantType } from './tools/delegate-to-assistant.tool'
 import type { AnyAgentTool } from './tool-types'
@@ -46,6 +47,7 @@ export function sequentialToolNames(): ReadonlySet<string> {
     'story_architecture',
     'propose_chapter_blueprint',
     'manage_characters',
+    'manage_narrative_threads',
     'manage_mcp',
     'manage_skills',
     'manage_knowledge_base',
@@ -89,6 +91,7 @@ export function buildAgentTools(
     createDeleteReviewReportTool(language, rendererAction),
     createReadProjectStateTool(language),
     createReadNarrativeThreadsTool(language),
+    createManageNarrativeThreadsTool(language),
     createSearchKnowledgeTool(language),
     createManageKnowledgeBaseTool(language),
     createReadFileTool(language),
@@ -127,6 +130,7 @@ export function buildArchitectAgentTools(
     createReadBlueprintTool(language),
     createReadProjectStateTool(language),
     createReadNarrativeThreadsTool(language),
+    createManageNarrativeThreadsTool(language),
     createSearchKnowledgeTool(language),
     createManageKnowledgeBaseTool(language),
     createReadFileTool(language),
@@ -253,6 +257,7 @@ export function confirmationToolNames(): ReadonlySet<string> {
     'story_architecture',
     'propose_chapter_blueprint',
     'manage_characters',
+    'manage_narrative_threads',
     'manage_mcp',
     'manage_skills',
     'manage_knowledge_base',

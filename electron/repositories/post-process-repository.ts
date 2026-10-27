@@ -10,6 +10,18 @@ import type { PostProcessRunData, PostProcessStepData } from '../../src/shared/c
 
 export type { PostProcessRunData, PostProcessStepData }
 
+function rowToRun(row: Record<string, unknown>): PostProcessRunData {
+    return {
+        id: row.id as string,
+        triggerSourceType: row.trigger_source_type as string,
+        triggerSourceId: row.trigger_source_id as string,
+        sourceLabel: row.source_label as string,
+        allCriticalPassed: (row.all_critical_passed as number) === 1,
+        createdAt: row.created_at as string,
+        updatedAt: row.updated_at as string,
+    }
+}
+
 export class PostProcessRepository {
     /**
      * 创建一个新的跑批实例 + 初始化步骤列表
@@ -65,15 +77,18 @@ export class PostProcessRepository {
     `).get(sourceType, sourceId) as Record<string, unknown> | undefined
 
         if (!row) return null
-        return {
-            id: row.id as string,
-            triggerSourceType: row.trigger_source_type as string,
-            triggerSourceId: row.trigger_source_id as string,
-            sourceLabel: row.source_label as string,
-            allCriticalPassed: (row.all_critical_passed as number) === 1,
-            createdAt: row.created_at as string,
-            updatedAt: row.updated_at as string,
-        }
+        return rowToRun(row)
+    }
+
+    /** 最近的跑批实例（按创建时间倒序），用于项目健康检查。 */
+    static listRuns(limit = 100): PostProcessRunData[] {
+        const db = getProjectDb()
+        if (!db) return []
+        const rows = db.prepare(`
+      SELECT * FROM post_process_runs
+      ORDER BY created_at DESC LIMIT ?
+    `).all(limit) as Record<string, unknown>[]
+        return rows.map(rowToRun)
     }
 
     /** 获取跑批实例的所有步骤 */

@@ -51,6 +51,7 @@ type ManageDraftsParams = {
   replacements?: DraftReplacement[]
   annotation_id?: string
   resolve_all?: boolean
+  include_resolved?: boolean
   draft_id?: number
   revision_id?: number
 }
@@ -101,6 +102,7 @@ const Schema = Type.Object({
 
   // === resolve_annotation 参数 ===
   annotation_id: Type.Optional(Type.String({ description: '要标记已解决的批注 ID（resolve_annotation 操作使用）' })),
+  include_resolved: Type.Optional(Type.Boolean({ description: 'list_annotations 是否包含已解决批注（默认 false，只看待处理）' })),
   resolve_all: Type.Optional(Type.Boolean({ description: '是否将本章所有未解决批注一次性标记为已解决（resolve_annotation 操作使用）' })),
 
   // === 通用版本指定 / 删除参数 ===
@@ -163,9 +165,12 @@ function formatDraftStatus(status: string, isEn: boolean): string {
 }
 
 function formatAnnotationLine(item: DraftAnnotation, index: number, text: LanguageText): string {
+  const resolved = item.resolved
+    ? text('（已解决）', ' (resolved)')
+    : ''
   return text(
-    `${index + 1}. 原文选区：「${item.quote.trim()}」\n   作者意见：${item.note.trim()}`,
-    `${index + 1}. Original: "${item.quote.trim()}"\n   Author Note: ${item.note.trim()}`,
+    `${index + 1}. 原文选区：「${item.quote.trim()}」${resolved}\n   作者意见：${item.note.trim()}`,
+    `${index + 1}. Original: "${item.quote.trim()}"${resolved}\n   Author Note: ${item.note.trim()}`,
   )
 }
 
@@ -429,7 +434,8 @@ function handleListAnnotations(ctx: DraftToolContext): ToolOutput {
     throw new Error(text(`未找到第 ${chapterNumber} 章对应的草稿版本`, `Could not find draft for chapter ${chapterNumber}`))
   }
 
-  const annotations = DraftAnnotationRepository.list(targetMeta.id)
+  const includeResolved = params.include_resolved === true
+  const annotations = DraftAnnotationRepository.list(targetMeta.id, { includeResolved })
   if (annotations.length === 0) {
     return textOutput(
       text(
@@ -442,8 +448,8 @@ function handleListAnnotations(ctx: DraftToolContext): ToolOutput {
 
   const lines: string[] = [
     text(
-      `### 第 ${chapterNumber} 章作者划词标注清单（Draft v${targetMeta.version} · 共 ${annotations.length} 处修改意见）：\n`,
-      `### Author Passage Notes for Chapter ${chapterNumber} (Draft v${targetMeta.version} · ${annotations.length} notes):\n`,
+      `### 第 ${chapterNumber} 章作者划词标注清单（Draft v${targetMeta.version} · 共 ${annotations.length} 处修改意见${includeResolved ? '，含已解决' : ''}）：\n`,
+      `### Author Passage Notes for Chapter ${chapterNumber} (Draft v${targetMeta.version} · ${annotations.length} notes${includeResolved ? ', including resolved' : ''}):\n`,
     ),
   ]
   annotations.forEach(function (item, index) {

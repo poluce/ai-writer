@@ -32,7 +32,7 @@ describe('buildAgentTools', () => {
     for (const projectTool of [
       'novel_config', 'story_architecture',
       'read_architecture', 'manage_characters', 'read_blueprint', 'manage_drafts',
-      'read_project_state', 'read_narrative_threads', 'search_knowledge', 'read_file', 'list_files',
+      'read_project_state', 'read_narrative_threads', 'manage_narrative_threads', 'search_knowledge', 'read_file', 'list_files',
       'manage_skills', 'open_editor',
       'propose_chapter_blueprint', 'manage_mcp',
     ]) {
@@ -88,6 +88,7 @@ describe('buildAgentTools', () => {
       'manage_drafts',
       'manage_knowledge_base',
       'manage_mcp',
+      'manage_narrative_threads',
       'manage_skills',
       'novel_config',
       'open_editor',
@@ -108,6 +109,7 @@ describe('buildAgentTools', () => {
       'manage_drafts',
       'manage_knowledge_base',
       'manage_mcp',
+      'manage_narrative_threads',
       'manage_review_reports',
       'manage_skills',
       'novel_config',
@@ -135,6 +137,7 @@ describe('review assistant tool closure', () => {
     expect(names).toContain('manage_review_reports')
     expect(names).toContain('list_files')
     expect(names).toContain('read_narrative_threads')
+    expect(names).not.toContain('manage_narrative_threads')
     expect(names).not.toContain('bash')
   })
 
@@ -159,6 +162,7 @@ describe('buildArchitectAgentTools', () => {
     expect(names).toContain('read_blueprint')
     expect(names).toContain('read_project_state')
     expect(names).toContain('read_narrative_threads')
+    expect(names).toContain('manage_narrative_threads')
     expect(names).toContain('search_knowledge')
     expect(names).toContain('manage_knowledge_base')
     expect(names).toContain('read_file')
@@ -212,6 +216,7 @@ describe('buildBlueprintAgentTools', () => {
 
     // 严禁包含的工具
     expect(names).not.toContain('manage_drafts')
+    expect(names).not.toContain('manage_narrative_threads')
     expect(names).not.toContain('write')
     expect(names).not.toContain('edit')
     expect(names).not.toContain('bash')
