@@ -97,8 +97,19 @@ describe('assistant settings page', () => {
 
     const editor = page.getByRole('textbox')
     await expect.element(editor).toBeVisible()
+    await expect.element(editor).toHaveValue(expect.stringContaining('【不可变系统合同】'))
+
+    // 切换到审稿助手：硬规则是四个助手共用的同一份模板。
     await act(async () => {
-      await editor.fill('新的硬规则内容')
+      await page.getByRole('button', { name: '审稿助手' }).click()
+    })
+    await act(async () => {
+      await page.getByRole('button', { name: /软件硬规则/ }).click()
+    })
+    await expect.element(page.getByRole('textbox')).toHaveValue(expect.stringContaining('【不可变系统合同】'))
+
+    await act(async () => {
+      await page.getByRole('textbox').fill('新的硬规则内容')
     })
 
     await vi.waitFor(() => {

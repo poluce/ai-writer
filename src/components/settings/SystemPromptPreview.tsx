@@ -183,7 +183,7 @@ export default function SystemPromptPreview({
 
         <div className="flex items-center gap-2 px-4 py-2.5" style={{ borderTop: '1px solid var(--color-border)', backgroundColor: 'var(--color-sidebar)' }}>
           <span className="text-[0.65rem]" style={{ color: 'var(--color-text-muted)' }}>
-            {text('拼装顺序由代码固定；技能目录与项目信息自动生成。', 'The block order is fixed by code; skill catalog and project facts are generated automatically.')}
+            {text('技能目录与项目信息自动生成，其余模块可编辑。', 'Skill catalog and project facts are generated automatically; the other modules are editable.')}
           </span>
           <span className="ml-auto text-[0.65rem]" style={{ color: 'var(--color-text-muted)' }}>{notice}</span>
           <button onClick={() => void handleCopy()} className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[0.68rem] hover:bg-[var(--color-hover)]" style={{ color: 'var(--color-text-secondary)' }}>
