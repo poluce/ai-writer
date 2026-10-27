@@ -212,7 +212,7 @@ describe('AgentSession', () => {
     expect(harnessSession.metadata.id).toBe('conv-1')
   })
 
-  it('restores context from the session and injects the L1 snapshot per turn', async () => {
+  it('restores context from the session and embeds the L1 snapshot inside the current user message', async () => {
     const faux = fauxProvider()
     const models = createModels()
     models.setProvider(faux.provider)
@@ -251,13 +251,34 @@ describe('AgentSession', () => {
     await session.close()
 
     expect(captured).toHaveLength(2)
-    expect(captured[0].systemPrompt).toContain('You are a calculator.')
-    expect(captured[0].systemPrompt).toContain('测试书')
-    // 第二轮能看到第一轮的历史（由 harness 从会话条目恢复）。
-    expect(captured[1].messages.length).toBeGreaterThan(captured[0].messages.length)
+    // L1 不再进系统提示词：系统提示逐字节稳定，前缀缓存不会被界面变化打断。
+    expect(captured[0].systemPrompt).toBe('You are a calculator.')
+    expect(captured[1].systemPrompt).toBe('You are a calculator.')
+    const textOf = (content: unknown): string =>
+      typeof content === 'string'
+        ? content
+        : Array.isArray(content)
+          ? content
+            .map(part => (
+              part && typeof part === 'object' && 'text' in part
+                ? String((part as { text: unknown }).text)
+                : ''
+            ))
+            .join('')
+          : ''
+    // 第一轮：同一条作者消息内，系统上下文在前、作者原文在后。
     expect(captured[0].messages).toHaveLength(1)
     expect(captured[0].messages[0].role).toBe('user')
-    expect(JSON.stringify(captured[0].messages[0].content)).toContain('第一问')
+    const firstText = textOf(captured[0].messages[0].content)
+    expect(firstText).toContain('<system_context>')
+    expect(firstText).toContain('</system_context>')
+    expect(firstText).toContain('测试书')
+    expect(firstText).toContain('<user_message>')
+    expect(firstText).toContain('第一问')
+    expect(firstText.indexOf('<system_context>')).toBeLessThan(firstText.indexOf('第一问'))
+    // 第二轮能看到第一轮的历史（由 harness 从会话条目恢复），且历史里保留作者原文。
+    expect(captured[1].messages.length).toBeGreaterThan(captured[0].messages.length)
+    expect(textOf(captured[1].messages[0].content)).toBe('第一问')
   })
 
   it('mounts the Pi harness execution tools only when an environment is given', async () => {

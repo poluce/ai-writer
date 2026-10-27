@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildL1AgentContext } from '../agent-l1-context'
+import { buildAppContextEnvelope, buildL1AgentContext } from '../agent-l1-context'
 
 describe('buildL1AgentContext', () => {
   it('states that no novel project is open', () => {
@@ -61,5 +61,24 @@ describe('buildL1AgentContext', () => {
     expect(text).toContain('UI changes since the last turn')
     expect(text).not.toContain('起草第一章')
     expect(text).not.toContain('编辑器状态')
+  })
+})
+
+describe('buildAppContextEnvelope', () => {
+  it('wraps the snapshot in XML and marks it as system-attached, not author speech', () => {
+    const envelope = buildAppContextEnvelope({
+      tabs: [],
+      project: { open: true, name: '测试书' },
+    }, 'zh-CN')
+
+    expect(envelope).toContain('<system_context>')
+    expect(envelope).toContain('</system_context>')
+    expect(envelope).toContain('不是作者的发言')
+    expect(envelope).toContain('当前小说项目：已打开「测试书」')
+  })
+
+  it('returns null when there is no snapshot to inject', () => {
+    expect(buildAppContextEnvelope(null, 'zh-CN')).toBeNull()
+    expect(buildAppContextEnvelope(undefined, 'en-US')).toBeNull()
   })
 })

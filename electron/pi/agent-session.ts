@@ -25,7 +25,7 @@ import { ConfinedExecutionEnv } from './confined-execution-env'
 import { patchGoogleSamplingPayload } from './pi-stream-options'
 import type { ResolvedGenerationParameters } from '../llm/generation-parameter-policy'
 import { logFailure, logInfo } from '../../src/shared/fail-log'
-import { buildL1AgentContext } from './agent-l1-context'
+import { buildAppContextEnvelope, USER_MESSAGE_TAG } from './agent-l1-context'
 import type { AgentEditorSnapshot, PiAgentEvent, PiToolCallInfo } from '../../src/shared/agent-events'
 import type { FileWriteCommitState } from '../../src/shared/ipc-channels'
 import type { AgentPromptHistoryTurn, AssistantType } from '../../src/shared/agent-conversation-archive'
@@ -243,16 +243,35 @@ export class AgentSession {
 
   // ===== 钩子：领域语义都挂在这里 =====
 
+  /**
+   * 把 L1 界面快照以 XML 块包进当前请求的最后一条作者消息。
+   *
+   * - 只影响本次请求：会话历史仍保存作者原文，快照不落盘；
+   * - 不新增 user 消息：连续 user 角色会破坏部分供应商（如 Gemini）的多轮交替约束；
+   * - `<system_context>` 与 `<user_message>` 明确区分系统附加信息和作者真实输入。
+   */
+  private wrapLastUserMessage(messages: AgentMessage[]): AgentMessage[] {
+    const last = messages[messages.length - 1]
+    if (!last || last.role !== 'user') return messages
+    const envelope = buildAppContextEnvelope(this.editorSnapshot, this.language)
+    if (!envelope) return messages
+    const content = typeof last.content === 'string'
+      ? `${envelope}\n\n<${USER_MESSAGE_TAG}>\n${last.content}\n</${USER_MESSAGE_TAG}>`
+      : [
+          { type: 'text' as const, text: `${envelope}\n\n<${USER_MESSAGE_TAG}>` },
+          ...last.content,
+          { type: 'text' as const, text: `</${USER_MESSAGE_TAG}>` },
+        ]
+    return [...messages.slice(0, -1), { ...last, content }]
+  }
+
   private registerHooks(sampling: ResolvedGenerationParameters | null): void {
-    // 系统提示词每轮重取（技能目录与项目事实会变），L1 界面快照每轮作为系统动态上下文注入。
-    this.unsubscribes.push(this.harness.hooks.on('transform_context', (event) => {
-      const l1 = buildL1AgentContext(this.editorSnapshot, this.language)
-      const systemPrompt = l1 ? `${this.systemPrompt}\n\n${l1}` : this.systemPrompt
-      return {
-        messages: event.messages,
-        systemPrompt,
-      }
-    }))
+    // 系统提示词每轮重取（技能目录与项目事实会变），保持稳定以命中前缀缓存；
+    // L1 界面快照不进系统提示词，而是以 XML 标签块嵌入本轮作者消息。
+    this.unsubscribes.push(this.harness.hooks.on('transform_context', (event) => ({
+      messages: this.wrapLastUserMessage(event.messages),
+      systemPrompt: this.systemPrompt,
+    })))
 
     // Gemini 适配器不读 samplingParams，温度与思考预算只能补进请求体。
     if (sampling && this.model.api === 'google-generative-ai') {

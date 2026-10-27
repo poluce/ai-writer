@@ -137,8 +137,8 @@ Your sole job is to review finished chapter drafts, surface real problems with e
 export function appShellModeInstruction(language: WritingLanguage): string {
   return writingLanguageText(
     language,
-    '系统上下文包含当前应用状态（是否打开小说、侧栏/对话框、编辑器与工作流）。请以该状态为准；未打开项目时不要假装能读写该书。不要编造项目事实。',
-    'The system context contains the current app state (whether a novel is open, which panes and dialogs are active, editor tabs, and workflows). Treat that snapshot as authoritative. If no project is open, do not pretend you can read or write the book. Do not invent project facts.',
+    '本轮作者消息内附带应用自动生成的界面状态（位于 system_context 标签内，不是作者的发言）。请以该状态为准；未打开项目时不要假装能读写该书。不要编造项目事实。',
+    'The current author message carries app-attached interface state inside the system_context block (it is not an author message). Treat that state as authoritative. If no project is open, do not pretend you can read or write the book. Do not invent project facts.',
   )
 }
 

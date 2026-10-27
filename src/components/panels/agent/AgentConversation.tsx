@@ -5,7 +5,7 @@ import { useProjectStore } from '../../../stores/project-store'
 import { resolveWritingLanguage, type WritingLanguage } from '../../../shared/writing-language'
 import type { Locale } from '../../../i18n/types'
 import { captureAgentEditorSnapshot } from '../../../services/agent/editor-snapshot'
-import { buildL1AgentContext } from '../../../services/agent/l1-context'
+import { buildAppContextEnvelope } from '../../../services/agent/l1-context'
 import { buildAgentSkillCatalog } from '../../../services/agent/skill-catalog'
 import { skillRegistry } from '../../../services/agent/skill-registry'
 import AgentMessage from './AgentMessage'
@@ -275,7 +275,8 @@ function AgentToolbar({ assistantType = 'general' }: { assistantType?: Assistant
     const snapshot = captureAgentEditorSnapshot({ commitSurface: false })
     setInspect({
       kind: 'turn',
-      body: buildL1AgentContext(snapshot, language) ?? ''})
+      body: buildAppContextEnvelope(snapshot, language) ?? '',
+    })
   }
 
   const openSystemPrompt = async () => {

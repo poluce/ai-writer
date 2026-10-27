@@ -25,8 +25,9 @@ import type { ProjectCoreData } from '../repositories/project-core-repository'
  * the resolved overlay). L0 project facts come from SQLite. The skill catalog
  * is rendered by Pi's own `formatSkillsForSystemPrompt`. Tool instructions
  * stay on AgentTool schemas — they must not be pasted into the system string
- * as XML. Editor-tab L1 belongs on transformContext; it is intentionally
- * absent here.
+ * as XML. Editor-tab L1 is intentionally absent here: transformContext embeds
+ * it as a `<system_context>` block inside the current user message, so the
+ * system prompt stays byte-stable for prefix caching.
  */
 export function buildMainProcessAgentSystemPrompt(
   core: ProjectCoreData | null,
