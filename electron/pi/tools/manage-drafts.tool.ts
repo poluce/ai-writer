@@ -579,8 +579,8 @@ export function createManageDraftsTool(
         ? 'Read-only Chapter Draft Tool: read draft bodies with pending author annotations and list draft versions. This assistant cannot modify drafts.'
         : '只读草稿工具：读取草稿正文（含待处理的作者划词批注）与草稿版本清单。本助手不能修改草稿。')
     : (isEn
-        ? 'All-in-one Chapter Draft Tool: read drafts with active author annotations; batch or single replace passages with surrounding context previews and whitespace tolerance; write or rewrite complete drafts; resolve/archive addressed annotations; view versions; and delete unfinalized drafts.'
-        : '全功能草稿中枢工具：支持读取草稿正文及待处理的作者划词批注；支持单处或批量（replacements）精准替换正文，自动返回带行号的局部上下文预览切片，兼具换行与行末空白弱容错；支持新建首版草稿与整章推倒重写；支持将已改动的批注标记为已解决（resolve_annotation）归档；支持草稿版本清单查看与安全删除未定稿草稿。')
+        ? 'All-in-one Chapter Draft Tool: read drafts with active author annotations; batch or single replace passages with surrounding context previews and whitespace tolerance; write or rewrite complete drafts; resolve/archive addressed annotations; view versions; and delete unfinalized drafts. When the author asks to draft, rewrite, or address passage annotations, use this tool; action: "read" returns pending annotations, then replace the quoted prose via action: "replace_excerpt".'
+        : '全功能草稿中枢工具：支持读取草稿正文及待处理的作者划词批注；支持单处或批量（replacements）精准替换正文，自动返回带行号的局部上下文预览切片，兼具换行与行末空白弱容错；支持新建首版草稿与整章推倒重写；支持将已改动的批注标记为已解决（resolve_annotation）归档；支持草稿版本清单查看与安全删除未定稿草稿。作者要求撰写或重写正文、或按划词批注修改时，使用本工具；action: "read" 会自动附带待处理批注，随后以批注原文作为 old_text 调用 action: "replace_excerpt"。')
 
   return {
     name: 'manage_drafts',

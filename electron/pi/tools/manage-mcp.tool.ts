@@ -83,8 +83,8 @@ export function createManageMcpTool(
 ): AgentTool<typeof Schema, unknown> {
   const text = (zhCN: string, enUS: string) => writingLanguageText(language, zhCN, enUS)
   const description = language === 'en-US'
-    ? 'Manage MCP servers: list configured servers and their connection state, read one server\'s full configuration, add, partially update (omitted fields keep their values), connect/disconnect, or delete servers. Add/update/delete always require user confirmation.'
-    : '管理 MCP 服务器：列出已配置服务器及连接状态、读取单个服务器完整配置、添加、局部修改（未提供的字段保留原值）、连接/断开或删除服务器。增删改始终需要用户确认。'
+    ? 'Manage MCP servers: list configured servers and their connection state, read one server\'s full configuration, add, partially update (omitted fields keep their values), connect/disconnect, or delete servers. Add/update/delete always require user confirmation. Always use this tool instead of writing test scripts or running proxies manually in bash.'
+    : '管理 MCP 服务器：列出已配置服务器及连接状态、读取单个服务器完整配置、添加、局部修改（未提供的字段保留原值）、连接/断开或删除服务器。增删改始终需要用户确认。一律使用本工具，不要在 bash 中编写测试脚本或手动运行代理。'
 
   return {
     name: 'manage_mcp',

@@ -61,6 +61,14 @@ describe('buildAssistantSystemPrompt', () => {
     expect(prompt).not.toContain('<tool_call>')
   })
 
+  it('keeps project facts free of tool usage rules', () => {
+    const blocks = resolveAssistantPromptBlocks('general', 'zh-CN')
+    const prompt = buildAssistantSystemPrompt(blocks, core())
+    expect(prompt).not.toContain('创作协同与直接填充规则')
+    expect(prompt).not.toContain('写前先读原则')
+    expect(prompt).toContain('【工具协同规范】')
+  })
+
   it('keeps skills between work rules and project facts', () => {
     const blocks = resolveAssistantPromptBlocks('general', 'zh-CN')
     const prompt = buildAssistantSystemPrompt(blocks, core(), [sceneSkill])

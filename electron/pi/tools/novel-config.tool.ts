@@ -156,8 +156,8 @@ export function createNovelConfigTool(
 ): AgentTool<typeof Schema, { action: string; fields?: number }> {
   const text = (zhCN: string, enUS: string) => writingLanguageText(language, zhCN, enUS)
   const description = language === 'en-US'
-    ? 'Read or update novel configuration fields: basic info (genre, chapters, POV), core outline, world setting, golden finger, protagonist profile, guidance, style. Directly fills or modifies specified fields.'
-    : '读取或修改当前项目的小说配置。支持按字段单独或批量读写：基本信息（类型、章节规模、叙事视角等）、核心大纲、世界观设定、金手指/核心卖点、主角人设、创作指导、文风配置等。在对话中与作者探讨确定后，可直接调用此工具将生成的设定填入小说配置中。'
+    ? 'Read or update novel configuration fields: basic info (genre, chapters, POV), core outline, world setting, golden finger, protagonist profile, guidance, style. Discuss the content with the author first, then call this tool to fill it in directly. Read existing fields with action: "read" before modifying them; use old_text/new_text to patch one section of a long document without rewriting the whole text.'
+    : '读取或修改当前项目的小说配置。支持按字段单独或批量读写：基本信息（类型、章节规模、叙事视角等）、核心大纲、世界观设定、金手指/核心卖点、主角人设、创作指导、文风配置等。在对话中与作者探讨确定后，可直接调用此工具将生成的设定填入小说配置中。修改已有设定前先用 action: "read" 读取现状；长文只需改一段时用 old_text/new_text 局部替换，不要整篇重写。'
 
   return {
     name: 'novel_config',

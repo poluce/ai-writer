@@ -151,8 +151,8 @@ export function createWebFetchTool(
   const text = (zhCN: string, enUS: string) => writingLanguageText(language, zhCN, enUS)
 
   const description = language === 'en-US'
-    ? 'Fetch the decoded content of a specific HTTP(S) URL. Automatically handles GitHub links (directly reading raw code/README), cleans HTML into readable Markdown text, and applies size truncation.'
-    : '抓取并解析指定 HTTP(S) 网页网址的内容。自动针对 GitHub 仓库和文件进行直读优化（直接获取纯净 README 或源码），将网页正文清洗为整洁易读的 Markdown 文本，内置超时与超长截断保护。'
+    ? 'Fetch the decoded content of a specific HTTP(S) URL. Automatically handles GitHub links (directly reading raw code/README), cleans HTML into readable Markdown text, and applies size truncation. Whenever the author provides a URL or a page must be read, use this tool; never fetch pages with bash, curl, or wget.'
+    : '抓取并解析指定 HTTP(S) 网页网址的内容。自动针对 GitHub 仓库和文件进行直读优化（直接获取纯净 README 或源码），将网页正文清洗为整洁易读的 Markdown 文本，内置超时与超长截断保护。作者给出网址或需要阅读网页资料时，一律使用本工具；严禁用 bash、curl 或 wget 抓取网页。'
 
   return {
     name: 'web_fetch',

@@ -75,8 +75,8 @@ export function createStoryArchitectureTool(
 ): AgentTool<typeof Schema, { action: string; sections?: string[] }> {
   const text = (zhCN: string, enUS: string) => writingLanguageText(language, zhCN, enUS)
   const description = language === 'en-US'
-    ? 'Read or update the story architecture documents: story premise (premise), worldbuilding (worldbuilding), and whole-book plot outline (synopsis). Directly fills or modifies designated architecture documents without launching workflows. Use manage_characters for character cards.'
-    : '读取或修改故事架构三大核心文档：故事前提（premise）、世界观（worldbuilding）、全书情节大纲（synopsis）。与作者讨论确定后，可直接将生成的文档填充到指定架构部分，无需启动工作流。角色资料请用 manage_characters。'
+    ? 'Read or update the story architecture documents: story premise (premise), worldbuilding (worldbuilding), and whole-book plot outline (synopsis). Discuss the content with the author first, then fill the designated document directly without launching a workflow. Read existing documents with action: "read" before modifying them; use old_text/new_text to change one excerpt without rewriting everything. Use manage_characters for character cards.'
+    : '读取或修改故事架构三大核心文档：故事前提（premise）、世界观（worldbuilding）、全书情节大纲（synopsis）。与作者讨论确定后，可直接将生成的文档填充到指定架构部分，无需启动工作流。修改已有文档前先用 action: "read" 读取现状；只需改一段时用 old_text/new_text 局部替换，避免整篇重写。角色资料请用 manage_characters。'
 
   return {
     name: 'story_architecture',
