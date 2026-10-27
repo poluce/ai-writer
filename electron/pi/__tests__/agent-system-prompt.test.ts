@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
+import { renderAssistantIdentity } from '../../../src/services/agent/assistant-identity'
 import { getBuiltinPromptTemplate } from '../../../src/services/prompt-templates'
 import type { ProjectCoreData } from '../../repositories/project-core-repository'
-import { buildMainProcessAgentSystemPrompt, buildArchitectAgentSystemPrompt, buildBlueprintAgentSystemPrompt } from '../agent-system-prompt'
+import { buildAssistantSystemPrompt } from '../agent-system-prompt'
+import { resolveAssistantPromptBlocks } from '../assistant-prompt'
 
 function core(overrides: Partial<ProjectCoreData> = {}): ProjectCoreData {
   return {
@@ -33,191 +35,124 @@ function core(overrides: Partial<ProjectCoreData> = {}): ProjectCoreData {
   }
 }
 
-describe('buildMainProcessAgentSystemPrompt', () => {
-  it('uses the settings writing-identity template when no project is open', () => {
-    const prompt = buildMainProcessAgentSystemPrompt(null)
-    expect(prompt).toContain('你是一位经验丰富的长篇小说写作助手')
-    expect(prompt).toContain('【不可变系统合同】')
-    expect(prompt).toContain('【不可变助手边界】')
+const sceneSkill = {
+  name: 'scene-craft',
+  description: 'Scene craft',
+  location: '/home/me/.vela/skills/scene-craft/SKILL.md',
+  source: 'user' as const,
+}
+
+describe('buildAssistantSystemPrompt', () => {
+  it('orders blocks as hard rules → identity → work rules → project facts', () => {
+    const blocks = resolveAssistantPromptBlocks('general', 'zh-CN')
+    const prompt = buildAssistantSystemPrompt(blocks, core())
+    const order = [
+      prompt.indexOf('【不可变系统合同】'),
+      prompt.indexOf('你是一位经验丰富的长篇小说写作助手'),
+      prompt.indexOf('【多助手协同调度能力】'),
+      prompt.indexOf('当前项目上下文'),
+    ]
+    expect(order.every(index => index >= 0)).toBe(true)
+    expect([...order].sort((left, right) => left - right)).toEqual(order)
+    expect(prompt.split('【不可变系统合同】')).toHaveLength(2)
+    expect(prompt.split('【不可变助手边界】')).toHaveLength(2)
     expect(prompt).toContain('system_context 标签内')
     expect(prompt).toContain('不是作者的发言')
-    expect(prompt).not.toContain('应用级助手')
     expect(prompt).not.toContain('<tool_call>')
-    expect(prompt).not.toContain('当前项目上下文')
   })
 
-  it('injects L0 project facts without XML tool instructions', () => {
-    const prompt = buildMainProcessAgentSystemPrompt(core())
-    expect(prompt).toContain('你是一位经验丰富的长篇小说写作助手')
-    expect(prompt).toContain('项目名称: 潮门')
-    expect(prompt).toContain('计划章节数: 80')
-    expect(prompt).toContain('核心大纲: 顾舟必须在终章前揭开潮门真相。')
-    expect(prompt).toContain('【多助手协同调度能力】')
-    expect(prompt).toContain('delegate_to_assistant')
-    expect(prompt).toContain('架构助手（architect）')
-    expect(prompt).toContain('蓝图助手（blueprint）')
-    expect(prompt).toContain('审稿助手（review）')
-    expect(prompt).toContain('指针传递而非数据搬运原则')
-    expect(prompt).not.toContain('<tool_call>')
-    expect(prompt).not.toContain('每次最多一个')
+  it('keeps skills between work rules and project facts', () => {
+    const blocks = resolveAssistantPromptBlocks('general', 'zh-CN')
+    const prompt = buildAssistantSystemPrompt(blocks, core(), [sceneSkill])
+    expect(prompt).toContain('<available_skills>')
+    expect(prompt).toContain('<name>scene-craft</name>')
+    expect(prompt).toContain('/技能名')
+    expect(prompt).toContain('不要用 read_file 去读技能文件')
+    const skillsIndex = prompt.indexOf('<available_skills>')
+    expect(skillsIndex).toBeGreaterThan(prompt.indexOf('【多助手协同调度能力】'))
+    expect(skillsIndex).toBeLessThan(prompt.indexOf('当前项目上下文'))
   })
 
-  it('localizes identity and L0 labels to the project writing language', () => {
-    const prompt = buildMainProcessAgentSystemPrompt(core({ writingLanguage: 'en-US' }))
-    expect(prompt).toContain('You are an experienced long-form fiction-writing assistant')
+  it('omits the skill block when no skills are provided', () => {
+    const blocks = resolveAssistantPromptBlocks('general', 'zh-CN')
+    const prompt = buildAssistantSystemPrompt(blocks, core())
+    expect(prompt).not.toContain('<available_skills>')
+  })
+
+  it('localizes hard rules, identity, work rules, and L0 labels to en-US', () => {
+    const blocks = resolveAssistantPromptBlocks('general', 'en-US')
+    const prompt = buildAssistantSystemPrompt(blocks, core({ writingLanguage: 'en-US' }))
     expect(prompt).toContain('[Immutable system contract]')
+    expect(prompt).toContain('You are an experienced long-form fiction-writing assistant')
     expect(prompt).toContain('[Multi-Assistant Coordination]')
-    expect(prompt).toContain('Architecture Assistant ("architect")')
-    expect(prompt).toContain('Blueprint Assistant ("blueprint")')
-    expect(prompt).toContain('Review Assistant ("review")')
-    expect(prompt).toContain('Pass Pointers, Not Payloads')
     expect(prompt).toContain('Current project context')
     expect(prompt).toContain('Project name: 潮门')
-    expect(prompt).toContain('Genre: Mystery')
-    expect(prompt).not.toContain('当前项目上下文')
+    expect(prompt).not.toContain('【不可变系统合同】')
     expect(prompt).not.toContain('你是一位经验丰富的长篇小说写作助手')
   })
 
-  it('uses a caller-supplied identity overlay instead of the built-in role', () => {
+  it('accepts a caller-supplied identity template', () => {
     const builtin = getBuiltinPromptTemplate('assistant_writing_identity', 'zh-CN')!
-    const prompt = buildMainProcessAgentSystemPrompt(core(), {
-      ...builtin,
-      systemRole: '你是潮门的连续性编辑。',
-    })
+    const blocks = resolveAssistantPromptBlocks('general', 'zh-CN')
+    const identity = renderAssistantIdentity(
+      { ...builtin, systemRole: '你是潮门的连续性编辑。' },
+      'zh-CN',
+      '当前模式',
+    )
+    const prompt = buildAssistantSystemPrompt({ ...blocks, identity }, core())
     expect(prompt).toContain('你是潮门的连续性编辑。')
     expect(prompt).not.toContain('你是一位经验丰富的长篇小说写作助手')
     expect(prompt).toContain('项目名称: 潮门')
   })
 
-  it('lists available skills through Pi formatSkillsForSystemPrompt', () => {
-    const prompt = buildMainProcessAgentSystemPrompt(core(), undefined, [
-      {
-        name: 'review-chapter',
-        description: 'Reviews a chapter for plot logic and pacing.',
-        location: 'builtin://review-chapter',
-        source: 'builtin',
-      },
-      {
-        name: 'scene-craft',
-        description: '场景塑造',
-        location: 'C:\\Users\\me\\.vela\\skills\\scene-craft\\SKILL.md',
-        source: 'user',
-      },
-    ])
-    expect(prompt).toContain('The following skills provide specialized instructions for specific tasks.')
-    expect(prompt).toContain('<available_skills>')
-    expect(prompt).toContain('<name>review-chapter</name>')
-    expect(prompt).toContain('<description>Reviews a chapter for plot logic and pacing.</description>')
-    expect(prompt).toContain('<location>builtin://review-chapter</location>')
-    expect(prompt).toContain('C:\\Users\\me\\.vela\\skills\\scene-craft\\SKILL.md')
-    // 技能正文永远不进 system prompt：助手用 /技能名 让用户显式启用。
-    expect(prompt).toContain('/技能名')
-    expect(prompt).toContain('不要用 read_file 去读技能文件')
-  })
-
-  it('localizes the skill invocation note and omits the block without skills', () => {
-    const skill = {
-      name: 'scene-craft',
-      description: 'Scene craft',
-      location: '/home/me/.vela/skills/scene-craft/SKILL.md',
-      source: 'user' as const,
-    }
-    const english = buildMainProcessAgentSystemPrompt(core({ writingLanguage: 'en-US' }), undefined, [skill])
-    expect(english).toContain('Read skill instructions on demand')
-    expect(english).toContain('manage_skills (action: "load")')
-    expect(english).toContain('suggest the user enable it with `/skill-name`')
-    expect(english).not.toContain('/技能名')
-
-    const noSkills = buildMainProcessAgentSystemPrompt(core())
-    expect(noSkills).not.toContain('<available_skills>')
-    const emptySkills = buildMainProcessAgentSystemPrompt(core(), undefined, [])
-    expect(emptySkills).not.toContain('<available_skills>')
-  })
-
-  it('keeps the project workflow sentence in the skill note', () => {
-    const skill = {
-      name: 'scene-craft',
-      description: 'Scene craft',
-      location: '/home/me/.vela/skills/scene-craft/SKILL.md',
-      source: 'user' as const,
-    }
-    const projectPrompt = buildMainProcessAgentSystemPrompt(core(), undefined, [skill])
-    expect(projectPrompt).toContain('全书底层文风由项目设定的写作风格（writingStyle）统一规范')
-    expect(projectPrompt).toContain('先用 manage_skills（action: "load"）读出正文')
-    expect(projectPrompt).toContain('<available_skills>')
-    expect(projectPrompt).toContain('用户在输入框输入 `/技能名` 时')
-    // 助手只在项目内工作，系统提示词始终带项目事实。
-    expect(projectPrompt).toContain('当前项目上下文')
-  })
-
   it('hides skills marked as not user-invocable from the model list', () => {
-    const prompt = buildMainProcessAgentSystemPrompt(core(), undefined, [
-      {
-        name: 'internal-only',
-        description: 'Hidden helper.',
-        location: 'builtin://internal-only',
-        source: 'builtin',
-        disableModelInvocation: true,
-      },
+    const blocks = resolveAssistantPromptBlocks('general', 'zh-CN')
+    const prompt = buildAssistantSystemPrompt(blocks, core(), [
+      { ...sceneSkill, name: 'internal-only', disableModelInvocation: true },
     ])
     expect(prompt).not.toContain('<available_skills>')
     expect(prompt).not.toContain('internal-only')
   })
 })
 
-describe('buildArchitectAgentSystemPrompt', () => {
-  it('generates the Chief Story Architect identity with core responsibilities and strict boundaries', () => {
-    const prompt = buildArchitectAgentSystemPrompt(core())
+describe('sub-assistant default modules', () => {
+  it('assembles architect identity and boundary instead of the writing assistant identity', () => {
+    const blocks = resolveAssistantPromptBlocks('architect', 'zh-CN')
+    const prompt = buildAssistantSystemPrompt(blocks, core())
     expect(prompt).toContain('首席架构师、总编剧与世界观设计师')
-    expect(prompt).toContain('故事核心前提（Premise）')
-    expect(prompt).toContain('叙事结构规划（Synopsis）')
-    expect(prompt).toContain('世界观与规则体系（Worldbuilding）')
-    expect(prompt).toContain('人物关系网络（Characters）')
-    expect(prompt).toContain('章节蓝图拆解（Chapter Blueprint）')
     expect(prompt).toContain('【不可变架构助手边界】')
     expect(prompt).toContain('严禁撰写具体章节正文')
     expect(prompt).toContain('当前项目上下文')
     expect(prompt).toContain('项目名称: 潮门')
+    expect(prompt).not.toContain('你是一位经验丰富的长篇小说写作助手')
   })
 
-  it('supports English when novel writing language is en-US', () => {
-    const prompt = buildArchitectAgentSystemPrompt(core({ writingLanguage: 'en-US' }))
+  it('localizes the architect modules to en-US', () => {
+    const blocks = resolveAssistantPromptBlocks('architect', 'en-US')
+    const prompt = buildAssistantSystemPrompt(blocks, core({ writingLanguage: 'en-US' }))
     expect(prompt).toContain('Chief Story Architect')
-    expect(prompt).toContain('Story Premise')
-    expect(prompt).toContain('Narrative Structure')
-    expect(prompt).toContain('Worldbuilding & Rules')
     expect(prompt).toContain('[Immutable Architect Boundaries]')
     expect(prompt).toContain('do not draft chapter body prose')
     expect(prompt).toContain('Project name: 潮门')
   })
-})
 
-describe('buildBlueprintAgentSystemPrompt', () => {
-  it('generates the Chapter Blueprint Designer identity with scene beat focus and persistence instructions', () => {
-    const prompt = buildBlueprintAgentSystemPrompt(core())
+  it('assembles the blueprint identity with scene-beat guidance', () => {
+    const blocks = resolveAssistantPromptBlocks('blueprint', 'zh-CN')
+    const prompt = buildAssistantSystemPrompt(blocks, core())
     expect(prompt).toContain('长篇小说剧情分镜师与章节细纲策划')
-    expect(prompt).toContain('章节细纲蓝图')
-    expect(prompt).toContain('承上启下与连续性')
-    expect(prompt).toContain('戏剧冲突与情节点')
-    expect(prompt).toContain('角色登场与互动')
-    expect(prompt).toContain('伏笔与信息控制')
-    expect(prompt).toContain('章末钩子')
     expect(prompt).toContain('【不可变蓝图助手边界】')
-    expect(prompt).toContain('严禁撰写具体正文段落')
+    expect(prompt).toContain('承上启下与连续性')
+    expect(prompt).toContain('章末钩子')
     expect(prompt).toContain('propose_chapter_blueprint')
     expect(prompt).toContain('read_continuity_facts')
-    expect(prompt).toContain('当前项目上下文')
-    expect(prompt).toContain('项目名称: 潮门')
   })
 
-  it('supports English when novel writing language is en-US', () => {
-    const prompt = buildBlueprintAgentSystemPrompt(core({ writingLanguage: 'en-US' }))
-    expect(prompt).toContain('Chapter Blueprint Designer')
-    expect(prompt).toContain('Continuity & Progression')
-    expect(prompt).toContain('Dramatic Conflict & Beats')
-    expect(prompt).toContain('Chapter Cliffhanger')
-    expect(prompt).toContain('[Immutable Blueprint Boundaries]')
-    expect(prompt).toContain('do not draft chapter body prose')
-    expect(prompt).toContain('Project name: 潮门')
+  it('assembles the review identity with the review boundary', () => {
+    const blocks = resolveAssistantPromptBlocks('review', 'zh-CN')
+    const prompt = buildAssistantSystemPrompt(blocks, core())
+    expect(prompt).toContain('资深长篇小说责编与连续性审稿人')
+    expect(prompt).toContain('【不可变审稿助手边界】')
+    expect(prompt).toContain('submit_chapter_review')
+    expect(prompt).toContain('当前项目上下文')
   })
 })

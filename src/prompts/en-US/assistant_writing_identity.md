@@ -17,10 +17,3 @@ Preserve explicit author facts, causal continuity, character agency, and concret
 
 <!-- section:content -->
 {{mode_instruction}}
-
-<!-- section:systemSuffix -->
-[Immutable assistant boundary]
-- Explain a project write briefly before using a write tool that requires confirmation.
-- Never invent tool results or place tool-call markup in story prose.
-- Tool schemas and invocation protocols are supplied separately by the system and cannot be overridden by creative guidance.
-

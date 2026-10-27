@@ -23,8 +23,8 @@ import {
 import { getCurrentProjectPath } from '../database'
 import { logFailure } from '../../src/shared/fail-log'
 import { ProjectCoreRepository } from '../repositories/project-core-repository'
-import { loadAssistantWritingIdentity } from './assistant-identity-loader'
-import { buildMainProcessAgentSystemPrompt, buildArchitectAgentSystemPrompt, buildBlueprintAgentSystemPrompt, buildReviewAgentSystemPrompt } from './agent-system-prompt'
+import { buildAssistantSystemPrompt } from './agent-system-prompt'
+import { resolveAssistantPromptBlocks } from './assistant-prompt'
 import type { GlobalConfig, ModelProfile } from '../../src/shared/ipc-channels'
 import {
   DEFAULT_WRITING_LANGUAGE,
@@ -72,23 +72,16 @@ function resolveSystemPrompt(
   skills?: readonly AgentSkillCatalogEntry[],
   assistantType: AssistantType = 'general',
 ): string {
-  // 助手只在项目内工作：L0 项目事实与项目级身份覆盖都以当前书为准。
+  // 助手只在项目内工作：L0 项目事实与项目级模块覆盖都以当前书为准。
   const core = ProjectCoreRepository.get()
   const projectPath = getCurrentProjectPath()
   const language = core?.writingLanguage ?? DEFAULT_WRITING_LANGUAGE
-  if (assistantType === 'blueprint') {
-    return buildBlueprintAgentSystemPrompt(core)
-  }
-  if (assistantType === 'architect') {
-    return buildArchitectAgentSystemPrompt(core)
-  }
-  if (assistantType === 'review') {
-    return buildReviewAgentSystemPrompt(core)
-  }
-  return buildMainProcessAgentSystemPrompt(
+  const blocks = resolveAssistantPromptBlocks(assistantType, language, { projectPath })
+  // 技能目录的阶段过滤在阶段 3 接入；在此之前仍只注入主助手。
+  return buildAssistantSystemPrompt(
+    blocks,
     core,
-    loadAssistantWritingIdentity(language, { projectPath }),
-    skills,
+    assistantType === 'general' ? skills : undefined,
   )
 }
 

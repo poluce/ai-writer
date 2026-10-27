@@ -27,6 +27,14 @@ const REQUIRED_CORE_KEYS = [
   'infer_novel_config',
   'infer_novel_config_with_vectors',
   'infer_single_chapter_blueprint',
+  'assistant_hard_rules',
+  'assistant_writing_work_rules',
+  'assistant_architect_identity',
+  'assistant_blueprint_identity',
+  'assistant_review_identity',
+  'assistant_architect_work_rules',
+  'assistant_blueprint_work_rules',
+  'assistant_review_work_rules',
 ] as const
 
 function placeholders(value: string): string[] {
@@ -55,8 +63,15 @@ describe('core model prompt language contract', () => {
 
     expect(zhCN).toBeDefined()
     expect(enUS).toBeDefined()
-    expect(enUS?.systemRole).not.toBe(zhCN?.systemRole)
-    expect(enUS?.content).not.toBe(zhCN?.content)
+    if ((zhCN?.systemRole ?? '').trim() || (enUS?.systemRole ?? '').trim()) {
+      expect(enUS?.systemRole).not.toBe(zhCN?.systemRole)
+    }
+    if ((zhCN?.content ?? '') === (enUS?.content ?? '')) {
+      // 身份模块的正文只有占位符；真正的双语内容在 systemRole 里。
+      expect((zhCN?.content ?? '').replace(/\{\{[a-z0-9_]+\}\}/giu, '').trim()).toBe('')
+    } else {
+      expect(enUS?.content).not.toBe(zhCN?.content)
+    }
     expect(`${enUS?.systemRole ?? ''}\n${enUS?.content ?? ''}\n${enUS?.systemSuffix ?? ''}`)
       .not.toMatch(/[\u3400-\u9fff]/u)
     expect(placeholders(`${enUS?.content ?? ''}\n${enUS?.systemSuffix ?? ''}`)).toEqual(

@@ -114,6 +114,14 @@ const expectedPromptVariables: Record<string, string[]> = {
     'latest_chapter',
     'total_chapters',
   ],
+  assistant_hard_rules: [],
+  assistant_writing_work_rules: [],
+  assistant_architect_identity: ['mode_instruction'],
+  assistant_blueprint_identity: ['mode_instruction'],
+  assistant_review_identity: ['mode_instruction'],
+  assistant_architect_work_rules: [],
+  assistant_blueprint_work_rules: [],
+  assistant_review_work_rules: [],
 }
 
 const expectedJsonFields: Record<string, string[]> = {
@@ -224,7 +232,9 @@ describe('built-in model-neutral prompt contract', () => {
 
   it('keeps every built-in system role model-neutral and focused on fiction work', () => {
     for (const template of BUILTIN_PROMPTS) {
-      const role = template.systemRole ?? ''
+      const role = (template.systemRole ?? '').trim()
+      // 规则模块（硬规则 / 工作规范）没有角色段落，不参与角色措辞约束。
+      if (!role) continue
       expect(role, `${template.key} must not bind to one provider or prestige identity`).not.toMatch(/Qwen|量化模型|GPT|Claude|DeepSeek|Grok|顶尖|白金|大神|accomplished|top[- ]|web-fiction/i)
       expect(role, `${template.key} should stay focused on writing or structure`).toMatch(/小说|网文|章节|角色|正文|设定|审稿|风格|结构|JSON/)
 

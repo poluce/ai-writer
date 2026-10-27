@@ -15,7 +15,7 @@ import {
 import { VELA_HOME } from '../utils/config-utils'
 import { assertProjectFilePath } from '../utils/project-context'
 
-export interface AssistantIdentityLoadOptions {
+export interface AssistantPromptLoadOptions {
   projectPath?: string | null
   globalPromptsDir?: string
 }
@@ -52,6 +52,7 @@ function fail(language: WritingLanguage, zhCN: string, enUS: string): never {
 
 function readCandidate(
   filePath: string,
+  key: string,
   language: WritingLanguage,
   mode: 'project' | 'global',
   root: string,
@@ -74,7 +75,7 @@ function readCandidate(
   } catch {
     fail(language, `提示词无法解析: ${filePath}`, `The prompt could not be parsed: ${filePath}`)
   }
-  if (!isPromptTemplate(parsed) || parsed.key !== ASSISTANT_WRITING_IDENTITY_KEY) {
+  if (!isPromptTemplate(parsed) || parsed.key !== key) {
     fail(language, '提示词内容结构无效', 'The prompt content shape is invalid')
   }
   const filenameKey = path.basename(filePath, '.json')
@@ -90,13 +91,15 @@ function readCandidate(
 
 function readFromDir(
   dir: string,
+  key: string,
   language: WritingLanguage,
   mode: 'project' | 'global',
   root: string,
 ): PromptTemplate | null {
   if (!fs.existsSync(dir)) return null
   const tagged = readCandidate(
-    path.join(dir, `${ASSISTANT_WRITING_IDENTITY_KEY}.${language}.json`),
+    path.join(dir, `${key}.${language}.json`),
+    key,
     language,
     mode,
     root,
@@ -104,7 +107,8 @@ function readFromDir(
   if (tagged) return tagged
   if (language === 'zh-CN') {
     return readCandidate(
-      path.join(dir, `${ASSISTANT_WRITING_IDENTITY_KEY}.json`),
+      path.join(dir, `${key}.json`),
+      key,
       language,
       mode,
       root,
@@ -114,17 +118,19 @@ function readFromDir(
 }
 
 /**
- * Resolve `assistant_writing_identity` with the same precedence as Settings:
+ * Resolve one assistant prompt module with Settings precedence:
  * project override → global override → built-in.
  */
-export function loadAssistantWritingIdentity(
+export function loadAssistantPromptModule(
+  key: string,
   language: WritingLanguage,
-  options: AssistantIdentityLoadOptions = {},
+  options: AssistantPromptLoadOptions = {},
 ): PromptTemplate {
   const writingLanguage = resolveWritingLanguage(language)
   if (options.projectPath) {
     const projectTemplate = readFromDir(
       path.join(options.projectPath, DIR_PROMPTS),
+      key,
       writingLanguage,
       'project',
       options.projectPath,
@@ -132,9 +138,17 @@ export function loadAssistantWritingIdentity(
     if (projectTemplate) return projectTemplate
   }
   const globalDir = options.globalPromptsDir ?? path.join(VELA_HOME, 'prompts')
-  const globalTemplate = readFromDir(globalDir, writingLanguage, 'global', globalDir)
+  const globalTemplate = readFromDir(globalDir, key, writingLanguage, 'global', globalDir)
   if (globalTemplate) return globalTemplate
-  const builtin = getBuiltinPromptTemplate(ASSISTANT_WRITING_IDENTITY_KEY, writingLanguage)
-  if (!builtin) throw new Error('Missing assistant writing identity prompt')
+  const builtin = getBuiltinPromptTemplate(key, writingLanguage)
+  if (!builtin) throw new Error(`Missing assistant prompt template: ${key}`)
   return builtin
+}
+
+/** 兼容入口：解析主助手身份模板。 */
+export function loadAssistantWritingIdentity(
+  language: WritingLanguage,
+  options: AssistantPromptLoadOptions = {},
+): PromptTemplate {
+  return loadAssistantPromptModule(ASSISTANT_WRITING_IDENTITY_KEY, language, options)
 }

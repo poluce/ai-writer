@@ -228,6 +228,44 @@ export const BUILTIN_PROMPT_STRUCTURES: readonly BuiltinPromptStructure[] = [
       "total_chapters": "已有总章数",
     },
   },
+  {
+    key: "assistant_hard_rules",
+    variables: {},
+  },
+  {
+    key: "assistant_writing_work_rules",
+    variables: {},
+  },
+  {
+    key: "assistant_architect_identity",
+    variables: {
+      "mode_instruction": "当前助手工作模式说明",
+    },
+  },
+  {
+    key: "assistant_blueprint_identity",
+    variables: {
+      "mode_instruction": "当前助手工作模式说明",
+    },
+  },
+  {
+    key: "assistant_review_identity",
+    variables: {
+      "mode_instruction": "当前助手工作模式说明",
+    },
+  },
+  {
+    key: "assistant_architect_work_rules",
+    variables: {},
+  },
+  {
+    key: "assistant_blueprint_work_rules",
+    variables: {},
+  },
+  {
+    key: "assistant_review_work_rules",
+    variables: {},
+  },
 ]
 
 /** 允许用户自定义编辑的模板 Key 列表（其余为系统模板，不可编辑） */
@@ -276,6 +314,14 @@ export const CORE_LOCALIZED_BUILTIN_PROMPT_KEYS: readonly string[] = [
   "infer_novel_config",
   "infer_novel_config_with_vectors",
   "infer_single_chapter_blueprint",
+  "assistant_hard_rules",
+  "assistant_writing_work_rules",
+  "assistant_architect_identity",
+  "assistant_blueprint_identity",
+  "assistant_review_identity",
+  "assistant_architect_work_rules",
+  "assistant_blueprint_work_rules",
+  "assistant_review_work_rules",
 ]
 
 const CORE_LOCALIZED_BUILTIN_PROMPT_KEY_SET = new Set<string>(CORE_LOCALIZED_BUILTIN_PROMPT_KEYS)
