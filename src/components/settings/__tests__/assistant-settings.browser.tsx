@@ -99,6 +99,22 @@ describe('assistant settings page', () => {
     await expect.element(editor).toBeVisible()
     await expect.element(editor).toHaveValue(expect.stringContaining('【不可变系统合同】'))
 
+    // 切换到审稿助手：保持当前选中的模块，不跳回软件硬规则。
+    await act(async () => {
+      await page.getByRole('button', { name: /助手身份/ }).click()
+    })
+    await act(async () => {
+      await page.getByRole('button', { name: '审稿助手' }).click()
+    })
+    // 选中项仍是助手身份：编辑区显示审稿助手身份，而不是回到软件硬规则。
+    await expect.element(page.getByRole('textbox')).toHaveValue(expect.stringContaining('你是一位'))
+
+    // 再切回软件硬规则：硬规则是四个助手共用的同一份模板。
+    await act(async () => {
+      await page.getByRole('button', { name: /软件硬规则/ }).click()
+    })
+    await expect.element(page.getByRole('textbox')).toHaveValue(expect.stringContaining('【不可变系统合同】'))
+
     // 切换到审稿助手：硬规则是四个助手共用的同一份模板。
     await act(async () => {
       await page.getByRole('button', { name: '审稿助手' }).click()

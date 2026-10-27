@@ -195,7 +195,7 @@ export default function AssistantSettings(): ReactElement {
   async function handleSwitchAssistant(next: AssistantType): Promise<void> {
     if (next === assistantType) return
     await flushPending()
-    setModule('hard_rules')
+    // 保持当前选中的模块：切换助手只换内容来源，不重置左侧选中项。
     setShowBuiltin(false)
     setAssistantType(next)
   }
