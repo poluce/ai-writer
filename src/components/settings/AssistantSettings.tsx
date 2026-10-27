@@ -32,12 +32,6 @@ import SystemPromptPreview from './SystemPromptPreview'
 
 type Scope = 'global' | 'project'
 
-const SOURCE_CONFIG = {
-  builtin: { label: '内置默认', labelEn: 'Built-in', color: 'var(--color-text-muted)', bg: 'var(--color-hover)' },
-  global: { label: '全局', labelEn: 'Global', color: 'var(--color-info)', bg: 'color-mix(in srgb, var(--color-info) 10%, transparent)' },
-  project: { label: '项目', labelEn: 'Project', color: 'var(--color-success-text)', bg: 'color-mix(in srgb, var(--color-success) 10%, transparent)' },
-} as const
-
 type ModuleSelection = AssistantModuleId | 'skill_catalog'
 
 const MODULES: AssistantModuleId[] = ['hard_rules', 'identity', 'work_rules']
@@ -79,7 +73,6 @@ export default function AssistantSettings(): ReactElement {
   const pendingRef = useRef<{ module: AssistantModuleId; text: string } | null>(null)
 
   const docFor = (id: AssistantModuleId) => docs.find((doc) => doc.id === id)
-  const selectedDoc = module === 'skill_catalog' ? undefined : docFor(module)
   const selectedText = module === 'skill_catalog' ? '' : drafts[module]
 
   function syncDrafts(nextDocs: AssistantModuleDoc[]): void {
@@ -330,8 +323,6 @@ export default function AssistantSettings(): ReactElement {
           {MODULES.map((item) => {
             const doc = docFor(item)
             const active = module === item
-            const source = doc?.source ?? 'builtin'
-            const sourceConfig = resolveSourceConfig(source)
             return (
               <button
                 key={item}
@@ -345,12 +336,6 @@ export default function AssistantSettings(): ReactElement {
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs font-medium" style={{ color: 'var(--color-text)' }}>
                     {assistantModuleLabel(item, editingLanguage)}
-                  </span>
-                  <span
-                    className="text-[0.6rem] px-1.5 py-0.5 rounded-full"
-                    style={{ color: sourceConfig.color, backgroundColor: sourceConfig.bg }}
-                  >
-                    {text(sourceConfig.label, sourceConfig.labelEn)}
                   </span>
                 </div>
                 <div className="text-[0.65rem] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
@@ -372,12 +357,6 @@ export default function AssistantSettings(): ReactElement {
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-medium" style={{ color: 'var(--color-text)' }}>
                 {text('技能目录', 'Skill catalog')}
-              </span>
-              <span
-                className="text-[0.6rem] px-1.5 py-0.5 rounded-full"
-                style={{ color: 'var(--color-info)', backgroundColor: 'color-mix(in srgb, var(--color-info) 10%, transparent)' }}
-              >
-                {text('自动生成', 'Auto')}
               </span>
             </div>
             <div className="text-[0.65rem] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
@@ -419,17 +398,6 @@ export default function AssistantSettings(): ReactElement {
                 <span className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
                   {assistantModuleLabel(module, editingLanguage)}
                 </span>
-                {selectedDoc && (
-                  <span
-                    className="text-[0.6rem] px-1.5 py-0.5 rounded-full"
-                    style={{
-                      color: resolveSourceConfig(selectedDoc.source).color,
-                      backgroundColor: resolveSourceConfig(selectedDoc.source).bg,
-                    }}
-                  >
-                    {text(resolveSourceConfig(selectedDoc.source).label, resolveSourceConfig(selectedDoc.source).labelEn)}
-                  </span>
-                )}
                 <span className="ml-auto text-[0.65rem]" style={{ color: 'var(--color-text-muted)' }}>
                   {`${selectedText.length.toLocaleString()} ${text('字符', 'chars')} · ${text('可编辑', 'editable')}`}
                 </span>
@@ -533,13 +501,4 @@ export default function AssistantSettings(): ReactElement {
       />
     </div>
   )
-}
-
-function resolveSourceConfig(source: AssistantModuleDoc['source']): {
-  label: string
-  labelEn: string
-  color: string
-  bg: string
-} {
-  return SOURCE_CONFIG[source]
 }
