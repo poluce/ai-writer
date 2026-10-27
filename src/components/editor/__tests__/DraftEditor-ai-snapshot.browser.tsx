@@ -240,4 +240,52 @@ describe('DraftEditor AI review handoff', () => {
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 20)) })
     expect(container.querySelectorAll('.cm-draft-annotation')).toHaveLength(0)
   })
+
+  it('switches to an older draft version read-only and back to the latest', async () => {
+    const originalInvoke = invoke.getMockImplementation() as
+      | ((channel: string, ...args: unknown[]) => unknown)
+      | undefined
+    if (!originalInvoke) throw new Error('missing IPC fixture')
+    invoke.mockImplementation(async (channel: string, ...args: unknown[]) => {
+      if (channel === 'db:draft-list') {
+        return [
+          { id: 7, chapterNumber: 1, version: 1, status: 'draft', source: 'write', wordCount: SAVED_BODY.length, createdAt: '', updatedAt: '' },
+          { id: 9, chapterNumber: 1, version: 2, status: 'draft', source: 'write', wordCount: 6, createdAt: '', updatedAt: '' },
+        ]
+      }
+      if (channel === 'db:draft-get-full') {
+        return { id: 9, chapterNumber: 1, version: 2, status: 'draft', source: 'write', content: '历史版本正文', wordCount: 6, createdAt: '', updatedAt: '' }
+      }
+      return originalInvoke(channel, ...args)
+    })
+    // 触发一次重新加载版本清单：默认桩在首次挂载时只返回一个版本。
+    const currentProject = useProjectStore.getState().currentProject
+    await act(async () => {
+      useProjectStore.setState({ currentProject: currentProject ? { ...currentProject } : null })
+    })
+
+    const select = await vi.waitFor(() => {
+      const element = container.querySelector<HTMLSelectElement>('select[aria-label="切换草稿版本"]')
+      if (!element) throw new Error('version selector is missing')
+      return element
+    })
+    await act(async () => {
+      select.value = '9'
+      select.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+
+    await vi.waitFor(() => {
+      const view = EditorView.findFromDOM(container.querySelector('.cm-editor')!)
+      expect(view?.state.doc.toString()).toBe('历史版本正文')
+    })
+    await expect.element(page.getByRole('button', { name: '返回最新' })).toBeVisible()
+    expect(page.getByRole('button', { name: 'AI 审稿' }).elements()).toHaveLength(0)
+
+    await act(async () => page.getByRole('button', { name: '返回最新' }).click())
+    await vi.waitFor(() => {
+      const view = EditorView.findFromDOM(container.querySelector('.cm-editor')!)
+      expect(view?.state.doc.toString()).toBe(SCREEN_BODY)
+    })
+    await expect.element(page.getByRole('button', { name: 'AI 审稿' })).toBeVisible()
+  })
 })

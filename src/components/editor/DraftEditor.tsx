@@ -85,6 +85,21 @@ function DraftEditorSession({ tabId, filePath, content, projectKey }: Props) {
   const tabDraftStatus = editorTab?.draftStatus
   const [pendingRevisions, setPendingRevisions] = useState<RevisionEntry[]>([])
   const [reviewCount, setReviewCount] = useState(0)
+  // 版本查看：null = 当前最新草稿可编辑；非 null = 正在只读查看的历史版本。
+  interface DraftVersionOption {
+    id: number
+    version: number
+    status: DraftStatus
+  }
+  const [draftVersions, setDraftVersions] = useState<DraftVersionOption[]>([])
+  const [historyView, setHistoryView] = useState<{
+    filePath: string
+    id: number
+    version: number
+    status: DraftStatus
+    content: string
+  } | null>(null)
+  const [versionLoading, setVersionLoading] = useState(false)
 
   // 【BUG1&2 修复】合并视图弹窗数据（不再占用 Tab）
   const [mergeData, setMergeData] = useState<{
@@ -127,6 +142,25 @@ function DraftEditorSession({ tabId, filePath, content, projectKey }: Props) {
         fileName: `v${m.version}`,
         createdAt: m.updatedAt ?? m.createdAt,
       })
+      // 章节版本清单：供工具栏切换查看历史版本。
+      const versionList = await ipc.invokeWithProjectSession(
+        projectSession,
+        'db:draft-list',
+        m.chapterNumber,
+        projectKey,
+      )
+      if (!cancelled && isProjectSessionCurrent(projectSession) && Array.isArray(versionList)) {
+        setDraftVersions(
+          [...versionList]
+            .sort((left, right) => right.version - left.version)
+            .map(version => ({
+              id: version.id,
+              version: version.version,
+              // 运行期旧桩可能缺 status，按草稿处理，避免标签插值拿到 undefined。
+              status: (version.status as DraftStatus | undefined) ?? 'draft',
+            })),
+        )
+      }
       // 使用 DB 化的虚拟 chapterDir（用于 draft-index 兼容层解析章节号）
       const chapterDir = `vela://draft/ch${m.chapterNumber}`
       // 检查待合并修稿
@@ -244,6 +278,10 @@ function DraftEditorSession({ tabId, filePath, content, projectKey }: Props) {
     Object.fromEntries(REVIEW_DIMS.map(d => [d.key, true]))
   )
   const [charCount, setCharCount] = useState(0)
+  const viewingHistory = historyView !== null && historyView.filePath === filePath
+  const displayVersion = historyView?.version ?? meta?.version
+  const displayCharCount = viewingHistory ? countDraftUnits(historyView.content) : charCount
+  const canEditCurrent = !isReadonly && !isChapterBusy && !viewingHistory
   const isDirty = editorTab?.dirty ?? false
   const finalizationPending = editorTab?.finalizationPublication === 'pending'
   const finalizationConflict = editorTab?.finalizationConflict
@@ -251,6 +289,7 @@ function DraftEditorSession({ tabId, filePath, content, projectKey }: Props) {
 
   /** 保存（vela://draft/ 走 DB，其他走 FS） */
   const doSave = async (draftContent: string) => {
+    if (viewingHistory) return
     const projectSession = captureProjectSession(currentProject)
     if (!projectMatches || !projectSession || !isProjectSessionPath(projectSession, projectKey)) return
     const targetTab = useEditorStore.getState().tabs.find(
@@ -625,6 +664,39 @@ function DraftEditorSession({ tabId, filePath, content, projectKey }: Props) {
     }
   }
 
+  /** 切换查看某个草稿版本；选择当前最新版本时回到可编辑状态。 */
+  const handleSelectVersion = async (versionId: number) => {
+    if (!meta) return
+    if (versionId === meta.id) {
+      setHistoryView(null)
+      return
+    }
+    const projectSession = captureProjectSession(currentProject)
+    if (!projectSession || !isProjectSessionPath(projectSession, projectKey)) return
+    setVersionLoading(true)
+    try {
+      const full = await ipc.invokeWithProjectSession(
+        projectSession,
+        'db:draft-get-full',
+        versionId,
+        projectKey,
+      )
+      if (!isProjectSessionCurrent(projectSession) || !full) return
+      setHistoryView({
+        filePath,
+        id: full.id,
+        version: full.version,
+        status: full.status as DraftStatus,
+        content: full.content,
+      })
+    } catch (error) {
+      toast.error(text('读取历史版本失败', 'Could not read the historical version'))
+      void error
+    } finally {
+      if (isProjectSessionCurrent(projectSession)) setVersionLoading(false)
+    }
+  }
+
   /** 打开最新的审稿报告 */
   const openLatestReview = async () => {
     const projectSession = captureProjectSession(currentProject)
@@ -671,15 +743,51 @@ function DraftEditorSession({ tabId, filePath, content, projectKey }: Props) {
                 ? text(`第 ${meta.chapterNumber} 章 — ${meta.chapterTitle || '未知标题'}`, `Chapter ${meta.chapterNumber} — ${meta.chapterTitle || 'Untitled'}`)
                 : text('草稿', 'Draft')}
           </span>
-          {meta && (
+          {displayVersion !== undefined && (
             <span className="text-[0.7rem] flex-shrink-0" style={{ color: 'var(--color-text-muted)' }}>
-              v{meta.version}
+              v{displayVersion}{viewingHistory ? text(' · 历史版本', ' · history') : ''}
             </span>
           )}
         </div>
 
+        {/* 中部：草稿版本切换（查看历史版本，不产生新 Tab） */}
+        {meta && draftVersions.length > 1 && (
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <select
+              value={historyView?.id ?? meta.id}
+              onChange={event => { void handleSelectVersion(Number(event.target.value)) }}
+              disabled={versionLoading}
+              aria-label={text('切换草稿版本', 'Switch draft version')}
+              className="text-[0.7rem] rounded-md px-1.5 py-0.5 outline-none disabled:opacity-50"
+              style={{
+                backgroundColor: 'var(--color-hover)',
+                color: 'var(--color-text-secondary)',
+                border: '1px solid var(--color-border)'}}
+            >
+              {draftVersions.map(version => (
+                <option key={version.id} value={version.id}>
+                  {`v${version.version} · ${text(
+                    DRAFT_STATUS_LABEL[version.status] ?? version.status ?? 'draft',
+                    DRAFT_STATUS_EN[version.status] ?? version.status ?? 'draft',
+                  )}`}
+                </option>
+              ))}
+            </select>
+            {viewingHistory && (
+              <span className="text-[0.7rem] tabular-nums flex-shrink-0" style={{ color: 'var(--color-text-muted)' }}>
+                {text(`${displayCharCount.toLocaleString(locale)} 字 · 只读`, `${displayCharCount.toLocaleString(locale)} words · read-only`)}
+              </span>
+            )}
+            {viewingHistory && (
+              <Button variant="outline" size="sm" onClick={() => setHistoryView(null)}>
+                {text('返回最新', 'Back to latest')}
+              </Button>
+            )}
+          </div>
+        )}
+
         {/* 右侧：字数 + 状态 + 待合并 + AI操作 + 定稿 */}
-        {!isReadonly && (
+        {!isReadonly && !viewingHistory && (
           <div className="flex items-center gap-1.5 flex-shrink-0">
             {/* 字数 */}
             {charCount > 0 && (
@@ -825,7 +933,7 @@ function DraftEditorSession({ tabId, filePath, content, projectKey }: Props) {
         )}
 
         {/* 已定稿/归档显示只读提示 */}
-        {isReadonly && (
+        {isReadonly && !viewingHistory && (
           <div className="flex items-center gap-2 flex-shrink-0">
             {charCount > 0 && (
               <span className="text-xs tabular-nums" style={{ color: 'var(--color-text-muted)' }}>
@@ -886,19 +994,19 @@ function DraftEditorSession({ tabId, filePath, content, projectKey }: Props) {
       <div className="flex-1 overflow-hidden relative">
         <CodeMirrorEditor
           mode="prose"
-          content={content}
+          content={viewingHistory ? historyView.content : (editorTab?.content ?? content)}
           filePath={filePath}
-          editable={!isReadonly && !isChapterBusy}
+          editable={canEditCurrent}
           hideStatusBar
-          enableAnnotations={!isReadonly && !isChapterBusy}
-          annotations={annotations}
+          enableAnnotations={canEditCurrent}
+          annotations={viewingHistory ? EMPTY_ANNOTATIONS : annotations}
           onAnnotationsChange={setAnnotations}
-          diffProposals={aiDiffProposals}
+          diffProposals={viewingHistory ? [] : aiDiffProposals}
           scrollToDiffRequestId={scrollToDiffRequest}
           showLineNumbers
           chapterNumber={meta?.chapterNumber}
-          draftId={meta?.id}
-          draftVersion={meta?.version}
+          draftId={historyView?.id ?? meta?.id}
+          draftVersion={historyView?.version ?? meta?.version}
           onAddToAssistant={(citation) => {
             useAgentStore.getState().addComposerCitation(citation)
             useLayoutStore.getState().openRightPanel('agent')
@@ -907,12 +1015,13 @@ function DraftEditorSession({ tabId, filePath, content, projectKey }: Props) {
               `Added to the assistant (${citation.quote.slice(0, 24)}${citation.quote.length > 24 ? '…' : ''})`,
             ))
           }}
-          onCharCountChange={setCharCount}
+          onCharCountChange={(count) => { if (!viewingHistory) setCharCount(count) }}
           onChange={(text) => {
+            if (viewingHistory) return
             currentBodyRef.current = text
             useEditorStore.getState().updateTabContent(tabId, text)
           }}
-          onSave={(text) => doSave(text)}
+          onSave={(text) => { if (!viewingHistory) void doSave(text) }}
         />
 
 

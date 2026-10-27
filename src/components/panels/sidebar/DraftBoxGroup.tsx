@@ -111,10 +111,10 @@ function DraftChapterGroup({
   const currentProject = useProjectStore(s => s.currentProject)
   const [open, setOpen] = useState(true)
 
-  // 将 archived 草稿折叠，只显示活跃草稿（非 archived）
+  // 草稿箱每个章节只保留一条入口：默认展示版本号最大的草稿。
+  // 历史版本通过编辑器工具栏的版本切换查看，不再在侧栏堆叠。
   const activeDrafts = drafts.filter(d => d.status !== 'archived')
-  const archivedDrafts = drafts.filter(d => d.status === 'archived')
-  const [showArchived, setShowArchived] = useState(false)
+  const latestDraft = [...activeDrafts].sort((left, right) => right.version - left.version)[0]
   const [bpTitle, setBpTitle] = useState<{ projectKey: string; title: string } | null>(null)
 
   useEffect(() => {
@@ -162,45 +162,16 @@ function DraftChapterGroup({
         <span className="text-sm flex-1 truncate" style={{ color: 'var(--color-text-secondary)' }}>
           {displayTitle}
         </span>
-        <span className="ml-auto text-[0.7rem] flex-shrink-0" style={{ color: 'var(--color-text-muted)' }}>
-          {text(`${activeDrafts.length} 稿`, `${activeDrafts.length} drafts`)}
-        </span>
       </div>
 
-      {/* 草稿列表 */}
-      {open && (
-        <div>
-          {activeDrafts.map(draft => (
-            <DraftItem
-              key={draft.filePath}
-              draft={draft}
-              chapterTitleText={displayTitle}
-              projectKey={projectKey}
-            />
-          ))}
-
-          {/* 显示归档草稿的切换按钮 */}
-          {archivedDrafts.length > 0 && (
-            <div
-              className="flex items-center gap-1 cursor-pointer select-none"
-              style={{ paddingLeft: 42 }}
-              onClick={() => setShowArchived(v => !v)}
-            >
-              <span className="text-[0.7rem]" style={{ color: 'var(--color-text-muted)', opacity: 0.6 }}>
-                {showArchived ? <><ChevronDown size={10} className="inline" /> {text('隐藏', 'Hide')}</> : <><ChevronRight size={10} className="inline" /> {text(`${archivedDrafts.length} 个已归档`, `${archivedDrafts.length} archived`)}</>}
-              </span>
-            </div>
-          )}
-          {showArchived && archivedDrafts.map(draft => (
-            <DraftItem
-              key={draft.filePath}
-              draft={draft}
-              chapterTitleText={displayTitle}
-              projectKey={projectKey}
-              archived
-            />
-          ))}
-        </div>
+      {/* 草稿入口：每章只显示最新版本，历史版本在编辑器里切换查看 */}
+      {open && latestDraft && (
+        <DraftItem
+          key={latestDraft.filePath}
+          draft={latestDraft}
+          chapterTitleText={displayTitle}
+          projectKey={projectKey}
+        />
       )}
     </div>
   )
