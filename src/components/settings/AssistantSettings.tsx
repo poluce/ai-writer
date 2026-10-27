@@ -32,7 +32,8 @@ import SystemPromptPreview from './SystemPromptPreview'
 
 type Scope = 'global' | 'project'
 
-type ModuleSelection = AssistantModuleId | 'skill_catalog'
+type ModuleSelection = AssistantModuleId | 'skill_catalog' | 'project_info'
+type GlobalModuleSelection = Exclude<ModuleSelection, 'project_info'>
 
 const MODULES: AssistantModuleId[] = ['hard_rules', 'identity', 'work_rules']
 
@@ -66,6 +67,8 @@ export default function AssistantSettings(): ReactElement {
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [savedAt, setSavedAt] = useState<string | null>(null)
   const [skillBlock, setSkillBlock] = useState<AssistantPromptBlockView | null>(null)
+  const [projectFactsBlock, setProjectFactsBlock] = useState<AssistantPromptBlockView | null>(null)
+  const lastGlobalModule = useRef<GlobalModuleSelection>('hard_rules')
   const [showBuiltin, setShowBuiltin] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
 
@@ -73,7 +76,12 @@ export default function AssistantSettings(): ReactElement {
   const pendingRef = useRef<{ module: AssistantModuleId; text: string } | null>(null)
 
   const docFor = (id: AssistantModuleId) => docs.find((doc) => doc.id === id)
-  const selectedText = module === 'skill_catalog' ? '' : drafts[module]
+  const selectedText = module === 'project_info'
+    ? (projectFactsBlock?.text ?? '')
+    : module === 'skill_catalog'
+      ? ''
+      : drafts[module]
+  const editingEnabled = module === 'hard_rules' || module === 'identity' || module === 'work_rules'
 
   function syncDrafts(nextDocs: AssistantModuleDoc[]): void {
     setDrafts({
@@ -93,7 +101,7 @@ export default function AssistantSettings(): ReactElement {
     if (options.resetDrafts) syncDrafts(nextDocs)
   }
 
-  async function refreshSkillBlock(type: AssistantType, language: WritingLanguage): Promise<void> {
+  async function refreshAutoBlocks(type: AssistantType, language: WritingLanguage): Promise<void> {
     try {
       await skillRegistry.ensureLoaded()
       const result = await ipc.invoke(
@@ -103,11 +111,14 @@ export default function AssistantSettings(): ReactElement {
       )
       if (!result.success) {
         setSkillBlock(null)
+        setProjectFactsBlock(null)
         return
       }
       setSkillBlock(result.blocks?.find((block) => block.kind === 'skill_catalog') ?? null)
+      setProjectFactsBlock(result.blocks?.find((block) => block.kind === 'project_facts') ?? null)
     } catch {
       setSkillBlock(null)
+      setProjectFactsBlock(null)
     }
   }
 
@@ -127,7 +138,7 @@ export default function AssistantSettings(): ReactElement {
     // 异步载入放到宏任务里，避免在 effect 内同步触发级联渲染。
     const timer = window.setTimeout(() => {
       void refreshDocs(assistantType, editingLanguage, { resetDrafts: true, session })
-      void refreshSkillBlock(assistantType, editingLanguage)
+      void refreshAutoBlocks(assistantType, editingLanguage)
     }, 0)
     return () => window.clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -142,29 +153,22 @@ export default function AssistantSettings(): ReactElement {
 
   async function persist(moduleId: AssistantModuleId, value: string): Promise<void> {
     pendingRef.current = null
-    const operationSession = scope === 'project' ? projectSession : null
-    if (scope === 'project' && !operationSession) {
-      setSaveState('error')
-      return
-    }
     setSaveState('saving')
     const saved = await saveAssistantModule({
       assistantType,
       module: moduleId,
       language: editingLanguage,
-      scope,
-      projectSession: operationSession,
+      scope: 'global',
       text: value,
     })
-    if (operationSession && !isProjectSessionCurrent(operationSession)) return
     if (!saved) {
       setSaveState('error')
       return
     }
-    await refreshDocs(assistantType, editingLanguage, { resetDrafts: false, session: operationSession })
+    await refreshDocs(assistantType, editingLanguage, { resetDrafts: false, session: projectSession })
     setSaveState('saved')
     setSavedAt(new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }))
-    void refreshSkillBlock(assistantType, editingLanguage)
+    void refreshAutoBlocks(assistantType, editingLanguage)
   }
 
   async function flushPending(): Promise<void> {
@@ -175,7 +179,7 @@ export default function AssistantSettings(): ReactElement {
   }
 
   function handleEdit(value: string): void {
-    if (module === 'skill_catalog') return
+    if (!editingEnabled) return
     setDrafts((prev) => ({ ...prev, [module]: value }))
     pendingRef.current = { module, text: value }
     setSaveState('saving')
@@ -196,19 +200,21 @@ export default function AssistantSettings(): ReactElement {
   async function handleSwitchScope(next: Scope): Promise<void> {
     if (next === scope) return
     await flushPending()
+    if (next === 'project') {
+      if (module !== 'project_info') lastGlobalModule.current = module
+      setModule('project_info')
+    } else {
+      setModule(lastGlobalModule.current)
+    }
+    setShowBuiltin(false)
     setScope(next)
   }
 
   async function handleReset(): Promise<void> {
-    if (module === 'skill_catalog') return
+    if (!editingEnabled) return
     clearTimer()
     pendingRef.current = null
     setSaveState('saving')
-    const operationSession = scope === 'project' ? projectSession : null
-    if (scope === 'project' && !operationSession) {
-      setSaveState('error')
-      return
-    }
     const reset = await resetAssistantModule({
       assistantType,
       module,
@@ -222,15 +228,15 @@ export default function AssistantSettings(): ReactElement {
     }
     await refreshDocs(assistantType, editingLanguage, {
       resetDrafts: true,
-      session: operationSession,
+      session: projectSession,
     })
-    void refreshSkillBlock(assistantType, editingLanguage)
+    void refreshAutoBlocks(assistantType, editingLanguage)
     setSaveState('saved')
     setSavedAt(null)
   }
 
   async function handleClear(): Promise<void> {
-    if (module === 'skill_catalog') return
+    if (!editingEnabled) return
     const agreed = await confirm(
       text(
         '清空后这一块不会注入任何助手，四份系统提示都会失去这段规则。确定清空？',
@@ -292,12 +298,15 @@ export default function AssistantSettings(): ReactElement {
           <option value="en-US">{text('语言：英文', 'Language: English')}</option>
         </select>
         <span className="ml-auto text-[0.68rem]" style={{ color: 'var(--color-text-muted)' }}>
-          {projectSession
-            ? text(`${project?.name ?? '当前项目'} · 编辑即自动保存`, `${project?.name ?? 'Current project'} · autosaved`)
-            : text('未打开项目 · 仅可编辑全局配置', 'No project open · global edits only')}
+          {scope === 'project'
+            ? text(`${project?.name ?? '当前项目'} · 项目信息由项目数据自动生成`, `${project?.name ?? 'Current project'} · project facts are generated automatically`)
+            : projectSession
+              ? text(`${project?.name ?? '当前项目'} · 编辑即自动保存`, `${project?.name ?? 'Current project'} · autosaved`)
+              : text('未打开项目 · 仅可编辑全局配置', 'No project open · global edits only')}
         </span>
       </div>
 
+      {scope === 'global' && (
       <div className="flex items-center gap-1 flex-wrap">
         {ASSISTANT_TYPES.map((item) => (
           <button
@@ -317,9 +326,26 @@ export default function AssistantSettings(): ReactElement {
           </button>
         ))}
       </div>
+      )}
 
       <div className="flex gap-3 flex-1 min-h-0">
         <div className="w-48 flex-shrink-0 flex flex-col gap-1">
+          {scope === 'project' ? (
+            <button
+              className="text-left px-2.5 py-2 rounded-lg bg-[var(--color-panel)]"
+              style={{ border: '1px solid var(--color-border)' }}
+            >
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-medium" style={{ color: 'var(--color-text)' }}>
+                  {text('项目信息', 'Project facts')}
+                </span>
+              </div>
+              <div className="text-[0.65rem] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                {`${(projectFactsBlock?.chars ?? 0).toLocaleString()} ${text('字符', 'chars')}`}
+              </div>
+            </button>
+          ) : (
+            <>
           {MODULES.map((item) => {
             const doc = docFor(item)
             const active = module === item
@@ -363,10 +389,35 @@ export default function AssistantSettings(): ReactElement {
               {`${skillChars.toLocaleString()} ${text('字符', 'chars')}`}
             </div>
           </button>
+            </>
+          )}
         </div>
 
         <div className="flex-1 min-w-0 flex flex-col gap-2 rounded-lg p-3" style={{ border: '1px solid var(--color-border)' }}>
-          {module === 'skill_catalog' ? (
+          {module === 'project_info' ? (
+            <>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
+                  {text('项目信息', 'Project facts')}
+                </span>
+                <span className="ml-auto text-[0.65rem]" style={{ color: 'var(--color-text-muted)' }}>
+                  {`${(projectFactsBlock?.chars ?? 0).toLocaleString()} ${text('字符', 'chars')} · ${text('自动生成', 'auto')}`}
+                </span>
+              </div>
+              <p className="text-[0.7rem] m-0" style={{ color: 'var(--color-text-muted)' }}>
+                {text(
+                  '由项目数据自动生成，随设定实时更新，不可编辑。',
+                  'Generated from project data and updated automatically; this block is read-only.',
+                )}
+              </p>
+              <pre
+                className="flex-1 min-h-0 overflow-auto rounded-md p-2.5 text-[0.7rem] leading-relaxed whitespace-pre-wrap font-mono m-0"
+                style={{ backgroundColor: 'var(--color-hover)', color: 'var(--color-text-secondary)' }}
+              >
+                {projectFactsBlock?.text || text('未打开项目。', 'No project is open.')}
+              </pre>
+            </>
+          ) : module === 'skill_catalog' ? (
             <>
               <div className="flex items-center gap-2">
                 <span className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
@@ -396,7 +447,7 @@ export default function AssistantSettings(): ReactElement {
             <>
               <div className="flex items-center gap-2">
                 <span className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
-                  {assistantModuleLabel(module, editingLanguage)}
+                  {assistantModuleLabel(module as AssistantModuleId, editingLanguage)}
                 </span>
                 <span className="ml-auto text-[0.65rem]" style={{ color: 'var(--color-text-muted)' }}>
                   {`${selectedText.length.toLocaleString()} ${text('字符', 'chars')} · ${text('可编辑', 'editable')}`}
@@ -427,7 +478,7 @@ export default function AssistantSettings(): ReactElement {
                   className="max-h-32 overflow-auto rounded-md p-2 text-[0.68rem] whitespace-pre-wrap font-mono m-0"
                   style={{ backgroundColor: 'var(--color-hover)', color: 'var(--color-text-muted)' }}
                 >
-                  {builtinAssistantModuleText(assistantType, module, editingLanguage)}
+                  {builtinAssistantModuleText(assistantType, module as AssistantModuleId, editingLanguage)}
                 </pre>
               )}
               <div className="flex items-center gap-2 flex-wrap">

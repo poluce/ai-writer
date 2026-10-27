@@ -4,6 +4,7 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 
 import { useLocaleStore } from '../../../stores/locale-store'
+import { useProjectStore } from '../../../stores/project-store'
 import AssistantSettings from '../AssistantSettings'
 
 const originalLocaleState = useLocaleStore.getState()
@@ -36,6 +37,7 @@ afterEach(async () => {
 function installIpc(): ReturnType<typeof vi.fn> {
   const invoke = vi.fn(async (channel: string, ...args: unknown[]) => {
     if (channel === 'prompt:load-global') return { templates: [], diagnostics: [] }
+    if (channel === 'fs:check-exists') return false
     if (channel === 'prompt:save-global') return { success: true }
     if (channel === 'prompt:delete-global') return { success: true }
     if (channel === 'agent:system-prompt') {
@@ -44,6 +46,7 @@ function installIpc(): ReturnType<typeof vi.fn> {
         success: true,
         prompt: '真实拼接的系统提示词',
         blocks: [
+          { kind: 'project_facts', label: '项目信息', source: 'auto', editable: false, chars: 12, text: '项目名称: 潮门' },
           { kind: 'hard_rules', label: '软件硬规则', source: 'builtin', editable: true, chars: 10, text: '硬规则' },
           { kind: 'identity', label: '助手身份', source: 'builtin', editable: true, chars: 10, text: '身份' },
           { kind: 'work_rules', label: '工作规范', source: 'builtin', editable: true, chars: 10, text: '规范' },
@@ -55,7 +58,6 @@ function installIpc(): ReturnType<typeof vi.fn> {
             chars: 8,
             text: `${assistantType}: review-chapter`,
           },
-          { kind: 'project_facts', label: '项目信息', source: 'auto', editable: false, chars: 4, text: '项目' },
         ],
       }
     }
@@ -150,5 +152,33 @@ describe('assistant settings page', () => {
       await page.getByRole('button', { name: '预览最终系统提示词' }).click()
     })
     await expect.element(page.getByText('真实拼接的系统提示词')).toBeVisible()
+  })
+
+  it('shows only project facts under the project scope', async () => {
+    installIpc()
+    useProjectStore.setState({
+      currentProject: {
+        id: 'project-1',
+        name: '潮门',
+        path: 'C:\\novels\\chaomen',
+        novelConfig: { writingLanguage: 'zh-CN' },
+      } as never,
+    })
+
+    await renderSettings()
+    await act(async () => {
+      await page.getByRole('button', { name: '本项目' }).click()
+    })
+
+    await expect.element(page.getByRole('button', { name: /项目信息/ })).toBeVisible()
+    expect(page.getByRole('button', { name: /软件硬规则/ }).elements()).toHaveLength(0)
+    await expect.element(page.getByText('由项目数据自动生成，随设定实时更新，不可编辑。')).toBeVisible()
+    await expect.element(page.getByText('项目名称: 潮门')).toBeVisible()
+
+    // 回到全局，恢复之前选中的模块列表。
+    await act(async () => {
+      await page.getByRole('button', { name: '全局' }).click()
+    })
+    await expect.element(page.getByRole('button', { name: /软件硬规则/ })).toBeVisible()
   })
 })
