@@ -9,8 +9,15 @@ import {
   writingLanguageText,
   type WritingLanguage,
 } from '../../../src/shared/writing-language'
-import { inspectWritingSkillMarkdown } from '../../../src/shared/writing-skills'
+import {
+  ASSISTANT_SKILL_AUDIENCES,
+  WRITING_SKILL_STAGES,
+  inspectWritingSkillMarkdown,
+  type WritingSkillAudience,
+  type WritingSkillStage,
+} from '../../../src/shared/writing-skills'
 import type { AgentSkillCatalogEntry } from '../../../src/shared/agent-skills'
+import type { AssistantType } from '../../../src/shared/agent-conversation-archive'
 import { logFailure } from '../../../src/shared/fail-log'
 import {
   createCustomWritingSkill,
@@ -32,6 +39,14 @@ export const MANAGE_SKILLS_ACTIONS = [
 ] as const
 
 export type ManageSkillsAction = typeof MANAGE_SKILLS_ACTIONS[number]
+
+const StageEnum = StringEnum(WRITING_SKILL_STAGES, {
+  description: '技能适用的写作阶段："planning"（架构/蓝图）、"drafting"（正文起草）、"review"（审稿）、"refinement"（润色）。未提供时按创建者助手默认。',
+})
+
+const AudienceEnum = StringEnum(ASSISTANT_SKILL_AUDIENCES, {
+  description: '技能可见的助手："all"（全部）、"general"（主助手）、"architect"（架构）、"blueprint"（蓝图）、"review"（审稿）。未提供时按 stage 推断。',
+})
 
 const ScopeEnum = StringEnum([
   'project',
@@ -63,6 +78,8 @@ const Schema = Type.Object({
   display_name: Type.Optional(Type.String({
     description: '技能的可读显示名称（如 "场景五感精细设计"）',
   })),
+  stage: Type.Optional(StageEnum),
+  audience: Type.Optional(AudienceEnum),
   scope: Type.Optional(ScopeEnum),
   source_url: Type.Optional(Type.String({
     description: '远程 GitHub 仓库或 SKILL.md 地址（inspect / install 专用）',
@@ -81,6 +98,11 @@ function formatSkillListingRow(
   }
 
   return `- **${skill.name}** (${sourceTag}): ${skill.description}`
+}
+
+/** 创建技能的默认 stage：随创建者助手的写作阶段走，主助手默认 planning。 */
+export function defaultSkillStageForAssistant(assistantType: AssistantType): WritingSkillStage {
+  return assistantType === 'review' ? 'review' : 'planning'
 }
 
 /** 判定某次 manage_skills 调用是否为写入/变动操作。 */
@@ -109,6 +131,7 @@ export function createManageSkillsTool(
   language: WritingLanguage,
   skills: readonly AgentSkillCatalogEntry[],
   skillRoots: readonly string[] = [],
+  options: { assistantType?: AssistantType } = {},
 ): AgentTool<typeof Schema, unknown> {
   const text = (zhCN: string, enUS: string) => writingLanguageText(language, zhCN, enUS)
   const available = skills.filter(skill => skill.disableModelInvocation !== true)
@@ -118,8 +141,8 @@ export function createManageSkillsTool(
     name: 'manage_skills',
     label: 'Manage Skills',
     description: text(
-      '统一管理与调用写作技能（Skill）：查询技能列表（list）、读取技能完整指导正文（load）、创建自定义技能（create）、修改已有技能（update）、删除技能（delete）、预检（inspect）与安装（install）远程技能。',
-      'Unified writing skill management and invocation: list installed skills (list), load full skill instructions (load), create custom skill (create), update skill (update), delete skill (delete), inspect (inspect) and install (install) remote skills.',
+      '统一管理与调用写作技能（Skill）：查询技能列表（list）、读取技能完整指导正文（load）、创建自定义技能（create）、修改已有技能（update）、删除技能（delete）、预检（inspect）与安装（install）远程技能。创建时可用 stage 指定写作阶段、用 audience 指定可见助手；默认按当前助手生成标记。',
+      'Unified writing skill management and invocation: list installed skills (list), load full skill instructions (load), create custom skill (create), update skill (update), delete skill (delete), inspect (inspect) and install (install) remote skills. On create, set the writing stage with "stage" and the visible assistant with "audience"; defaults follow the current assistant.',
     ),
     parameters: Schema,
     isWriteOperation: isManageSkillsWrite,
@@ -196,12 +219,17 @@ export function createManageSkillsTool(
 
           const scope = params.scope as ('project' | 'user') | undefined
 
+          const stage = (params.stage as WritingSkillStage | undefined)
+            ?? defaultSkillStageForAssistant(options.assistantType ?? 'general')
+          const audience = params.audience as WritingSkillAudience | undefined
           const result = await createCustomWritingSkill({
             name,
             content,
             description: params.description,
             displayName: params.display_name,
             scope,
+            stage,
+            audience,
             projectPath: getCurrentProjectPath(),
           })
 
@@ -211,8 +239,8 @@ export function createManageSkillsTool(
             content: [{
               type: 'text',
               text: text(
-                `成功创建并安装写作技能“${name}”（作用域: ${result.skill.source}）。`,
-                `Successfully created writing skill "${name}" (scope: ${result.skill.source}).`,
+                `成功创建并安装写作技能“${name}”（作用域: ${result.skill.source}；阶段: ${stage}${audience ? `；可见: ${audience}` : ''}）。`,
+                `Successfully created writing skill "${name}" (scope: ${result.skill.source}; stage: ${stage}${audience ? `; audience: ${audience}` : ''}).`,
               ),
             }],
             details: { skill: result.skill },

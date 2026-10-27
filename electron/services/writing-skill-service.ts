@@ -252,6 +252,7 @@ export function formatSkillMarkdown(params: {
   displayName?: string
   version?: string
   stage?: string
+  audience?: string
   content: string
 }): string {
   const frontmatterLines = [
@@ -261,6 +262,7 @@ export function formatSkillMarkdown(params: {
     ...(params.description ? [`description: ${params.description.replace(/[\r\n]+/g, ' ')}`] : []),
     ...(params.version ? [`version: ${params.version}`] : ['version: 1.0.0']),
     ...(params.stage ? [`stage: ${params.stage}`] : []),
+    ...(params.audience ? [`audience: ${params.audience}`] : []),
     'language: bilingual',
     '---',
     '',
@@ -302,6 +304,8 @@ export async function createCustomWritingSkill(params: {
   description?: string
   displayName?: string
   scope?: 'user' | 'project'
+  stage?: string
+  audience?: string
   projectPath?: string | null
 }): Promise<WritingSkillInstallResult> {
   try {
@@ -332,6 +336,8 @@ export async function createCustomWritingSkill(params: {
       content: params.content,
       description: params.description,
       displayName: params.displayName,
+      stage: params.stage,
+      audience: params.audience,
     })
     fs.writeFileSync(filePath, raw, { encoding: 'utf8', mode: 0o600 })
     return {

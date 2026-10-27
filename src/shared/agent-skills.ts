@@ -7,6 +7,9 @@
  * 用户输入 `/技能名` 时仍照旧把正文注入那一轮。
  */
 
+import type { AssistantType } from './agent-conversation-archive'
+import type { WritingSkillAudience, WritingSkillStage } from './writing-skills'
+
 /** Skill 来源，与 `skillRegistry` 的 `SkillSource` 同值。 */
 export type AgentSkillSource = 'builtin' | 'user' | 'project'
 
@@ -21,6 +24,10 @@ export interface AgentSkillCatalogEntry {
   source: AgentSkillSource
   /** 与 Pi `Skill.disableModelInvocation` 对齐：为真时不出现在模型可见清单里。 */
   disableModelInvocation?: boolean
+  /** 写作阶段标记；用于按助手过滤目录。 */
+  stage?: WritingSkillStage
+  /** 显式可见助手；优先于 stage。 */
+  audience?: WritingSkillAudience
   /**
    * 技能正文（按项目写作语言取好本地化文案）。只随 IPC 送到主进程，
    * 等模型调用 `manage_skills`（action: "load"） 才进入上下文。
@@ -49,7 +56,43 @@ export function isAgentSkillCatalog(value: unknown): value is AgentSkillCatalogE
       && typeof record.location === 'string'
       && (record.source === 'builtin' || record.source === 'user' || record.source === 'project')
       && (record.disableModelInvocation === undefined || typeof record.disableModelInvocation === 'boolean')
+      && (record.audience === undefined
+        || record.audience === 'all'
+        || record.audience === 'general'
+        || record.audience === 'architect'
+        || record.audience === 'blueprint'
+        || record.audience === 'review')
+      && (record.stage === undefined
+        || record.stage === 'planning'
+        || record.stage === 'drafting'
+        || record.stage === 'review'
+        || record.stage === 'refinement')
       && (record.content === undefined
         || (typeof record.content === 'string' && record.content.length <= AGENT_SKILL_CONTENT_MAX_CHARS))
   })
+}
+
+/** 阶段 → 可见助手的映射；没有 audience / stage 的技能所有助手可见。 */
+const SKILL_STAGE_ASSISTANTS: Record<WritingSkillStage, readonly AssistantType[]> = {
+  planning: ['general', 'architect', 'blueprint'],
+  drafting: ['general'],
+  review: ['general', 'review'],
+  refinement: ['general'],
+}
+
+export function isAgentSkillVisibleToAssistant(
+  skill: AgentSkillCatalogEntry,
+  assistantType: AssistantType,
+): boolean {
+  if (skill.audience) return skill.audience === 'all' || skill.audience === assistantType
+  if (skill.stage) return SKILL_STAGE_ASSISTANTS[skill.stage].includes(assistantType)
+  return true
+}
+
+/** 按助手过滤技能目录；注入系统提示与 `manage_skills` 列表共用。 */
+export function filterAgentSkillCatalog(
+  skills: readonly AgentSkillCatalogEntry[],
+  assistantType: AssistantType,
+): AgentSkillCatalogEntry[] {
+  return skills.filter(skill => isAgentSkillVisibleToAssistant(skill, assistantType))
 }

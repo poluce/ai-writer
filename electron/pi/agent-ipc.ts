@@ -25,6 +25,7 @@ import { logFailure } from '../../src/shared/fail-log'
 import { ProjectCoreRepository } from '../repositories/project-core-repository'
 import { buildAssistantSystemPrompt } from './agent-system-prompt'
 import { resolveAssistantPromptBlocks } from './assistant-prompt'
+import { filterAgentSkillCatalog } from '../../src/shared/agent-skills'
 import type { GlobalConfig, ModelProfile } from '../../src/shared/ipc-channels'
 import {
   DEFAULT_WRITING_LANGUAGE,
@@ -77,11 +78,11 @@ function resolveSystemPrompt(
   const projectPath = getCurrentProjectPath()
   const language = core?.writingLanguage ?? DEFAULT_WRITING_LANGUAGE
   const blocks = resolveAssistantPromptBlocks(assistantType, language, { projectPath })
-  // 技能目录的阶段过滤在阶段 3 接入；在此之前仍只注入主助手。
+  // 四个助手都注入技能目录；按助手阶段 / audience 过滤后交给装配器。
   return buildAssistantSystemPrompt(
     blocks,
     core,
-    assistantType === 'general' ? skills : undefined,
+    filterAgentSkillCatalog(skills ?? [], assistantType),
   )
 }
 

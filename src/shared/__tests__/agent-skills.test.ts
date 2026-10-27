@@ -22,6 +22,7 @@ describe('isAgentSkillCatalog', () => {
   it('accepts a well-formed catalog', () => {
     expect(isAgentSkillCatalog([])).toBe(true)
     expect(isAgentSkillCatalog([entry(), entry({ source: 'builtin', disableModelInvocation: true })])).toBe(true)
+    expect(isAgentSkillCatalog([entry({ stage: 'planning', audience: 'architect' })])).toBe(true)
   })
 
   it('rejects payloads the main-process prompt builder cannot render', () => {
@@ -32,6 +33,8 @@ describe('isAgentSkillCatalog', () => {
     expect(isAgentSkillCatalog([{ ...entry(), location: undefined }])).toBe(false)
     expect(isAgentSkillCatalog([{ ...entry(), source: 'remote' }])).toBe(false)
     expect(isAgentSkillCatalog([{ ...entry(), disableModelInvocation: 'yes' }])).toBe(false)
+    expect(isAgentSkillCatalog([{ ...entry(), stage: 'unknown' }])).toBe(false)
+    expect(isAgentSkillCatalog([{ ...entry(), audience: 'editor' }])).toBe(false)
     expect(isAgentSkillCatalog([null])).toBe(false)
   })
 

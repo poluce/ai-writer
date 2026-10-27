@@ -24,7 +24,7 @@ import { createReadContinuityFactsTool } from './tools/read-continuity-facts.too
 import { createSubmitChapterReviewTool } from './tools/submit-chapter-review.tool'
 import { createDelegateToAssistantTool, type AssistantDelegateHandler, type DelegatableAssistantType } from './tools/delegate-to-assistant.tool'
 import type { AnyAgentTool } from './tool-types'
-import type { AgentSkillCatalogEntry } from '../../src/shared/agent-skills'
+import { filterAgentSkillCatalog, type AgentSkillCatalogEntry } from '../../src/shared/agent-skills'
 import type { AssistantType } from '../../src/shared/agent-conversation-archive'
 
 export type { AssistantDelegateHandler, DelegatableAssistantType }
@@ -114,6 +114,7 @@ export function buildAgentTools(
 export function buildArchitectAgentTools(
   language: WritingLanguage,
   rendererAction: RendererActionSink,
+  options: AssistantToolKitOptions = {},
 ): AnyAgentTool[] {
   return [
     createNovelConfigTool(language, rendererAction),
@@ -128,6 +129,9 @@ export function buildArchitectAgentTools(
     createProposeChapterBlueprintTool(language, rendererAction),
     createManageCharactersTool(language, rendererAction),
     createWebFetchTool(language),
+    createManageSkillsTool(language, options.skills ?? [], options.skillRoots ?? [], {
+      assistantType: 'architect',
+    }),
   ].map(withExecutionMode)
 }
 
@@ -140,6 +144,7 @@ export function buildArchitectAgentTools(
 export function buildBlueprintAgentTools(
   language: WritingLanguage,
   rendererAction: RendererActionSink,
+  options: AssistantToolKitOptions = {},
 ): AnyAgentTool[] {
   return [
     createProposeChapterBlueprintTool(language),
@@ -152,6 +157,9 @@ export function buildBlueprintAgentTools(
     createReadFileTool(language),
     createOpenEditorTool(language, rendererAction),
     createWebFetchTool(language),
+    createManageSkillsTool(language, options.skills ?? [], options.skillRoots ?? [], {
+      assistantType: 'blueprint',
+    }),
   ].map(withExecutionMode)
 }
 
@@ -164,6 +172,7 @@ export function buildBlueprintAgentTools(
 export function buildReviewAgentTools(
   language: WritingLanguage,
   rendererAction: RendererActionSink,
+  options: AssistantToolKitOptions = {},
 ): AnyAgentTool[] {
   return [
     createReadProjectStateTool(language),
@@ -176,6 +185,10 @@ export function buildReviewAgentTools(
     createReadFileTool(language),
     createOpenEditorTool(language, rendererAction),
     createSubmitChapterReviewTool(language, rendererAction),
+    // 审稿助手可以维护技能（技能库写入不属于项目事实修改）。
+    createManageSkillsTool(language, options.skills ?? [], options.skillRoots ?? [], {
+      assistantType: 'review',
+    }),
   ].map(withExecutionMode)
 }
 
@@ -192,18 +205,19 @@ export function buildToolsForAssistantType(
   rendererAction: RendererActionSink,
   options: AssistantToolKitOptions = {},
 ): AnyAgentTool[] {
+  const visibleSkills = filterAgentSkillCatalog(options.skills ?? [], assistantType)
   switch (assistantType) {
     case 'architect':
-      return buildArchitectAgentTools(language, rendererAction)
+      return buildArchitectAgentTools(language, rendererAction, { ...options, skills: visibleSkills })
     case 'blueprint':
-      return buildBlueprintAgentTools(language, rendererAction)
+      return buildBlueprintAgentTools(language, rendererAction, { ...options, skills: visibleSkills })
     case 'review':
-      return buildReviewAgentTools(language, rendererAction)
+      return buildReviewAgentTools(language, rendererAction, { ...options, skills: visibleSkills })
     case 'general':
       return buildAgentTools(
         language,
         rendererAction,
-        options.skills ?? [],
+        visibleSkills,
         options.skillRoots ?? [],
         options.delegateHandler,
       )

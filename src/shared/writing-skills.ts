@@ -2,6 +2,9 @@ import type { WritingLanguage } from './writing-language'
 
 export const WRITING_SKILL_STAGES = ['planning', 'drafting', 'review', 'refinement'] as const
 export type WritingSkillStage = typeof WRITING_SKILL_STAGES[number]
+/** 技能可见的助手范围；'all' 表示四个助手都能看到。 */
+export const ASSISTANT_SKILL_AUDIENCES = ['all', 'general', 'architect', 'blueprint', 'review'] as const
+export type WritingSkillAudience = typeof ASSISTANT_SKILL_AUDIENCES[number]
 export type WritingSkillLanguage = WritingLanguage | 'bilingual'
 export type WritingSkillSource = 'builtin' | 'user' | 'project'
 export type WritingSkillCompatibilityReason =
@@ -19,6 +22,8 @@ export interface WritingSkillMetadata {
   version?: string
   language: WritingSkillLanguage
   stage?: WritingSkillStage
+  /** 显式指定可见助手；未设置时按 stage 推断，stage 也没有则所有助手可见。 */
+  audience?: WritingSkillAudience
 }
 
 export interface WritingSkillInspection {
@@ -88,6 +93,10 @@ function normalizedStage(value: string | undefined): WritingSkillStage | undefin
   return WRITING_SKILL_STAGES.find(stage => stage === value?.toLowerCase())
 }
 
+function normalizedAudience(value: string | undefined): WritingSkillAudience | undefined {
+  return ASSISTANT_SKILL_AUDIENCES.find(audience => audience === value?.toLowerCase())
+}
+
 function suggestedStage(fields: Record<string, string>): WritingSkillStage {
   return normalizedStage(fields.stage) ?? 'drafting'
 }
@@ -127,6 +136,7 @@ export function inspectWritingSkillMarkdown(raw: string): WritingSkillInspection
       version: fields.version,
       language: normalizedLanguage(fields.language),
       stage: normalizedStage(fields.stage),
+      audience: normalizedAudience(fields.audience),
     },
     content,
     compatible: reasons.size === 0,

@@ -20,6 +20,7 @@ Keep the viewpoint character active. Prefer decisions and consequences.`)
     expect(result).toMatchObject({
       compatible: true,
       metadata: {
+        audience: undefined,
         name: 'scene-craft',
         version: '1.2.0',
         language: 'en-US',
@@ -75,5 +76,25 @@ Write a chapter.`)
     'https://github.com/acme/story-skill/issues/1',
   ])('rejects unsupported source %s', (url) => {
     expect(() => parseGitHubWritingSkillUrl(url)).toThrow()
+  })
+})
+
+describe('skill audience metadata', () => {
+  it('parses an explicit audience and ignores unknown values', () => {
+    const tagged = inspectWritingSkillMarkdown(`---
+name: review-only
+description: Review only.
+audience: review
+---
+Review the chapter.`)
+    expect(tagged.metadata.audience).toBe('review')
+
+    const unknown = inspectWritingSkillMarkdown(`---
+name: legacy
+description: Legacy.
+audience: editor
+---
+Legacy body.`)
+    expect(unknown.metadata.audience).toBeUndefined()
   })
 })

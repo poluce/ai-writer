@@ -88,6 +88,8 @@ export class AgentSessionManager {
   private readonly runtimeKeys = new Map<string, string>()
   /** 父会话到正在执行的委派子会话的映射（用于联动终止） */
   private readonly delegatedChildren = new Map<string, string>()
+  /** 每个会话最近一次收到的技能目录；委派时供子助手复用并按阶段过滤。 */
+  private readonly conversationSkills = new Map<string, readonly AgentSkillCatalogEntry[]>()
   /** 每个会话专属的消息与任务接收队列（FIFO 保证顺序执行与忙碌排队缓冲） */
   private readonly queues = new Map<string, ConversationQueue>()
 
@@ -116,6 +118,7 @@ export class AgentSessionManager {
     const queue = this.getQueue(conversationId)
     return queue.enqueue(async () => {
       try {
+        this.conversationSkills.set(conversationId, skills ?? [])
         const session = await this.getOrCreate(conversationId, modelId, history, skills, thinkingLevel, assistantType)
         const language = this.options.resolveLanguage(conversationId)
         session.setEditorSnapshot(editorSnapshot)
@@ -275,9 +278,14 @@ export class AgentSessionManager {
         )
 
         // 委派执行强制使用 writing 模式（自动执行领域工具落盘，避免弹窗阻断委派流）
+        // 子助手复用父会话最近的技能目录，工具集与系统提示各自按助手阶段过滤。
+        const skills = (parentConversationId ? this.conversationSkills.get(parentConversationId) : undefined) ?? []
         session.setExecutionMode('writing')
-        session.setSystemPrompt(this.options.resolveSystemPrompt(targetConvId, undefined, params.target))
-        const tools = buildToolsForAssistantType(params.target, language, this.options.rendererAction)
+        session.setSystemPrompt(this.options.resolveSystemPrompt(targetConvId, skills, params.target))
+        const tools = buildToolsForAssistantType(params.target, language, this.options.rendererAction, {
+          skills,
+          skillRoots: this.options.resolveSkillRoots?.() ?? [],
+        })
         await session.setTools(tools)
 
         // 执行提示词生成并获取结果
@@ -366,6 +374,7 @@ export class AgentSessionManager {
     this.sessions.delete(conversationId)
     this.stores.delete(conversationId)
     this.runtimeKeys.delete(conversationId)
+    this.conversationSkills.delete(conversationId)
     if (!session) return true
     const closed = await session.close()
     store?.forget(conversationId)
@@ -413,6 +422,7 @@ export class AgentSessionManager {
     const { models, model } = createPiModels(profile, {
       modelSamplingParams: toPiModelSamplingParams(sampling),
     })
+    this.conversationSkills.set(conversationId, skills ?? [])
     const language = this.options.resolveLanguage(conversationId)
     const harnessSession = await store.open(conversationId, { create: true })
     if (!harnessSession) {

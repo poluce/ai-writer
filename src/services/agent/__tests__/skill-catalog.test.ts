@@ -40,6 +40,7 @@ describe('agent skill catalog', () => {
         description: '以有后果的选择推进场景。',
         location: 'managed://skills/scene-craft/SKILL.md',
         source: 'user',
+        stage: 'drafting',
         disableModelInvocation: undefined,
         // 正文随目录下发但不进提示词：模型要靠 manage_skills load 按需取。
         content: 'Use concrete action.',

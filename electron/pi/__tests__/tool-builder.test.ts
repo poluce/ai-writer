@@ -152,7 +152,8 @@ describe('buildArchitectAgentTools', () => {
     expect(names).not.toContain('write')
     expect(names).not.toContain('edit')
     expect(names).not.toContain('bash')
-    expect(names).not.toContain('manage_skills')
+    // 每个助手都有自己的技能管理工具（技能库写入不属于项目事实修改）。
+    expect(names).toContain('manage_skills')
     expect(names).not.toContain('manage_mcp')
     expect(names).not.toContain('delegate_to_assistant')
   })
@@ -191,7 +192,8 @@ describe('buildBlueprintAgentTools', () => {
     expect(names).not.toContain('write')
     expect(names).not.toContain('edit')
     expect(names).not.toContain('bash')
-    expect(names).not.toContain('manage_skills')
+    // 每个助手都有自己的技能管理工具。
+    expect(names).toContain('manage_skills')
     expect(names).not.toContain('manage_mcp')
     expect(names).not.toContain('delegate_to_assistant')
   })

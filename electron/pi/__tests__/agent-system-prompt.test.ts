@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { renderAssistantIdentity } from '../../../src/services/agent/assistant-identity'
+import { filterAgentSkillCatalog, type AgentSkillCatalogEntry } from '../../../src/shared/agent-skills'
 import { getBuiltinPromptTemplate } from '../../../src/services/prompt-templates'
 import type { ProjectCoreData } from '../../repositories/project-core-repository'
 import { buildAssistantSystemPrompt } from '../agent-system-prompt'
@@ -124,6 +125,23 @@ describe('buildAssistantSystemPrompt', () => {
 })
 
 describe('sub-assistant default modules', () => {
+  it('injects only the skills visible to the sub-assistant stage', () => {
+    const blocks = resolveAssistantPromptBlocks('architect', 'zh-CN')
+    const catalog: AgentSkillCatalogEntry[] = [
+      { name: 'planning-skill', description: 'plan', location: 'builtin://planning-skill', source: 'builtin', stage: 'planning' },
+      { name: 'review-skill', description: 'review', location: 'builtin://review-skill', source: 'builtin', stage: 'review' },
+      { name: 'untagged-skill', description: 'free', location: 'builtin://untagged-skill', source: 'builtin' },
+    ]
+    const prompt = buildAssistantSystemPrompt(
+      blocks,
+      core(),
+      filterAgentSkillCatalog(catalog, 'architect'),
+    )
+    expect(prompt).toContain('<name>planning-skill</name>')
+    expect(prompt).toContain('<name>untagged-skill</name>')
+    expect(prompt).not.toContain('<name>review-skill</name>')
+  })
+
   it('assembles architect identity and boundary instead of the writing assistant identity', () => {
     const blocks = resolveAssistantPromptBlocks('architect', 'zh-CN')
     const prompt = buildAssistantSystemPrompt(blocks, core())

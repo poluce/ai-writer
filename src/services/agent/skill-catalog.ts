@@ -44,6 +44,9 @@ export function toAgentSkillCatalog(
     description: clampDescription(skillDescription(skill, locale)) || skill.metadata.name,
     location: skill.filePath,
     source: skill.source,
+    // 阶段 / 可见助手：目录按助手过滤时使用。
+    ...(skill.writingSkill.metadata.stage ? { stage: skill.writingSkill.metadata.stage } : {}),
+    ...(skill.writingSkill.metadata.audience ? { audience: skill.writingSkill.metadata.audience } : {}),
     // 正文随目录下发但只留在主进程内存里，不进入系统提示词。
     ...(skill.localizedContent?.[locale] ?? skill.content
       ? { content: skill.localizedContent?.[locale] ?? skill.content }

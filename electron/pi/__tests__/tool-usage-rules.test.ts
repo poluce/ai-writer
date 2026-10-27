@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { createManageMcpTool } from '../tools/manage-mcp.tool'
+import { createManageSkillsTool, defaultSkillStageForAssistant } from '../tools/manage-skills.tool'
 import { createNovelConfigTool } from '../tools/novel-config.tool'
 import { createStoryArchitectureTool } from '../tools/story-architecture.tool'
 import { createWebFetchTool } from '../tools/web-fetch.tool'
@@ -31,5 +32,18 @@ describe('tool declarations carry the migrated usage rules', () => {
     expect(createNovelConfigTool('zh-CN', sink).description).toContain('局部替换')
     expect(createStoryArchitectureTool('zh-CN', sink).description).toContain('action: "read"')
     expect(createStoryArchitectureTool('en-US', sink).description).toContain('action: "read"')
+  })
+
+  it('defaults new skill stages per assistant and exposes stage/audience', () => {
+    expect(defaultSkillStageForAssistant('general')).toBe('planning')
+    expect(defaultSkillStageForAssistant('architect')).toBe('planning')
+    expect(defaultSkillStageForAssistant('blueprint')).toBe('planning')
+    expect(defaultSkillStageForAssistant('review')).toBe('review')
+
+    const schema = createManageSkillsTool('zh-CN', []).parameters as {
+      properties?: Record<string, unknown>
+    }
+    expect(schema.properties).toHaveProperty('stage')
+    expect(schema.properties).toHaveProperty('audience')
   })
 })
