@@ -3,6 +3,7 @@ import { Type, StringEnum } from '@earendil-works/pi-ai'
 
 import { DraftRepository, type DraftMeta } from '../../repositories/draft-repository'
 import { DraftAnnotationRepository } from '../../repositories/draft-annotation-repository'
+import { RevisionRepository } from '../../repositories/revision-repository'
 import { countDraftUnits } from '../../../src/shared/draft-units'
 import { MAX_DRAFT_EXCERPT_CHARS } from '../../../src/shared/draft-excerpt'
 import type { DraftAnnotation } from '../../../src/shared/draft-annotation'
@@ -18,6 +19,8 @@ export const DRAFT_ACTIONS = [
   'write',
   'replace_excerpt',
   'list_versions',
+  'list_revisions',
+  'read_revision',
   'list_annotations',
   'resolve_annotation',
   'delete',
@@ -49,6 +52,7 @@ type ManageDraftsParams = {
   annotation_id?: string
   resolve_all?: boolean
   draft_id?: number
+  revision_id?: number
 }
 
 type ToolOutput = {
@@ -66,7 +70,7 @@ type DraftToolContext = {
 
 const Schema = Type.Object({
   action: Type.Optional(StringEnum(DRAFT_ACTIONS, {
-    description: 'Operation action: "read" (read draft body with pending annotations, default), "write" (create new draft or rewrite whole chapter), "replace_excerpt" (precisely replace passage), "list_versions" (list chapter draft versions), "list_annotations" (inspect annotations), "resolve_annotation" (mark annotation resolved), "delete" (delete unfinalized draft).',
+    description: 'Operation action: "read" (read draft body with pending annotations, default), "write" (create new draft or rewrite whole chapter), "replace_excerpt" (precisely replace passage), "list_versions" (list chapter draft versions), "list_revisions" (list revision history of a draft, including pending merges), "read_revision" (read one revision body), "list_annotations" (inspect annotations), "resolve_annotation" (mark annotation resolved), "delete" (delete unfinalized draft).',
   })),
   chapter_number: Type.Integer({ minimum: 1, description: '目标章节序号（正整数，如 1 代表第 1 章）' }),
 
@@ -101,6 +105,7 @@ const Schema = Type.Object({
 
   // === 通用版本指定 / 删除参数 ===
   draft_id: Type.Optional(Type.Integer({ minimum: 1, description: '可选的具体草稿版本数据库 ID（delete 操作必填）' })),
+  revision_id: Type.Optional(Type.Integer({ minimum: 1, description: '修稿记录 ID（read_revision 操作必填，可从 list_revisions 获取）' })),
 })
 
 function textOutput(body: string, details: unknown): ToolOutput {
@@ -122,6 +127,12 @@ function requireOpenProject(text: LanguageText): void {
 function resolveDraftAction(rawAction: string): DraftAction {
   if (rawAction === 'list_versions' || rawAction === '版本清单' || rawAction === '查看版本') {
     return 'list_versions'
+  }
+  if (rawAction === 'list_revisions' || rawAction === '修稿记录' || rawAction === '待合并修稿') {
+    return 'list_revisions'
+  }
+  if (rawAction === 'read_revision' || rawAction === '读取修稿' || rawAction === '查看修稿') {
+    return 'read_revision'
   }
   if (rawAction === 'list_annotations' || rawAction === '查看标注' || rawAction === '标注列表' || rawAction === '批注') {
     return 'list_annotations'
@@ -258,6 +269,145 @@ function handleListVersions(ctx: DraftToolContext): ToolOutput {
     versions: drafts.map(function (draft) {
       return { id: draft.id, version: draft.version, status: draft.status, wordCount: draft.wordCount }
     }),
+  })
+}
+
+function revisionStatusLabel(status: string, isEn: boolean): string {
+  if (status === 'pending') return isEn ? 'Pending merge' : '待合并'
+  if (status === 'merged') return isEn ? 'Merged' : '已合并'
+  if (status === 'discarded') return isEn ? 'Discarded' : '已丢弃'
+  return status
+}
+
+function revisionTypeLabel(type: string, isEn: boolean): string {
+  if (type === 'review-fix') return isEn ? 'From confirmed review' : '按审稿修稿'
+  if (type === 'refine') return isEn ? 'Direct revision' : '直接修稿'
+  return type
+}
+
+function handleListRevisions(ctx: DraftToolContext): ToolOutput {
+  const { chapterNumber, params, text, isEn } = ctx
+  const drafts = DraftRepository.listByChapter(chapterNumber)
+  if (drafts.length === 0) {
+    return textOutput(
+      text(
+        `第 ${chapterNumber} 章暂无任何草稿记录，也没有修稿记录。`,
+        `Chapter ${chapterNumber} has no drafts and no revisions.`,
+      ),
+      { chapterNumber, totalRevisions: 0, revisions: [] },
+    )
+  }
+
+  const targetMeta = resolveListedDraft(chapterNumber, params, drafts)
+  if (!targetMeta) {
+    throw new Error(text(`未找到第 ${chapterNumber} 章对应的草稿版本`, `Could not find draft for chapter ${chapterNumber}`))
+  }
+
+  const revisions = RevisionRepository.listByDraft(targetMeta.id)
+  if (revisions.length === 0) {
+    return textOutput(
+      text(
+        `第 ${chapterNumber} 章 Draft v${targetMeta.version}（ID ${targetMeta.id}）暂无修稿记录。修稿会由「按确认意见修稿」产生；当前没有待合并的修订。`,
+        `Chapter ${chapterNumber} draft v${targetMeta.version} (ID ${targetMeta.id}) has no revisions. Revisions come from the confirmed-review revision flow; nothing is pending merge.`,
+      ),
+      { chapterNumber, draftId: targetMeta.id, version: targetMeta.version, totalRevisions: 0, pending: 0, revisions: [] },
+    )
+  }
+
+  const pending = revisions.filter(revision => revision.status === 'pending')
+  const lines: string[] = [
+    text(
+      `### 第 ${chapterNumber} 章 Draft v${targetMeta.version} 的修稿记录（共 ${revisions.length} 份，待合并 ${pending.length} 份）\n`,
+      `### Revisions of Chapter ${chapterNumber} draft v${targetMeta.version} (${revisions.length} total, ${pending.length} pending)\n`,
+    ),
+  ]
+  for (const revision of revisions) {
+    const reviewRef = revision.reviewSourceId !== null ? text(` · 来源确认快照 #${revision.reviewSourceId}`, ` · confirmed snapshot #${revision.reviewSourceId}`) : ''
+    const mergedRef = revision.mergedToDraftId !== null ? text(` · 已并入草稿 #${revision.mergedToDraftId}`, ` · merged into draft #${revision.mergedToDraftId}`) : ''
+    lines.push(text(
+      `- 修稿 #${revision.revisionIndex}（ID ${revision.id}）· ${revisionStatusLabel(revision.status, isEn)} · ${revisionTypeLabel(revision.revisionType, isEn)} · ${revision.wordCount} 字 · 创建于 ${revision.createdAt}${reviewRef}${mergedRef}`,
+      `- Revision #${revision.revisionIndex} (ID ${revision.id}) · ${revisionStatusLabel(revision.status, isEn)} · ${revisionTypeLabel(revision.revisionType, isEn)} · ${revision.wordCount} words · created ${revision.createdAt}${reviewRef}${mergedRef}`,
+    ))
+    if (revision.userPrompt.trim()) {
+      lines.push(text(`  作者附加要求：${revision.userPrompt.trim()}`, `  Author guidance: ${revision.userPrompt.trim()}`))
+    }
+  }
+  lines.push('')
+  lines.push(text(
+    '待合并的修稿只存在于草稿的合并视图里；读取正文用 action: "read_revision" 并传入 revision_id。',
+    'Pending revisions live in the draft merge view. Read a revision body with action: "read_revision" and its revision_id.',
+  ))
+
+  return textOutput(lines.join('\n'), {
+    chapterNumber,
+    draftId: targetMeta.id,
+    version: targetMeta.version,
+    totalRevisions: revisions.length,
+    pending: pending.length,
+    revisions: revisions.map(revision => ({
+      id: revision.id,
+      revisionIndex: revision.revisionIndex,
+      revisionType: revision.revisionType,
+      status: revision.status,
+      reviewSourceId: revision.reviewSourceId,
+      mergedToDraftId: revision.mergedToDraftId,
+      wordCount: revision.wordCount,
+      createdAt: revision.createdAt,
+    })),
+  })
+}
+
+function handleReadRevision(ctx: DraftToolContext): ToolOutput {
+  const { chapterNumber, params, text, isEn } = ctx
+  const revisionId = params.revision_id
+  if (!Number.isInteger(revisionId) || (revisionId ?? 0) < 1) {
+    throw new Error(text('read_revision 需要正整数 revision_id，可先用 list_revisions 获取', 'read_revision requires a positive revision_id; get it from list_revisions first'))
+  }
+
+  const revision = RevisionRepository.getFull(revisionId!)
+  if (!revision) {
+    throw new Error(text(`未找到修稿记录 #${revisionId}`, `Revision #${revisionId} was not found`))
+  }
+  const baseDraft = DraftRepository.getMeta(revision.baseDraftId)
+  if (!baseDraft || baseDraft.chapterNumber !== chapterNumber) {
+    throw new Error(text(
+      `修稿记录 #${revisionId} 不属于第 ${chapterNumber} 章`,
+      `Revision #${revisionId} does not belong to Chapter ${chapterNumber}`,
+    ))
+  }
+
+  const lines: string[] = [
+    text(
+      `### 修稿 #${revision.revisionIndex}（ID ${revision.id}）· ${revisionStatusLabel(revision.status, isEn)} · ${revisionTypeLabel(revision.revisionType, isEn)}`,
+      `### Revision #${revision.revisionIndex} (ID ${revision.id}) · ${revisionStatusLabel(revision.status, isEn)} · ${revisionTypeLabel(revision.revisionType, isEn)}`,
+    ),
+    text(
+      `基准草稿：Draft v${baseDraft.version}（ID ${baseDraft.id}）· ${revision.wordCount} 字 · 创建于 ${revision.createdAt}`,
+      `Base draft: v${baseDraft.version} (ID ${baseDraft.id}) · ${revision.wordCount} words · created ${revision.createdAt}`,
+    ),
+  ]
+  if (revision.reviewSourceId !== null) {
+    lines.push(text(`来源确认快照：审核记录 #${revision.reviewSourceId}`, `Confirmed review snapshot: review #${revision.reviewSourceId}`))
+  }
+  if (revision.userPrompt.trim()) {
+    lines.push(text(`作者附加要求：${revision.userPrompt.trim()}`, `Author guidance: ${revision.userPrompt.trim()}`))
+  }
+  lines.push('')
+  lines.push('```')
+  lines.push(revision.content)
+  lines.push('```')
+
+  return textOutput(lines.join('\n'), {
+    chapterNumber,
+    revisionId: revision.id,
+    baseDraftId: revision.baseDraftId,
+    revisionIndex: revision.revisionIndex,
+    revisionType: revision.revisionType,
+    status: revision.status,
+    reviewSourceId: revision.reviewSourceId,
+    mergedToDraftId: revision.mergedToDraftId,
+    wordCount: revision.wordCount,
+    content: revision.content,
   })
 }
 
@@ -593,10 +743,10 @@ export function createManageDraftsTool(
 
       if (options.readOnly) {
         const action = resolveDraftAction(String(params.action || 'read').toLowerCase().trim())
-        if (action !== 'read' && action !== 'list_versions' && action !== 'list_annotations') {
+        if (action !== 'read' && action !== 'list_versions' && action !== 'list_revisions' && action !== 'read_revision' && action !== 'list_annotations') {
           throw new Error(text(
-            '本助手为只读审稿角色，不能修改草稿；请只使用 read / list_versions / list_annotations。',
-            'This assistant is read-only for review and cannot modify drafts. Use read, list_versions, or list_annotations only.',
+            '本助手为只读审稿角色，不能修改草稿；请只使用 read / list_versions / list_revisions / read_revision / list_annotations。',
+            'This assistant is read-only for review and cannot modify drafts. Use read, list_versions, list_revisions, read_revision, or list_annotations only.',
           ))
         }
       }
@@ -617,6 +767,10 @@ export function createManageDraftsTool(
       switch (resolveDraftAction(String(params.action || 'read').toLowerCase().trim())) {
         case 'list_versions':
           return handleListVersions(ctx)
+        case 'list_revisions':
+          return handleListRevisions(ctx)
+        case 'read_revision':
+          return handleReadRevision(ctx)
         case 'list_annotations':
           return handleListAnnotations(ctx)
         case 'replace_excerpt':

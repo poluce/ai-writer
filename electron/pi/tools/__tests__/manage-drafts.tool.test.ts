@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createManageDraftsTool } from '../manage-drafts.tool'
 import { DraftRepository } from '../../../repositories/draft-repository'
 import { DraftAnnotationRepository } from '../../../repositories/draft-annotation-repository'
+import { RevisionRepository } from '../../../repositories/revision-repository'
 import * as databaseModule from '../../../database'
 
 vi.mock('../../../repositories/draft-repository', () => ({
@@ -22,6 +23,13 @@ vi.mock('../../../repositories/draft-annotation-repository', () => ({
     list: vi.fn(),
     replace: vi.fn(),
     resolve: vi.fn(),
+  },
+}))
+
+vi.mock('../../../repositories/revision-repository', () => ({
+  RevisionRepository: {
+    listByDraft: vi.fn(),
+    getFull: vi.fn(),
   },
 }))
 
@@ -244,7 +252,78 @@ describe('manage_drafts tool', () => {
   })
 
   // =========================================================================
-  // 3. 写入 (write - 新建首版 / 追加新版 / 覆盖未定稿)
+  // 3. 修稿记录 (list_revisions / read_revision)
+  // =========================================================================
+  describe('revision read operations', () => {
+    const baseDraft = {
+      id: 20, chapterNumber: 1, version: 2, status: 'revised', source: 'rewrite', contentId: 20,
+      wordCount: 2500, sourceDependencies: [], dependenciesStale: false,
+      createdAt: '2026-10-20', updatedAt: '2026-10-21',
+    }
+
+    it('lists revisions with pending state and provenance', async () => {
+      vi.mocked(DraftRepository.listByChapter).mockReturnValue([baseDraft])
+      vi.mocked(DraftRepository.getMeta).mockReturnValue(baseDraft)
+      vi.mocked(RevisionRepository.listByDraft).mockReturnValue([
+        {
+          id: 31, baseDraftId: 20, revisionIndex: 1, revisionType: 'review-fix', status: 'pending',
+          mergedToDraftId: null, userPrompt: '保留开头的雨夜氛围', reviewSourceId: 7, contentId: 310,
+          wordCount: 2600, createdAt: '2026-10-21T00:00:00Z', updatedAt: '2026-10-21T00:00:00Z',
+        },
+        {
+          id: 32, baseDraftId: 20, revisionIndex: 2, revisionType: 'refine', status: 'merged',
+          mergedToDraftId: 21, userPrompt: '', reviewSourceId: null, contentId: 311,
+          wordCount: 2550, createdAt: '2026-10-22T00:00:00Z', updatedAt: '2026-10-22T00:00:00Z',
+        },
+      ])
+
+      const tool = createManageDraftsTool('zh-CN', rendererAction)
+      const res = await tool.execute('r1', { action: 'list_revisions', chapter_number: 1, draft_id: 20 })
+      const body = textOf(res)
+
+      expect(res.details).toMatchObject({ totalRevisions: 2, pending: 1, draftId: 20 })
+      expect(body).toContain('修稿记录（共 2 份，待合并 1 份）')
+      expect(body).toContain('修稿 #1（ID 31）· 待合并 · 按审稿修稿')
+      expect(body).toContain('来源确认快照 #7')
+      expect(body).toContain('作者附加要求：保留开头的雨夜氛围')
+      expect(body).toContain('修稿 #2（ID 32）· 已合并 · 直接修稿')
+      expect(body).toContain('已并入草稿 #21')
+    })
+
+    it('reads one revision body and verifies its chapter', async () => {
+      vi.mocked(DraftRepository.getMeta).mockReturnValue(baseDraft)
+      vi.mocked(RevisionRepository.getFull).mockReturnValue({
+        id: 31, baseDraftId: 20, revisionIndex: 1, revisionType: 'review-fix', status: 'pending',
+        mergedToDraftId: null, userPrompt: '', reviewSourceId: 7, contentId: 310,
+        wordCount: 12, createdAt: '2026-10-21T00:00:00Z', updatedAt: '2026-10-21T00:00:00Z',
+        content: '修订后的完整正文。', sourceDraft: null,
+      })
+
+      const tool = createManageDraftsTool('zh-CN', rendererAction)
+      const res = await tool.execute('r2', { action: 'read_revision', chapter_number: 1, revision_id: 31 })
+
+      expect(textOf(res)).toContain('修订后的完整正文。')
+      expect(textOf(res)).toContain('来源确认快照：审核记录 #7')
+      expect(res.details).toMatchObject({ revisionId: 31, baseDraftId: 20, status: 'pending', content: '修订后的完整正文。' })
+    })
+
+    it('rejects reading a revision from another chapter', async () => {
+      vi.mocked(DraftRepository.getMeta).mockReturnValue({ ...baseDraft, chapterNumber: 2 })
+      vi.mocked(RevisionRepository.getFull).mockReturnValue({
+        id: 41, baseDraftId: 22, revisionIndex: 1, revisionType: 'refine', status: 'pending',
+        mergedToDraftId: null, userPrompt: '', reviewSourceId: null, contentId: 410,
+        wordCount: 12, createdAt: '2026-10-21T00:00:00Z', updatedAt: '2026-10-21T00:00:00Z',
+        content: '别章修稿。', sourceDraft: null,
+      })
+
+      const tool = createManageDraftsTool('zh-CN', rendererAction)
+      await expect(tool.execute('r3', { action: 'read_revision', chapter_number: 1, revision_id: 41 }))
+        .rejects.toThrow('不属于第 1 章')
+    })
+  })
+
+  // =========================================================================
+  // 4. 写入 (write - 新建首版 / 追加新版 / 覆盖未定稿)
   // =========================================================================
   describe('write operation', () => {
     it('creates initial draft v1 when chapter has no drafts', async () => {

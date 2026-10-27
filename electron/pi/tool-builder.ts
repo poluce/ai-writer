@@ -22,6 +22,7 @@ import { createManageMcpTool } from './tools/manage-mcp.tool'
 import { createWebFetchTool } from './tools/web-fetch.tool'
 import { buildMcpAgentTools } from './tools/mcp.tool'
 import { createReadContinuityFactsTool } from './tools/read-continuity-facts.tool'
+import { createReadNarrativeThreadsTool } from './tools/read-narrative-threads.tool'
 import { createSubmitChapterReviewTool } from './tools/submit-chapter-review.tool'
 import { createDelegateToAssistantTool, type AssistantDelegateHandler, type DelegatableAssistantType } from './tools/delegate-to-assistant.tool'
 import type { AnyAgentTool } from './tool-types'
@@ -87,6 +88,7 @@ export function buildAgentTools(
     createManageReviewReportsTool(language, rendererAction),
     createDeleteReviewReportTool(language, rendererAction),
     createReadProjectStateTool(language),
+    createReadNarrativeThreadsTool(language),
     createSearchKnowledgeTool(language),
     createManageKnowledgeBaseTool(language),
     createReadFileTool(language),
@@ -124,6 +126,7 @@ export function buildArchitectAgentTools(
     createReadArchitectureTool(language),
     createReadBlueprintTool(language),
     createReadProjectStateTool(language),
+    createReadNarrativeThreadsTool(language),
     createSearchKnowledgeTool(language),
     createManageKnowledgeBaseTool(language),
     createReadFileTool(language),
@@ -153,6 +156,7 @@ export function buildBlueprintAgentTools(
     createProposeChapterBlueprintTool(language),
     createReadBlueprintTool(language),
     createReadContinuityFactsTool(language),
+    createReadNarrativeThreadsTool(language),
     createReadProjectStateTool(language),
     createReadArchitectureTool(language),
     createManageCharactersTool(language, rendererAction),
@@ -183,6 +187,7 @@ export function buildReviewAgentTools(
     createReadArchitectureTool(language),
     createReadBlueprintTool(language),
     createReadContinuityFactsTool(language),
+    createReadNarrativeThreadsTool(language),
     createManageDraftsTool(language, rendererAction, { readOnly: true }),
     createManageCharactersTool(language, rendererAction, { readOnly: true }),
     createSearchKnowledgeTool(language),
