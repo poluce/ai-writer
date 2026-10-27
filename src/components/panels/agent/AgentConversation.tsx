@@ -12,6 +12,7 @@ import AgentMessage from './AgentMessage'
 import AgentInputBox from './AgentInputBox'
 import { formatRelativeTime } from '../../../utils/time'
 import { useLocaleStore } from '../../../stores/locale-store'
+import { cn } from '../../../lib/utils'
 import { ipc } from '../../../services/ipc-client'
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle} from '../../ui/Dialog'
@@ -397,10 +398,8 @@ function AgentHistoryPanel({ assistantType = 'general' }: { assistantType?: Assi
         </span>
         <button
           onClick={() => setShowHistory(false, assistantType)}
-          className="text-xs px-2 py-0.5 rounded transition-colors"
+          className="text-xs px-2 py-0.5 rounded transition-colors hover:bg-[var(--color-hover)]"
           style={{ color: 'var(--color-text-muted)' }}
-          onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--color-hover)')}
-          onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
         >
           {text('关闭', 'Close')}
         </button>
@@ -446,12 +445,21 @@ function RecentConversationItem({
   const locale = useLocaleStore(s => s.locale)
   const text = useLocaleStore(s => s.text)
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
+      aria-current={isActive ? 'true' : undefined}
       onClick={onClick}
-      className="group w-full flex flex-row items-center justify-between overflow-hidden rounded py-1.5 text-left px-2 box-border transition-colors"
-      style={{ backgroundColor: isActive ? 'var(--color-hover)' : 'transparent' }}
-      onMouseEnter={e => { if (!isActive) e.currentTarget.style.backgroundColor = 'var(--color-hover)' }}
-      onMouseLeave={e => { if (!isActive) e.currentTarget.style.backgroundColor = 'transparent' }}
+      onKeyDown={event => {
+        if (event.key !== 'Enter' && event.key !== ' ') return
+        event.preventDefault()
+        onClick()
+      }}
+      className={cn(
+        'group relative w-full flex flex-row items-center justify-between overflow-hidden rounded py-1.5 text-left px-2 box-border transition-colors cursor-pointer',
+        'hover:bg-[var(--color-hover)]',
+        isActive ? 'bg-[var(--color-hover)]' : '',
+      )}
     >
       {/* 标题 */}
       <div className="flex items-center gap-x-1 overflow-hidden flex-1 min-w-0">
@@ -463,26 +471,30 @@ function RecentConversationItem({
         </div>
       </div>
 
-      {/* 右侧：时间 or 删除（纯 CSS group-hover 控制） */}
-      <div className="flex-shrink-0 ml-2">
+      {/*
+        右侧槽位固定宽高：时间与删除按钮叠放在同一位置。
+        两者切换只改透明度，不改变行高与标题宽度，避免悬停时列表跳动。
+      */}
+      <div className="relative flex-shrink-0 ml-2 w-14 h-4">
+        <span
+          className="absolute inset-y-0 right-0 flex items-center justify-end whitespace-nowrap text-[0.7rem] opacity-60 transition-opacity pointer-events-none group-hover:opacity-0"
+          style={{ color: 'var(--color-text-muted)' }}
+        >
+          {formatRelativeTime(updatedAt, locale)}
+        </span>
         <button
-          onClick={e => {
-            e.stopPropagation()
+          type="button"
+          onClick={event => {
+            event.stopPropagation()
             onDelete()
           }}
-          className="hidden group-hover:flex items-center justify-center w-4 h-4 rounded opacity-50 hover:opacity-100 transition-opacity"
+          className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center justify-center w-4 h-4 rounded opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto"
           style={{ color: 'var(--color-text-secondary)' }}
           title={text('删除对话', 'Delete conversation')}
         >
           <Trash2 size={12} />
         </button>
-        <span
-          className="group-hover:hidden text-[0.7rem] whitespace-nowrap"
-          style={{ color: 'var(--color-text-muted)', opacity: 0.6 }}
-        >
-          {formatRelativeTime(updatedAt, locale)}
-        </span>
       </div>
-    </button>
+    </div>
   )
 }
