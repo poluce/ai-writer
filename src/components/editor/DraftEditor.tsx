@@ -736,55 +736,53 @@ function DraftEditorSession({ tabId, filePath, content, projectKey }: Props) {
           borderBottom: '1px solid var(--color-border)',
           backgroundColor: 'var(--color-editor-bg)'}}
       >
-        {/* 左侧：章节标题 + 版本 */}
+        {/* 左侧：章节标题 + 版本切换（切换版本时位置固定） */}
         <div className="flex items-center gap-1.5 min-w-0">
-          <span className="text-xs font-medium truncate" style={{ color: 'var(--color-text-secondary)' }}>
+          <span className="text-xs font-medium truncate min-w-0" style={{ color: 'var(--color-text-secondary)' }}>
               {meta
                 ? text(`第 ${meta.chapterNumber} 章 — ${meta.chapterTitle || '未知标题'}`, `Chapter ${meta.chapterNumber} — ${meta.chapterTitle || 'Untitled'}`)
                 : text('草稿', 'Draft')}
           </span>
           {displayVersion !== undefined && (
             <span className="text-[0.7rem] flex-shrink-0" style={{ color: 'var(--color-text-muted)' }}>
-              v{displayVersion}{viewingHistory ? text(' · 历史版本', ' · history') : ''}
+              v{displayVersion}
             </span>
           )}
+          {meta && draftVersions.length > 1 && (
+            <div className="flex items-center gap-1.5 flex-shrink-0 ml-1">
+              <select
+                value={historyView?.id ?? meta.id}
+                onChange={event => { void handleSelectVersion(Number(event.target.value)) }}
+                disabled={versionLoading}
+                aria-label={text('切换草稿版本', 'Switch draft version')}
+                className="w-[132px] text-[0.7rem] rounded-md px-1.5 py-0.5 outline-none disabled:opacity-50"
+                style={{
+                  backgroundColor: 'var(--color-hover)',
+                  color: 'var(--color-text-secondary)',
+                  border: '1px solid var(--color-border)'}}
+              >
+                {draftVersions.map(version => (
+                  <option key={version.id} value={version.id}>
+                    {`v${version.version} · ${text(
+                      DRAFT_STATUS_LABEL[version.status] ?? version.status ?? 'draft',
+                      DRAFT_STATUS_EN[version.status] ?? version.status ?? 'draft',
+                    )}`}
+                  </option>
+                ))}
+              </select>
+              {viewingHistory && (
+                <span className="text-[0.7rem] tabular-nums flex-shrink-0" style={{ color: 'var(--color-text-muted)' }}>
+                  {text(`${displayCharCount.toLocaleString(locale)} 字 · 只读`, `${displayCharCount.toLocaleString(locale)} words · read-only`)}
+                </span>
+              )}
+              {viewingHistory && (
+                <Button variant="outline" size="sm" onClick={() => setHistoryView(null)}>
+                  {text('返回最新', 'Back to latest')}
+                </Button>
+              )}
+            </div>
+          )}
         </div>
-
-        {/* 中部：草稿版本切换（查看历史版本，不产生新 Tab） */}
-        {meta && draftVersions.length > 1 && (
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            <select
-              value={historyView?.id ?? meta.id}
-              onChange={event => { void handleSelectVersion(Number(event.target.value)) }}
-              disabled={versionLoading}
-              aria-label={text('切换草稿版本', 'Switch draft version')}
-              className="text-[0.7rem] rounded-md px-1.5 py-0.5 outline-none disabled:opacity-50"
-              style={{
-                backgroundColor: 'var(--color-hover)',
-                color: 'var(--color-text-secondary)',
-                border: '1px solid var(--color-border)'}}
-            >
-              {draftVersions.map(version => (
-                <option key={version.id} value={version.id}>
-                  {`v${version.version} · ${text(
-                    DRAFT_STATUS_LABEL[version.status] ?? version.status ?? 'draft',
-                    DRAFT_STATUS_EN[version.status] ?? version.status ?? 'draft',
-                  )}`}
-                </option>
-              ))}
-            </select>
-            {viewingHistory && (
-              <span className="text-[0.7rem] tabular-nums flex-shrink-0" style={{ color: 'var(--color-text-muted)' }}>
-                {text(`${displayCharCount.toLocaleString(locale)} 字 · 只读`, `${displayCharCount.toLocaleString(locale)} words · read-only`)}
-              </span>
-            )}
-            {viewingHistory && (
-              <Button variant="outline" size="sm" onClick={() => setHistoryView(null)}>
-                {text('返回最新', 'Back to latest')}
-              </Button>
-            )}
-          </div>
-        )}
 
         {/* 右侧：字数 + 状态 + 待合并 + AI操作 + 定稿 */}
         {!isReadonly && !viewingHistory && (
