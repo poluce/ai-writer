@@ -18,13 +18,6 @@ interface SystemPromptPreviewProps {
   assistantType: AssistantType
 }
 
-const SOURCE_META = {
-  builtin: { zh: '内置默认', en: 'Built-in', color: 'var(--color-text-muted)' },
-  global: { zh: '全局覆盖', en: 'Global override', color: 'var(--color-info)' },
-  project: { zh: '项目覆盖', en: 'Project override', color: 'var(--color-success-text)' },
-  auto: { zh: '自动生成', en: 'Auto', color: 'var(--color-info)' },
-} as const
-
 /** 粗略 token 估算：CJK 约 1 字 1 token，其余按 3.5 字符 1 token。 */
 function estimateTokens(value: string): number {
   let cjk = 0
@@ -45,7 +38,6 @@ export default function SystemPromptPreview({
   const project = useProjectStore((s) => s.currentProject)
   const language = resolveWritingLanguage(project?.novelConfig.writingLanguage)
   const [active, setActive] = useState<AssistantType>(assistantType)
-  // 父组件以 key={assistantType} 重新挂载，这里无需再同步 prop。
   const [preview, setPreview] = useState<AssistantPromptPreview | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
@@ -108,7 +100,7 @@ export default function SystemPromptPreview({
       onClick={onClose}
     >
       <div
-        className="flex flex-col w-[700px] max-h-[560px] rounded-xl overflow-hidden"
+        className="flex flex-col w-[760px] max-h-[620px] rounded-xl overflow-hidden"
         style={{ backgroundColor: 'var(--color-editor-bg)', border: '1px solid var(--color-border)' }}
         onClick={(event) => event.stopPropagation()}
       >
@@ -141,40 +133,15 @@ export default function SystemPromptPreview({
           </button>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 flex flex-col gap-2">
-          {preview ? preview.blocks.map((block) => {
-            const meta = SOURCE_META[block.source]
-            return (
-              <div
-                key={block.kind}
-                className="rounded-lg overflow-hidden"
-                style={{ border: '1px solid var(--color-border)' }}
-              >
-                <div className="flex items-center gap-2 px-2.5 py-1.5" style={{ backgroundColor: 'var(--color-sidebar)' }}>
-                  <span className="text-[0.72rem] font-medium" style={{ color: 'var(--color-text)' }}>
-                    {block.label}
-                  </span>
-                  <span className="text-[0.6rem] px-1.5 py-0.5 rounded-full" style={{ color: meta.color, backgroundColor: 'var(--color-hover)' }}>
-                    {text(meta.zh, meta.en)}
-                  </span>
-                  {block.editable && (
-                    <span className="text-[0.6rem]" style={{ color: 'var(--color-text-muted)' }}>
-                      {text('可编辑', 'editable')}
-                    </span>
-                  )}
-                  <span className="ml-auto text-[0.6rem]" style={{ color: 'var(--color-text-muted)' }}>
-                    {`${block.chars.toLocaleString()} ${text('字符', 'chars')}`}
-                  </span>
-                </div>
-                <pre
-                  className="max-h-36 overflow-auto px-2.5 py-2 text-[0.68rem] leading-relaxed whitespace-pre-wrap font-mono m-0"
-                  style={{ color: 'var(--color-text-secondary)' }}
-                >
-                  {block.text || text('（空块，不注入）', '(empty block, omitted)')}
-                </pre>
-              </div>
-            )
-          }) : (
+        <div className="flex-1 min-h-0 overflow-auto px-4 py-3">
+          {preview ? (
+            <pre
+              className="m-0 text-[0.7rem] leading-relaxed whitespace-pre-wrap font-mono"
+              style={{ color: 'var(--color-text-secondary)' }}
+            >
+              {preview.prompt}
+            </pre>
+          ) : (
             <div className="text-xs py-10 text-center" style={{ color: 'var(--color-text-muted)' }}>
               {text('正在读取…', 'Loading…')}
             </div>
@@ -182,9 +149,6 @@ export default function SystemPromptPreview({
         </div>
 
         <div className="flex items-center gap-2 px-4 py-2.5" style={{ borderTop: '1px solid var(--color-border)', backgroundColor: 'var(--color-sidebar)' }}>
-          <span className="text-[0.65rem]" style={{ color: 'var(--color-text-muted)' }}>
-            {text('技能目录与项目信息自动生成，其余模块可编辑。', 'Skill catalog and project facts are generated automatically; the other modules are editable.')}
-          </span>
           <span className="ml-auto text-[0.65rem]" style={{ color: 'var(--color-text-muted)' }}>{notice}</span>
           <button onClick={() => void handleCopy()} className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[0.68rem] hover:bg-[var(--color-hover)]" style={{ color: 'var(--color-text-secondary)' }}>
             <Copy size={12} />

@@ -42,7 +42,7 @@ function installIpc(): ReturnType<typeof vi.fn> {
       const assistantType = args[1] as string | undefined
       return {
         success: true,
-        prompt: '最终系统提示词',
+        prompt: '真实拼接的系统提示词',
         blocks: [
           { kind: 'hard_rules', label: '软件硬规则', source: 'builtin', editable: true, chars: 10, text: '硬规则' },
           { kind: 'identity', label: '助手身份', source: 'builtin', editable: true, chars: 10, text: '身份' },
@@ -144,5 +144,11 @@ describe('assistant settings page', () => {
       await page.getByRole('button', { name: /技能目录/ }).click()
     })
     await expect.element(page.getByText('review: review-chapter')).toBeVisible()
+
+    // 预览直接展示真实拼接结果，不再按模块拆分。
+    await act(async () => {
+      await page.getByRole('button', { name: '预览最终系统提示词' }).click()
+    })
+    await expect.element(page.getByText('真实拼接的系统提示词')).toBeVisible()
   })
 })
