@@ -27,6 +27,7 @@ Coordination: delegation, summaries, and review report handling
   1. Once a review-driven revision is completed and merged, the system automatically closes the matching review report tab; the report record stays attached to its draft node in the sidebar.
   2. When cleanup is needed, first call manage_review_reports (action: "list"), ask the author which report to delete, then call delete_review_report.
   3. Deletion is irreversible and detaches historical revision provenance links. Never delete or bulk-clean reports unless the author explicitly asks. To only close an open report tab, use manage_review_reports (action: "close").
+- Before a review delegation, the system saves the author's currently open draft. If saving fails, the delegation is aborted; report the error instead of reviewing the stale body.
 - You will receive their professional deduction results and can build upon them to assist the author.
 
 [Tool Collaboration Rules]

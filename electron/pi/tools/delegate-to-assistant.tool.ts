@@ -1,6 +1,7 @@
 import type { AgentTool } from '@earendil-works/pi-agent-core'
 import { Type, StringEnum } from '@earendil-works/pi-ai'
 import { writingLanguageText, type WritingLanguage } from '../../../src/shared/writing-language'
+import type { RendererActionSink } from '../renderer-action'
 
 export type DelegatableAssistantType = 'architect' | 'blueprint' | 'review'
 
@@ -13,6 +14,7 @@ export type AssistantDelegateHandler = (params: {
   success: boolean
   result?: string
   conversationId?: string
+  reviewId?: number
   error?: string
 }>
 
@@ -41,6 +43,7 @@ const Schema = Type.Object({
 export function createDelegateToAssistantTool(
   language: WritingLanguage,
   handler: AssistantDelegateHandler,
+  rendererAction?: RendererActionSink,
 ): AgentTool<typeof Schema> {
   const isEn = language === 'en-US'
   return {
@@ -48,8 +51,8 @@ export function createDelegateToAssistantTool(
     label: isEn ? 'Delegate to Assistant' : '委派助手任务',
     description: writingLanguageText(
       language,
-      '向专门领域助手（架构助手、章节蓝图助手或审稿助手）委派专门任务并获取执行结果。所有助手共享项目权威数据库并自带专属读取工具。委派时遵守【指针传递】原则：仅需指定目标助手、核心任务、目标章节（chapter_number，如适用）以及作者的关注重点（instructions）。严禁在此复制大段正文或设定，目标助手会以专业角色自行调用工具精准调取事实并深入推演。',
-      'Delegate a dedicated task to the Architecture Assistant, Chapter Blueprint Assistant, or Review Assistant and retrieve their response. All assistants share the project authoritative database and possess dedicated tools. Follow the "Pass Pointers, Not Payloads" principle: supply only the target assistant, core task, chapter_number (if applicable), and author focus instructions. Never copy draft text or settings into the parameters; the target assistant will query the database directly using its own tools.',
+      '向专门领域助手（架构助手、章节蓝图助手或审稿助手）委派专门任务并获取执行结果。所有助手共享项目权威数据库并自带专属读取工具。委派审稿任务前，系统会自动保存作者当前打开的单章草稿；保存失败会中止委派。委派时遵守【指针传递】原则：仅需指定目标助手、核心任务、目标章节（chapter_number，如适用）以及作者的关注重点（instructions）。严禁在此复制大段正文或设定，目标助手会以专业角色自行调用工具精准调取事实并深入推演。',
+      'Delegate a dedicated task to the Architecture Assistant, Chapter Blueprint Assistant, or Review Assistant and retrieve their response. All assistants share the project authoritative database and possess dedicated tools. Before a review delegation, the system automatically saves the author\'s currently open chapter draft; if saving fails the delegation is aborted. Follow the "Pass Pointers, Not Payloads" principle: supply only the target assistant, core task, chapter_number (if applicable), and author focus instructions. Never copy draft text or settings into the parameters; the target assistant will query the database directly using its own tools.',
     ),
     parameters: Schema,
     isWriteOperation: () => true,
@@ -60,6 +63,22 @@ export function createDelegateToAssistantTool(
         : target === 'blueprint'
           ? (isEn ? 'Chapter Blueprint Assistant' : '蓝图助手')
           : (isEn ? 'Review Assistant' : '审稿助手')
+
+      // 审稿委派前先请渲染层保存作者屏幕上未保存的草稿；保存失败就中止委派，
+      // 避免审稿助手读到数据库旧稿却把报告绑在新版本上。
+      let savedDraftSummary = ''
+      if (target === 'review' && rendererAction) {
+        const saveResult = await rendererAction({
+          type: 'save_draft_for_ai',
+          ...(params.chapter_number === undefined ? {} : { chapterNumber: params.chapter_number }),
+        })
+        if (saveResult && !saveResult.ok) {
+          throw new Error(isEn
+            ? `Could not save the current draft before review: ${saveResult.error}`
+            : `审稿前保存当前草稿失败：${saveResult.error}`)
+        }
+        savedDraftSummary = saveResult?.ok ? saveResult.summary : ''
+      }
 
       const response = await handler({
         target,
@@ -93,6 +112,8 @@ export function createDelegateToAssistantTool(
           assistant: target,
           conversationId: response.conversationId,
           result: response.result,
+          ...(response.reviewId === undefined ? {} : { reviewId: response.reviewId }),
+          ...(savedDraftSummary ? { savedDraft: savedDraftSummary } : {}),
         },
       }
     },

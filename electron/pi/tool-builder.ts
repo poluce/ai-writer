@@ -106,7 +106,7 @@ export function buildAgentTools(
   ]
 
   if (delegateHandler) {
-    tools.push(createDelegateToAssistantTool(language, delegateHandler))
+    tools.push(createDelegateToAssistantTool(language, delegateHandler, rendererAction))
   }
 
   return tools.map(withExecutionMode)

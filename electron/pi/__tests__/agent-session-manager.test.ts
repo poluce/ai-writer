@@ -63,11 +63,20 @@ vi.mock('../tool-builder', () => {
   }
 })
 
+vi.mock('../../database', () => ({
+  getProjectDb: vi.fn(() => ({})),
+}))
+vi.mock('../../repositories/review-repository', () => ({
+  ReviewRepository: { listSummaries: vi.fn(() => []) },
+}))
+
 import { createPiModels } from '../pi-models'
 import { buildAgentTools } from '../tool-builder'
+import { ReviewRepository } from '../../repositories/review-repository'
 
 const createPiModelsMock = createPiModels as ReturnType<typeof vi.fn>
 const buildToolsMock = buildAgentTools as ReturnType<typeof vi.fn>
+const listSummariesMock = ReviewRepository.listSummaries as ReturnType<typeof vi.fn>
 
 function buildManager(
   store: AgentConversationStore | null = null,
@@ -109,6 +118,8 @@ beforeEach(() => {
   h.transcriptLength = 0
   h.busy = false
   h.createdOptions.length = 0
+  listSummariesMock.mockReset()
+  listSummariesMock.mockReturnValue([])
 })
 
 afterEach(() => {
@@ -455,6 +466,9 @@ describe('AgentSessionManager', () => {
       open: openMock,
     })
     const { manager } = buildManager(store as never)
+    listSummariesMock
+      .mockReturnValueOnce([])
+      .mockReturnValue([{ id: 9 }])
 
     const result = await manager.delegateTask({
       target: 'review',
@@ -467,5 +481,29 @@ describe('AgentSessionManager', () => {
     expect(result.conversationId).toMatch(/^review-/)
     expect(openMock).toHaveBeenCalledWith(expect.stringMatching(/^review-/), { create: true })
     expect(result.result).toBe('mocked text')
+    expect(result.reviewId).toBe(9)
+  })
+
+
+  it('fails delegated review when no report is ever persisted', async () => {
+    const store = fakeStore({
+      listConversations: vi.fn(async () => []),
+      open: vi.fn(async (id: string) => ({
+        metadata: { id },
+        setName: vi.fn(),
+      })),
+    })
+    const { manager } = buildManager(store as never)
+
+    const result = await manager.delegateTask({
+      target: 'review',
+      task: '审查草稿',
+      chapter_number: 1,
+    }, 'parent-conv-1')
+
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('没有提交正式审稿报告')
+    const session = h.sessions.at(-1)!
+    expect(session.prompt).toHaveBeenCalledTimes(2)
   })
 })

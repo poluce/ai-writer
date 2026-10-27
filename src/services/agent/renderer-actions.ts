@@ -9,6 +9,7 @@ import { useEditorStore } from '../../stores/editor-store'
 import { useLocaleStore } from '../../stores/locale-store'
 import { openReviewReportTab } from '../editor/open-review-report'
 import { useProjectStore } from '../../stores/project-store'
+import { countDraftUnits } from '../../shared/draft-units'
 
 /**
  * 主进程工具要求渲染层做的编排（开编辑器、刷新项目、改草稿）。
@@ -162,6 +163,101 @@ export async function handleRendererAction(action: RendererAction): Promise<Rend
         runId: `agent-${Date.now()}`,
       })
       return
+    }
+    case 'save_draft_for_ai': {
+      const project = useProjectStore.getState().currentProject
+      const uiText = useLocaleStore.getState().text
+      if (!project) {
+        return { ok: false, error: uiText('未打开小说项目', 'No novel project is currently open') }
+      }
+      const projectSession = projectSessionContextFromProject(project)
+      if (!projectSession) {
+        return { ok: false, error: uiText('项目会话已失效，请重新打开项目', 'The project session has expired; reopen the project') }
+      }
+
+      const editor = useEditorStore.getState()
+      const activeTab = editor.tabs.find(tab => tab.id === editor.activeTabId)
+      const candidate = action.chapterNumber === undefined
+        ? (activeTab?.projectKey === project.path && activeTab.type === 'chapter' ? activeTab : undefined)
+        : editor.tabs.find(tab => (
+          tab.projectKey === project.path
+          && tab.type === 'chapter'
+          && tab.chapterNumber === action.chapterNumber
+        ))
+
+      if (!candidate) {
+        return {
+          ok: true,
+          summary: uiText(
+            '当前没有打开的章节草稿；审稿将读取数据库中的最新版本。',
+            'No chapter draft is open; the review reads the latest version from the database.',
+          ),
+        }
+      }
+      if (candidate.draftStatus === 'finalized' || candidate.draftStatus === 'archived') {
+        return {
+          ok: true,
+          summary: uiText('该章草稿已定稿或归档，无需保存。', 'This draft is finalized or archived; no save is needed.'),
+        }
+      }
+      if (!candidate.draftId) {
+        return {
+          ok: false,
+          error: uiText(
+            '当前草稿缺少数据库身份，无法保存；请重新打开该章草稿后再审稿。',
+            'The draft has no database identity; reopen it before reviewing.',
+          ),
+        }
+      }
+      if (!candidate.dirty) {
+        return {
+          ok: true,
+          summary: uiText('当前草稿没有未保存修改。', 'The current draft has no unsaved changes.'),
+        }
+      }
+
+      const content = candidate.content ?? ''
+      const snapshot = {
+        content,
+        contentRevision: candidate.contentRevision ?? 0,
+      }
+      const { ipc } = await import('../ipc-client')
+      const result = await ipc.invokeWithProjectSession(
+        projectSession,
+        'db:draft-update-content',
+        candidate.draftId,
+        content,
+        countDraftUnits(content),
+        project.path,
+      )
+      if (!result.success) {
+        return {
+          ok: false,
+          error: result.error || uiText('草稿保存失败', 'Could not save the draft'),
+        }
+      }
+      const latest = useEditorStore.getState().tabs.find(tab => tab.id === candidate.id)
+      if (
+        !latest
+        || latest.content !== snapshot.content
+        || (latest.contentRevision ?? 0) !== snapshot.contentRevision
+      ) {
+        return {
+          ok: false,
+          error: uiText(
+            '保存期间正文又发生变化，本次审稿未启动；请保存后重新发起审稿。',
+            'The draft changed while it was being saved, so the review was not started. Save and start again.',
+          ),
+        }
+      }
+      useEditorStore.getState().settleTabSave(candidate.id, snapshot)
+      return {
+        ok: true,
+        summary: uiText(
+          `已保存第 ${candidate.chapterNumber ?? '?'} 章草稿，审稿将读取这次保存后的正文。`,
+          `Saved the chapter ${candidate.chapterNumber ?? '?'} draft; the review will read this saved body.`,
+        ),
+      }
     }
     case 'sync_draft_content': {
       const project = useProjectStore.getState().currentProject

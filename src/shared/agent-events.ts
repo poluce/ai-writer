@@ -53,6 +53,11 @@ export type RendererAction =
   | { type: 'refresh_character_roster' }
   | { type: 'sync_draft_content'; chapterNumber: number; draftId: number; content: string; isNewVersion: boolean }
   /**
+   * 审稿委派前先保存作者屏幕上未保存的草稿，避免审稿助手读到数据库旧稿。
+   * chapterNumber 缺省时取当前活动的章节 Tab。
+   */
+  | { type: 'save_draft_for_ai'; chapterNumber?: number }
+  /**
    * 关闭主工作区中匹配的编辑器 Tab。
    * 目前用于审稿报告生命周期收尾（修稿完成后自动关闭，或助手按用户要求关闭）。
    */

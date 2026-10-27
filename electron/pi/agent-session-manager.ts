@@ -23,6 +23,8 @@ import { assistantTypeFromConversationId } from '../../src/shared/agent-conversa
 import type { ModelProfile } from '../../src/shared/ipc-channels'
 import { writingLanguageText, type WritingLanguage } from '../../src/shared/writing-language'
 import { logFailure, logInfo } from '../../src/shared/fail-log'
+import { getProjectDb } from '../database'
+import { ReviewRepository } from '../repositories/review-repository'
 
 /** 会话的运行时身份：换模型、凭据、端点或思考等级都算换运行时，会话要重建。 */
 function agentRuntimeKey(profile: ModelProfile, thinkingLevel: AssistantThinkingLevel): string {
@@ -80,6 +82,13 @@ export interface AgentSessionManagerOptions {
  * delegates prompt/confirm/abort here; sessions stay warm for context-cache
  * reuse and are aborted on book switch.
  */
+
+/** 当前章节最新一份审稿报告 ID；0 表示还没有报告。 */
+function latestReviewId(chapterNumber: number): number {
+  const summaries = ReviewRepository.listSummaries({ chapterNumber })
+  return summaries.reduce((max, summary) => Math.max(max, summary.id), 0)
+}
+
 export class AgentSessionManager {
   private readonly sessions = new Map<string, AgentSession>()
   /** 每个会话由哪个 store 提供存档，关会话时要让它忘掉这个已关闭的 session。 */
@@ -188,6 +197,7 @@ export class AgentSessionManager {
     success: boolean
     result?: string
     conversationId?: string
+    reviewId?: number
     error?: string
   }> {
     const store = this.options.resolveConversationStore?.() ?? null
@@ -289,7 +299,43 @@ export class AgentSessionManager {
         await session.setTools(tools)
 
         // 执行提示词生成并获取结果
+        const verifyReview = params.target === 'review'
+          && typeof params.chapter_number === 'number'
+          && Boolean(getProjectDb())
+        const reviewIdBefore = verifyReview ? latestReviewId(params.chapter_number!) : 0
+
         await session.prompt(input)
+
+        if (verifyReview) {
+          let reviewIdAfter = latestReviewId(params.chapter_number!)
+          if (reviewIdAfter <= reviewIdBefore) {
+            // 模型只给了文字清单却没有落盘时，补一次强约束重试，保证委派审稿
+            // 与手动「AI 审稿」一样一定产出可勾选的正式报告。
+            await session.prompt(writingLanguageText(
+              language,
+              '【系统校验】尚未检测到本章新的审稿报告落盘。请立即调用 submit_chapter_review 提交审稿报告；不要只输出文字清单，也不要重复已完成的阅读步骤。',
+              '[System check] No new review report has been persisted for this chapter. Call submit_chapter_review now; do not reply with a plain-text checklist or repeat the reading steps.',
+            ))
+            reviewIdAfter = latestReviewId(params.chapter_number!)
+          }
+          if (reviewIdAfter <= reviewIdBefore) {
+            return {
+              success: false,
+              error: writingLanguageText(
+                language,
+                '审稿助手没有提交正式审稿报告；请确认草稿已保存后重新委派，或改用手动「AI 审稿」。',
+                'The review assistant did not submit a formal review report. Save the draft and delegate again, or use the manual AI review button.',
+              ),
+            }
+          }
+          return {
+            success: true,
+            result: session.getFullText(),
+            conversationId: targetConvId,
+            reviewId: reviewIdAfter,
+          }
+        }
+
         const resultText = session.getFullText()
 
         return {

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { handleRendererAction } from '../../services/agent/renderer-actions'
 import { applyToolCallResult } from '../agent-store'
@@ -29,6 +29,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.unstubAllGlobals()
   useEditorStore.setState(originalEditorState)
   useLayoutStore.setState(originalLayoutState)
   useProjectStore.setState(originalProjectState)
@@ -75,6 +76,83 @@ describe('agent renderer actions', () => {
       content: '笔记正文',
       projectKey: PROJECT_PATH,
     })
+  })
+
+  it('saves a dirty chapter draft before AI review reads the database', async () => {
+    const invoke = vi.fn(async () => ({ success: true }))
+    vi.stubGlobal('window', {
+      velaAPI: {
+        invoke,
+        on: vi.fn(() => () => {}),
+        once: vi.fn(),
+        send: vi.fn(),
+        setZoomLevel: vi.fn(),
+        setZoomFactor: vi.fn(),
+        getZoomLevel: vi.fn(() => 0),
+      },
+    })
+    useEditorStore.getState().openFile({
+      id: 'review-draft-tab',
+      name: '第一章',
+      type: 'chapter',
+      filePath: 'vela://draft/7',
+      content: '旧正文',
+      savedContent: '旧正文',
+      draftId: 7,
+      chapterNumber: 1,
+      draftStatus: 'draft',
+      projectKey: PROJECT_PATH,
+      contentRevision: 0,
+    })
+    const reviewTabId = activeTab()!.id
+    useEditorStore.getState().updateTabContent(reviewTabId, '未保存的新正文')
+    expect(activeTab()?.dirty).toBe(true)
+
+    const result = await handleRendererAction({ type: 'save_draft_for_ai', chapterNumber: 1 })
+
+    expect(result).toMatchObject({ ok: true })
+    expect(invoke).toHaveBeenCalledTimes(1)
+    const [channel, draftId, content, , projectPath] = invoke.mock.calls[0] as unknown[]
+    expect(channel).toBe('db:draft-update-content')
+    expect(draftId).toBe(7)
+    expect(content).toBe('未保存的新正文')
+    expect(projectPath).toBe(PROJECT_PATH)
+    expect(activeTab()).toMatchObject({ dirty: false, savedContent: '未保存的新正文' })
+  })
+
+  it('reports a save failure instead of silently reviewing the old draft', async () => {
+    const invoke = vi.fn(async () => ({ success: false, error: '磁盘写入失败' }))
+    vi.stubGlobal('window', {
+      velaAPI: {
+        invoke,
+        on: vi.fn(() => () => {}),
+        once: vi.fn(),
+        send: vi.fn(),
+        setZoomLevel: vi.fn(),
+        setZoomFactor: vi.fn(),
+        getZoomLevel: vi.fn(() => 0),
+      },
+    })
+    useEditorStore.getState().openFile({
+      id: 'review-draft-fail',
+      name: '第一章',
+      type: 'chapter',
+      filePath: 'vela://draft/8',
+      content: '旧正文',
+      savedContent: '旧正文',
+      draftId: 8,
+      chapterNumber: 1,
+      draftStatus: 'draft',
+      projectKey: PROJECT_PATH,
+      contentRevision: 0,
+    })
+    const reviewTabId = activeTab()!.id
+    useEditorStore.getState().updateTabContent(reviewTabId, '未保存的新正文')
+
+    const result = await handleRendererAction({ type: 'save_draft_for_ai', chapterNumber: 1 })
+
+    expect(result).toEqual({ ok: false, error: '磁盘写入失败' })
+    expect(activeTab()?.dirty).toBe(true)
   })
 
   it('localizes builtin page names for an English project', async () => {

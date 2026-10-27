@@ -108,4 +108,63 @@ describe('createDelegateToAssistantTool', () => {
       task: '规划分卷大纲',
     })).rejects.toThrow('模型推理中断')
   })
+
+  it('saves the active draft before delegating to the review assistant', async () => {
+    const handler = vi.fn().mockResolvedValue({
+      success: true,
+      result: '审稿完成，报告已生成。',
+      conversationId: 'review-999',
+      reviewId: 42,
+    })
+    const rendererAction = vi.fn().mockResolvedValue({ ok: true, summary: '已保存第 2 章草稿。' })
+
+    const tool = createDelegateToAssistantTool('zh-CN', handler, rendererAction)
+    const result = await tool.execute('call-4', {
+      assistant: 'review',
+      task: '审查草稿并提交审稿报告',
+      chapter_number: 2,
+      instructions: '重点看节奏',
+    })
+
+    expect(rendererAction).toHaveBeenCalledWith({ type: 'save_draft_for_ai', chapterNumber: 2 })
+    expect(handler).toHaveBeenCalledWith({
+      target: 'review',
+      task: '审查草稿并提交审稿报告',
+      chapter_number: 2,
+      instructions: '重点看节奏',
+    })
+    expect(result.details).toMatchObject({
+      assistant: 'review',
+      conversationId: 'review-999',
+      reviewId: 42,
+      savedDraft: '已保存第 2 章草稿。',
+    })
+  })
+
+  it('aborts review delegation when the current draft cannot be saved', async () => {
+    const handler = vi.fn()
+    const rendererAction = vi.fn().mockResolvedValue({ ok: false, error: '磁盘写入失败' })
+
+    const tool = createDelegateToAssistantTool('zh-CN', handler, rendererAction)
+    await expect(tool.execute('call-5', {
+      assistant: 'review',
+      task: '审查草稿',
+      chapter_number: 1,
+    })).rejects.toThrow('审稿前保存当前草稿失败：磁盘写入失败')
+    expect(handler).not.toHaveBeenCalled()
+  })
+
+  it('does not save drafts before delegating to non-review assistants', async () => {
+    const handler = vi.fn().mockResolvedValue({
+      success: true,
+      result: '设定完成',
+      conversationId: 'architect-1',
+    })
+    const rendererAction = vi.fn()
+
+    const tool = createDelegateToAssistantTool('zh-CN', handler, rendererAction)
+    await tool.execute('call-6', { assistant: 'architect', task: '梳理设定' })
+
+    expect(rendererAction).not.toHaveBeenCalled()
+  })
 })
