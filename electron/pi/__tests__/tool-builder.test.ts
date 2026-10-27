@@ -12,7 +12,7 @@ vi.mock('../../mcp/mcp-manager', () => ({
 }))
 vi.mock('../../database', () => ({ getCurrentProjectPath: vi.fn() }))
 
-import { buildAgentTools, buildArchitectAgentTools, buildBlueprintAgentTools, confirmationToolNames, sequentialToolNames } from '../tool-builder'
+import { buildAgentTools, buildArchitectAgentTools, buildBlueprintAgentTools, buildReviewAgentTools, buildToolsForAssistantType, confirmationToolNames, sequentialToolNames } from '../tool-builder'
 
 describe('buildAgentTools', () => {
   it('keeps every tool name flat, colon-free and snake case', () => {
@@ -32,7 +32,7 @@ describe('buildAgentTools', () => {
     for (const projectTool of [
       'novel_config', 'story_architecture',
       'read_architecture', 'manage_characters', 'read_blueprint', 'manage_drafts',
-      'read_project_state', 'search_knowledge', 'read_file',
+      'read_project_state', 'search_knowledge', 'read_file', 'list_files',
       'manage_skills', 'open_editor',
       'propose_chapter_blueprint', 'manage_mcp',
     ]) {
@@ -128,6 +128,23 @@ describe('buildAgentTools', () => {
   })
 })
 
+describe('review assistant tool closure', () => {
+  it('can read back the review reports it writes and list project files', () => {
+    const names = buildReviewAgentTools('zh-CN', () => {}).map(tool => tool.name)
+    expect(names).toContain('submit_chapter_review')
+    expect(names).toContain('manage_review_reports')
+    expect(names).toContain('list_files')
+    expect(names).not.toContain('bash')
+  })
+
+  it('mounts list_files for every assistant type', () => {
+    for (const assistantType of ['general', 'architect', 'blueprint', 'review'] as const) {
+      const names = buildToolsForAssistantType(assistantType, 'zh-CN', () => {}).map(tool => tool.name)
+      expect(names, assistantType).toContain('list_files')
+    }
+  })
+})
+
 describe('buildArchitectAgentTools', () => {
   it('mounts strictly focused architecture and worldbuilding tools without raw write or draft tools', () => {
     const tools = buildArchitectAgentTools('zh-CN', () => {})
@@ -142,6 +159,7 @@ describe('buildArchitectAgentTools', () => {
     expect(names).toContain('search_knowledge')
     expect(names).toContain('manage_knowledge_base')
     expect(names).toContain('read_file')
+    expect(names).toContain('list_files')
     expect(names).toContain('open_editor')
     expect(names).toContain('propose_chapter_blueprint')
     expect(names).toContain('manage_characters')
@@ -184,6 +202,7 @@ describe('buildBlueprintAgentTools', () => {
     expect(names).toContain('manage_characters')
     expect(names).toContain('search_knowledge')
     expect(names).toContain('read_file')
+    expect(names).toContain('list_files')
     expect(names).toContain('open_editor')
     expect(names).toContain('web_fetch')
 

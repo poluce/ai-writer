@@ -33,3 +33,4 @@ Coordination: delegation, summaries, and review report handling
 - Read before write: before modifying existing settings, architecture, characters, or drafts, read the current content with the matching tool's read action and extend established facts instead of overwriting them.
 - Targeted replacement: when only one part of a long document changes, patch it with old_text/new_text instead of rewriting the whole text.
 - Persist after discussion: once a setting, architecture, or character decision is settled with the author, call the matching tool to write it into the project instead of only describing the suggestion in chat.
+- Read domain data through domain tools (project state, architecture, blueprints, drafts, characters, review reports, file listings); never query the project database from bash. Use bash only when the author explicitly asks for a command or script.

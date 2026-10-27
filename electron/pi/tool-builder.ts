@@ -13,6 +13,7 @@ import { createReadProjectStateTool } from './tools/read-project-state.tool'
 import { createSearchKnowledgeTool } from './tools/search-knowledge.tool'
 import { createManageKnowledgeBaseTool } from './tools/manage-knowledge-base.tool'
 import { createReadFileTool } from './tools/read-file.tool'
+import { createListFilesTool } from './tools/list-files.tool'
 import { createManageSkillsTool } from './tools/manage-skills.tool'
 import { createOpenEditorTool } from './tools/open-editor.tool'
 import { createProposeChapterBlueprintTool } from './tools/propose-chapter-blueprint.tool'
@@ -89,6 +90,7 @@ export function buildAgentTools(
     createSearchKnowledgeTool(language),
     createManageKnowledgeBaseTool(language),
     createReadFileTool(language),
+    createListFilesTool(language),
     createOpenEditorTool(language, rendererAction),
     createProposeChapterBlueprintTool(language, rendererAction),
     createManageCharactersTool(language, rendererAction),
@@ -125,6 +127,7 @@ export function buildArchitectAgentTools(
     createSearchKnowledgeTool(language),
     createManageKnowledgeBaseTool(language),
     createReadFileTool(language),
+    createListFilesTool(language),
     createOpenEditorTool(language, rendererAction),
     createProposeChapterBlueprintTool(language, rendererAction),
     createManageCharactersTool(language, rendererAction),
@@ -155,6 +158,7 @@ export function buildBlueprintAgentTools(
     createManageCharactersTool(language, rendererAction),
     createSearchKnowledgeTool(language),
     createReadFileTool(language),
+    createListFilesTool(language),
     createOpenEditorTool(language, rendererAction),
     createWebFetchTool(language),
     createManageSkillsTool(language, options.skills ?? [], options.skillRoots ?? [], {
@@ -183,7 +187,10 @@ export function buildReviewAgentTools(
     createManageCharactersTool(language, rendererAction, { readOnly: true }),
     createSearchKnowledgeTool(language),
     createReadFileTool(language),
+    createListFilesTool(language),
     createOpenEditorTool(language, rendererAction),
+    // 报告写入后必须能读回：审稿助手也挂报告读取工具。
+    createManageReviewReportsTool(language, rendererAction),
     createSubmitChapterReviewTool(language, rendererAction),
     // 审稿助手可以维护技能（技能库写入不属于项目事实修改）。
     createManageSkillsTool(language, options.skills ?? [], options.skillRoots ?? [], {

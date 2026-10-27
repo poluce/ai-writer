@@ -195,6 +195,23 @@ export class ReviewRepository {
         return { ...meta, content: body ?? '', sourceDraft: rowToSourceDraft(row) }
     }
 
+    /** 获取某份 AI 审稿最新的作者确认快照；没有确认过时返回 null。 */
+    static getLatestConfirmation(sourceReviewId: number): ReviewFull | null {
+        const db = getProjectDb()
+        if (!db) return null
+
+        const row = db.prepare(`
+      SELECT * FROM reviews
+      WHERE source_review_id = ?
+      ORDER BY id DESC LIMIT 1
+    `).get(sourceReviewId) as Record<string, unknown> | undefined
+
+        if (!row) return null
+        const meta = rowToMeta(row)
+        const body = ContentRepository.getBody(meta.contentId)
+        return { ...meta, content: body ?? '', sourceDraft: rowToSourceDraft(row) }
+    }
+
     /** 获取审稿完整数据 */
     static getFull(id: number): ReviewFull | null {
         const db = getProjectDb()
