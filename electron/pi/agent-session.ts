@@ -25,7 +25,7 @@ import { ConfinedExecutionEnv } from './confined-execution-env'
 import { patchGoogleSamplingPayload } from './pi-stream-options'
 import type { ResolvedGenerationParameters } from '../llm/generation-parameter-policy'
 import { logFailure, logInfo } from '../../src/shared/fail-log'
-import { buildAppContextEnvelope, USER_MESSAGE_TAG } from './agent-l1-context'
+import { buildAppContextEnvelope, composeUserMessageWithAppContext } from './agent-l1-context'
 import type { AgentEditorSnapshot, PiAgentEvent, PiToolCallInfo } from '../../src/shared/agent-events'
 import type { FileWriteCommitState } from '../../src/shared/ipc-channels'
 import type { AgentPromptHistoryTurn, AssistantType } from '../../src/shared/agent-conversation-archive'
@@ -107,8 +107,8 @@ interface PendingConfirmation {
  * 编排（会话条目、上下文投影、压缩、工具执行与确认钩子、usage 记账、
  * 中断）全部由 `AgentHarness` 承担；这一层只做两件事：
  * 1. 把 harness 的事件流翻译成渲染层的 `PiAgentEvent` 协议；
- * 2. 挂上本应用的领域语义——L1 界面快照注入、写工具确认往返、
- *    工具结果截断与「未知提交态不重试」。
+ * 2. 挂上本应用的领域语义——L1 界面快照随作者消息落盘（展示时再剥离）、
+ *    写工具确认往返、工具结果截断与「未知提交态不重试」。
  */
 export class AgentSession {
   private readonly harness: AgentHarness<HarnessToolContext>
@@ -243,33 +243,12 @@ export class AgentSession {
 
   // ===== 钩子：领域语义都挂在这里 =====
 
-  /**
-   * 把 L1 界面快照以 XML 块包进当前请求的最后一条作者消息。
-   *
-   * - 只影响本次请求：会话历史仍保存作者原文，快照不落盘；
-   * - 不新增 user 消息：连续 user 角色会破坏部分供应商（如 Gemini）的多轮交替约束；
-   * - `<system_context>` 与 `<user_message>` 明确区分系统附加信息和作者真实输入。
-   */
-  private wrapLastUserMessage(messages: AgentMessage[]): AgentMessage[] {
-    const last = messages[messages.length - 1]
-    if (!last || last.role !== 'user') return messages
-    const envelope = buildAppContextEnvelope(this.editorSnapshot, this.language)
-    if (!envelope) return messages
-    const content = typeof last.content === 'string'
-      ? `${envelope}\n\n<${USER_MESSAGE_TAG}>\n${last.content}\n</${USER_MESSAGE_TAG}>`
-      : [
-          { type: 'text' as const, text: `${envelope}\n\n<${USER_MESSAGE_TAG}>` },
-          ...last.content,
-          { type: 'text' as const, text: `</${USER_MESSAGE_TAG}>` },
-        ]
-    return [...messages.slice(0, -1), { ...last, content }]
-  }
-
   private registerHooks(sampling: ResolvedGenerationParameters | null): void {
-    // 系统提示词每轮重取（技能目录与项目事实会变），保持稳定以命中前缀缓存；
-    // L1 界面快照不进系统提示词，而是以 XML 标签块嵌入本轮作者消息。
+
+    // 系统提示词每轮由上层重建（L0 事实、技能目录会变）；harness 没有 setter，
+    // 只能在这个钩子里把最新一份交给本次请求。L1 界面状态已随作者消息落盘，不在这里拼。
     this.unsubscribes.push(this.harness.hooks.on('transform_context', (event) => ({
-      messages: this.wrapLastUserMessage(event.messages),
+      messages: event.messages,
       systemPrompt: this.systemPrompt,
     })))
 
@@ -557,8 +536,18 @@ export class AgentSession {
   async prompt(input: string): Promise<void> {
     this.fullText = ''
     this.busy = true
+    // 存档直接保存带 <system_context> 的完整作者消息：同一轮的工具循环与后续回合
+    // 都能看到当时的界面状态；侧栏展示时由 extractAuthorMessageText 还原作者原文。
+    const envelope = buildAppContextEnvelope(this.editorSnapshot, this.language)
+    const sendPrompt = () => envelope
+      ? this.lane.prompt({
+          role: 'user' as const,
+          content: composeUserMessageWithAppContext(input, envelope),
+          timestamp: Date.now(),
+        }, BACKGROUND_CONTEXT)
+      : this.lane.prompt(input, undefined, BACKGROUND_CONTEXT)
     try {
-      let result = await this.lane.prompt(input, undefined, BACKGROUND_CONTEXT)
+      let result = await sendPrompt()
       if (!result.ok && result.error.message?.includes('already has an active operation')) {
         logInfo('Agent', 'lane has stale active operation, auto-aborting before retry', {
           conversationId: this.conversationId,
@@ -568,7 +557,7 @@ export class AgentSession {
         } catch {
           // ignore abort failure
         }
-        result = await this.lane.prompt(input, undefined, BACKGROUND_CONTEXT)
+        result = await sendPrompt()
       }
       if (!result.ok) {
         const message = result.error.message || String(result.error)

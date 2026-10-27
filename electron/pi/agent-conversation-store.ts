@@ -22,6 +22,7 @@ import type {
   PersistedAgentMessage,
 } from '../../src/shared/agent-conversation-archive'
 import { assistantTypeFromConversationId, isAssistantType } from '../../src/shared/agent-conversation-archive'
+import { extractAuthorMessageText } from '../../src/services/agent/l1-context'
 
 /** 会话文件所在的一级目录名（项目内 `.vela` 下）。 */
 export const SESSIONS_DIR = 'agent-sessions'
@@ -96,10 +97,11 @@ export function foldEntriesToMessages(entries: readonly Entry[]): PersistedAgent
       } else if (typeof content === 'string') {
         userText = content
       }
+      // 存档里是带 <system_context> 的完整消息；聊天记录只展示作者原文。
       foldedMessages.push({
         id: eid,
         role: 'user',
-        content: userText,
+        content: extractAuthorMessageText(userText),
         createdAt: ts,
       })
     } else if (role === 'assistant') {

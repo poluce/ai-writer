@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildAppContextEnvelope, buildL1AgentContext } from '../agent-l1-context'
+import {
+  buildAppContextEnvelope,
+  buildL1AgentContext,
+  composeUserMessageWithAppContext,
+  extractAuthorMessageText,
+} from '../agent-l1-context'
 
 describe('buildL1AgentContext', () => {
   it('states that no novel project is open', () => {
@@ -80,5 +85,20 @@ describe('buildAppContextEnvelope', () => {
   it('returns null when there is no snapshot to inject', () => {
     expect(buildAppContextEnvelope(null, 'zh-CN')).toBeNull()
     expect(buildAppContextEnvelope(undefined, 'en-US')).toBeNull()
+  })
+})
+
+describe('composeUserMessageWithAppContext / extractAuthorMessageText', () => {
+  it('round-trips the author text while keeping the context block in the stored message', () => {
+    const envelope = '<system_context>\n状态\n</system_context>'
+    const wrapped = composeUserMessageWithAppContext('写第三章', envelope)
+
+    expect(wrapped).toContain('<user_message>\n写第三章\n</user_message>')
+    expect(wrapped.indexOf('<system_context>')).toBeLessThan(wrapped.indexOf('<user_message>'))
+    expect(extractAuthorMessageText(wrapped)).toBe('写第三章')
+  })
+
+  it('leaves legacy messages without an envelope untouched', () => {
+    expect(extractAuthorMessageText('随便聊聊')).toBe('随便聊聊')
   })
 })

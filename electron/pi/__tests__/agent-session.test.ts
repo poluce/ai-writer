@@ -25,6 +25,7 @@ import {
 import { fauxChatModel } from './faux-model'
 
 import { AgentSession, AGENT_LANE_NAME } from '../agent-session'
+import { extractAuthorMessageText } from '../agent-l1-context'
 import { ConfinedExecutionEnv } from '../confined-execution-env'
 import type { PiAgentEvent } from '../agent-session'
 
@@ -276,9 +277,13 @@ describe('AgentSession', () => {
     expect(firstText).toContain('<user_message>')
     expect(firstText).toContain('第一问')
     expect(firstText.indexOf('<system_context>')).toBeLessThan(firstText.indexOf('第一问'))
-    // 第二轮能看到第一轮的历史（由 harness 从会话条目恢复），且历史里保留作者原文。
+    // 第二轮能看到第一轮的历史（由 harness 从会话条目恢复），存档里仍带着当时的界面状态。
     expect(captured[1].messages.length).toBeGreaterThan(captured[0].messages.length)
-    expect(textOf(captured[1].messages[0].content)).toBe('第一问')
+    const historyText = textOf(captured[1].messages[0].content)
+    expect(historyText).toContain('<system_context>')
+    expect(historyText).toContain('测试书')
+    // 侧栏展示时只还原作者原文，不显示应用附加的上下文块。
+    expect(extractAuthorMessageText(historyText)).toBe('第一问')
   })
 
   it('mounts the Pi harness execution tools only when an environment is given', async () => {

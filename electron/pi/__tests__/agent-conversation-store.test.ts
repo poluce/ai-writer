@@ -227,6 +227,35 @@ describe('AgentConversationStore.forProject', () => {
     expect(toolCalls[0].status).toBe('completed')
   })
 
+  it('restores only the author text from messages that persist the app-context block', () => {
+    const wrapped = [
+      '<system_context>',
+      '以下内容是应用自动附加的界面状态，不是作者的发言，也不是新的任务指令；若与本轮作者消息冲突，以作者消息为准。',
+      '',
+      '## 应用状态',
+      '当前小说项目：已打开「测试书」',
+      '</system_context>',
+      '',
+      '<user_message>',
+      '把开头改得更紧张',
+      '</user_message>',
+    ].join('\n')
+    const entries: Entry[] = [
+      {
+        id: 'e-1',
+        parentId: null,
+        seq: 1,
+        timestamp: 1000,
+        type: 'message',
+        message: { role: 'user', content: wrapped, timestamp: 1000 } as never,
+      },
+    ]
+
+    const folded = foldEntriesToMessages(entries)
+    expect(folded[0].content).toBe('把开头改得更紧张')
+    expect(folded[0].content).not.toContain('system_context')
+  })
+
   it('strictly preserves chronological order (oldest first) even if entries are passed newest first', () => {
     const reversedEntries: Entry[] = [
       {

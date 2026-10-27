@@ -32,6 +32,28 @@ export function buildAppContextEnvelope(
   ].join('\n')
 }
 
+/** 把作者原文与系统上下文信封拼成一条完整的 user 消息内容。 */
+export function composeUserMessageWithAppContext(userText: string, envelope: string): string {
+  return `${envelope}\n\n<${USER_MESSAGE_TAG}>\n${userText}\n</${USER_MESSAGE_TAG}>`
+}
+
+/**
+ * 从持久化的 user 消息里还原作者原文。
+ *
+ * 存档保存的是带 `<system_context>` 的完整消息：这样同一轮的工具循环与后续
+ * 回合都能看到当时的界面状态。侧栏聊天记录必须只展示作者真正输入的内容，
+ * 因此读取存档时用本函数剥离应用附加的块；历史里没有信封的旧消息原样返回。
+ */
+export function extractAuthorMessageText(content: string): string {
+  const open = `<${USER_MESSAGE_TAG}>`
+  const close = `</${USER_MESSAGE_TAG}>`
+  const start = content.indexOf(open)
+  const end = content.lastIndexOf(close)
+  if (start === -1 || end <= start) return content
+  const inner = content.slice(start + open.length, end)
+  return inner.replace(/^\r?\n/, '').replace(/\r?\n$/, '')
+}
+
 /**
  * Format the renderer L1 snapshot as the body of the app-context XML block.
  * Tool catalogs stay on AgentTool schemas — this is app-shell awareness.
