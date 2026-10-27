@@ -20,6 +20,7 @@ const SETTINGS_SECTION_IDS = [
   'proxy',
   'editor',
   'prompts',
+  'assistant',
   'skills',
   'mcp',
   'about',

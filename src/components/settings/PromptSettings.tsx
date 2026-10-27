@@ -33,7 +33,6 @@ const SOURCE_CONFIG = {
 type PromptSource = keyof typeof SOURCE_CONFIG
 
 const PROMPT_META_EN: Record<string, { name: string; description: string }> = {
-  assistant_writing_identity: { name: 'AI writing assistant identity', description: 'Define the creative role and working guidance for the writing assistant' },
   generate_novel_config_field: { name: 'Single configuration field', description: 'Complete one novel setting from existing author facts' },
   generate_global_config: { name: 'Full configuration', description: 'Generate a complete novel configuration from a short idea' },
   premise: { name: 'Story premise', description: 'Distill the central hook and chain of conflicts' },

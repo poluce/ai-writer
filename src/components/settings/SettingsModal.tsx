@@ -1,9 +1,10 @@
 import { useState, useEffect, type ReactNode } from 'react'
 import {
   X, Globe, Cpu, Database, Type, Settings2, MessageSquare,
-  Info, Palette, BookOpen, Sliders, Server,
+  Info, Palette, BookOpen, Sliders, Server, Bot,
 } from 'lucide-react'
 import PromptSettings from './PromptSettings'
+import AssistantSettings from './AssistantSettings'
 import SkillSettings from './SkillSettings'
 import AppearanceSettings from './AppearanceSettings'
 import PresetsSettings from './PresetsSettings'
@@ -36,6 +37,7 @@ export const SETTINGS_SECTIONS: SectionItem[] = [
   { id: 'proxy', label: '网络代理', labelEn: 'Network proxy', icon: <Globe size={16} />, description: '配置 HTTP / SOCKS5 代理，用于访问受限 API', descriptionEn: 'HTTP / SOCKS5 proxy for restricted APIs' },
   { id: 'editor', label: '编辑器', labelEn: 'Editor', icon: <Type size={16} />, description: '字体大小、自动保存等编辑器偏好设置', descriptionEn: 'Fonts and other editor preferences' },
   { id: 'prompts', label: '提示词模板', labelEn: 'Prompt templates', icon: <MessageSquare size={16} />, description: '自定义 AI 创作各环节使用的提示词模板', descriptionEn: 'Customize guidance for each AI writing stage' },
+  { id: 'assistant', label: '助手设定', labelEn: 'Assistant settings', icon: <Bot size={16} />, description: '四个助手共用的硬规则，以及各自的身份与工作规范', descriptionEn: 'Shared hard rules plus each assistant identity and work rules' },
   { id: 'skills', label: '写作 Skills', labelEn: 'Writing skills', icon: <BookOpen size={16} />, description: '检查并安装提示词型写作 Skill', descriptionEn: 'Inspect and install prompt-only writing skills' },
   { id: 'mcp', label: 'MCP 服务器', labelEn: 'MCP servers', icon: <Server size={16} />, description: '添加、修改或删除项目助手可用的 MCP 服务器', descriptionEn: 'Add, edit, or delete MCP servers for the project assistant' },
   { id: 'about', label: '关于', labelEn: 'About', icon: <Info size={16} />, description: '版本、更新与本地部署说明', descriptionEn: 'Version, updates, and local deployment' },
@@ -148,6 +150,7 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
             {section === 'proxy' && <ProxySection />}
             {section === 'editor' && <EditorSection />}
             {section === 'prompts' && <PromptSettings />}
+            {section === 'assistant' && <AssistantSettings />}
             {section === 'skills' && <SkillSettings />}
             {section === 'mcp' && <MCPSettings />}
             {section === 'about' && <AboutSection />}

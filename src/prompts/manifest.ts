@@ -270,7 +270,6 @@ export const BUILTIN_PROMPT_STRUCTURES: readonly BuiltinPromptStructure[] = [
 
 /** 允许用户自定义编辑的模板 Key 列表（其余为系统模板，不可编辑） */
 export const EDITABLE_PROMPT_KEYS: readonly string[] = [
-  "assistant_writing_identity",
   "generate_novel_config_field",
   "generate_global_config",
   "premise",
