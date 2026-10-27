@@ -10,7 +10,6 @@ import {
   FinalizeChapterCommand,
   type FinalizePostProcessGeneration,
 } from '../finalize-chapter.command'
-import { RefineDraftCommand as RuntimeRefineDraftCommand } from '../refine-draft.command'
 import { RefineFromReviewCommand as RuntimeRefineFromReviewCommand } from '../refine-from-review.command'
 import { savePartialData } from '../architecture.command'
 import { runPostProcessPipeline } from '../../workflow-utils'
@@ -18,12 +17,6 @@ import { createBoundedCompletionError } from '../../bounded-completion'
 import { workflowRuntimeDependencies } from './workflow-generation-runtime.fixture'
 import type { CharacterRosterEntry } from '../../../../shared/character-roster'
 import type { FinalizedSourceIdentity } from '../../../../shared/finalized-continuity'
-
-class RefineDraftCommand extends RuntimeRefineDraftCommand {
-  constructor(...args: ConstructorParameters<typeof RuntimeRefineDraftCommand>) {
-    super(args[0], workflowRuntimeDependencies)
-  }
-}
 
 class RefineFromReviewCommand extends RuntimeRefineFromReviewCommand {
   constructor(...args: ConstructorParameters<typeof RuntimeRefineFromReviewCommand>) {
@@ -1068,12 +1061,6 @@ describe('workflow mutation failure boundaries', () => {
   })
 
   it.each([
-    ['ordinary refinement', () => new RefineDraftCommand({
-      draftPath: 'vela://draft/1',
-      draftContent: '原稿',
-      chapterNumber: 1,
-      chapterInfo: chapterInfo(),
-    })],
     ['review refinement', () => new RefineFromReviewCommand({
       draftPath: 'vela://draft/1',
       draftContent: '原稿',

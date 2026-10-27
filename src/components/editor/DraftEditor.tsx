@@ -58,7 +58,7 @@ interface Props {
 
 /**
  * 草稿编辑器
- * — 顶部工具栏：草稿状态 + 待合并修稿 + AI 修稿(含自定义提示词) / AI 审稿 / 定稿
+ * — 顶部工具栏：草稿状态 + 待合并修稿 + AI 审稿 / 定稿
  * — 正文：CodeMirrorEditor（prose 模式）
  */
 export default function DraftEditor(props: Props) {
@@ -160,8 +160,7 @@ function DraftEditorSession({ tabId, filePath, content, projectKey }: Props) {
   const isChapterBusy = !!activeChapterRun
 
   const [saving, setSaving] = useState(false)
-  const [confirmAction, setConfirmAction] = useState<'refine' | 'review' | null>(null)
-  const [userRefinePrompt, setUserRefinePrompt] = useState('')
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false)
   // 批注属于某一章的草稿：把「当前章 + 当前项目」当键，换目标就自然换掉旧批注，
   // 不再需要先清空再异步加载（那样会先渲染一帧上一章的批注，也会在渲染后多跑一轮）。
   const annotationKey = meta?.id ? `${projectKey}\u0000${meta.id}` : null
@@ -364,33 +363,6 @@ function DraftEditorSession({ tabId, filePath, content, projectKey }: Props) {
       return false
     }
     return true
-  }
-
-  /** 执行 AI 修稿（含用户自定义提示词） */
-  const doRefine = async () => {
-    const projectSession = captureProjectSession(currentProject)
-    if (!projectMatches || !currentProject || !meta || !projectSession || !isProjectSessionPath(projectSession, projectKey)) return
-    try {
-      const source = await freezeDraftSourceForAI(projectSession)
-      if (!source || !isProjectSessionCurrent(projectSession)) return
-      const { useWorkflowStore } = await import('../../stores/workflow-store')
-      const { createRefineOnlyWorkflow } = await import('../../services/workflows/chapter-workflow')
-      if (!isProjectSessionCurrent(projectSession)) return
-      if (!isFrozenAISourceCurrent(source.body, source.sourceDraft)) return
-
-      useWorkflowStore.getState().startWorkflow(createRefineOnlyWorkflow({
-        projectPath: projectSession.projectPath,
-        chapterNumber: meta.chapterNumber,
-        chapterTitle: meta.chapterTitle ?? '未知标题',
-        draftPath: filePath,
-        draftContent: source.body,
-        sourceDraft: source.sourceDraft,
-        userRefinePrompt: userRefinePrompt.trim() || undefined,
-        annotations}, projectSession), false)
-    } catch (e) {
-      if (!isProjectSessionCurrent(projectSession)) return
-      toast.error(text(`修稿启动失败：${e}`, 'Could not start AI revision.'))
-    }
   }
 
   /** 执行 AI 审稿 —— 审稿助手接管：先落盘当前正文，再带着章节与维度切到审稿助手。 */
@@ -819,30 +791,18 @@ function DraftEditorSession({ tabId, filePath, content, projectKey }: Props) {
                 variant="outline"
                 size="sm"
                 onClick={() => setAnnotationListOpen(open => !open)}
-                title={text('查看并删除选区标注；AI 修稿时会一并交给模型', 'View and delete passage notes. AI revision will include them.')}
+                title={text('查看并删除本章的选区标注', 'View and delete passage notes for this chapter.')}
               >
                 <Pencil size={12} />
                 {text(`标注(${annotations.length})`, `Notes (${annotations.length})`)}
               </Button>
             )}
 
-            {/* AI 修稿 */}
-            <Button
-              variant="ai"
-              size="sm"
-              onClick={() => { setUserRefinePrompt(''); setConfirmAction('refine') }}
-              disabled={isChapterBusy}
-                title={text('AI 修稿 — 专业精修章节，生成修订并打开合并视图', 'AI revision — professionally refine the chapter, create a revision, and open the merge view')}
-            >
-              <Sparkles size={12} />
-                {text('AI 修稿', 'AI revise')}
-            </Button>
-
             {/* AI 审稿 */}
             <Button
               variant="ai"
               size="sm"
-              onClick={() => setConfirmAction('review')}
+              onClick={() => setReviewDialogOpen(true)}
               disabled={isChapterBusy}
                 title={text('AI 审稿 — 交给审稿助手做只读审查，产出可勾选的审稿报告', 'AI review — hand off to the review assistant for a read-only audit and a confirmable report')}
             >
@@ -958,23 +918,17 @@ function DraftEditorSession({ tabId, filePath, content, projectKey }: Props) {
 
       </div>
 
-      {/* AI 操作确认弹窗（修稿含自定义提示词输入框） */}
+      {/* AI 审稿确认弹窗 */}
       <DraftActionConfirmDialog
-        open={confirmAction !== null}
-        action={confirmAction}
+        open={reviewDialogOpen}
         meta={meta}
-        annotations={annotations}
         reviewDims={reviewDims}
         reviewDimensions={REVIEW_DIMS}
-        userRefinePrompt={userRefinePrompt}
-        onClose={() => setConfirmAction(null)}
+        onClose={() => setReviewDialogOpen(false)}
         onToggleReviewDim={(key) => setReviewDims(prev => ({ ...prev, [key]: !prev[key] }))}
-        onChangeUserRefinePrompt={setUserRefinePrompt}
         onConfirm={() => {
-          const act = confirmAction
-          setConfirmAction(null)
-          if (act === 'refine') doRefine()
-          else if (act === 'review') doReview()
+          setReviewDialogOpen(false)
+          doReview()
         }}
       />
 

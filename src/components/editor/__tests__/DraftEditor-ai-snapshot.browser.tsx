@@ -5,12 +5,11 @@ import { page } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { setActiveProjectSessionContext } from '../../../shared/project-session-context'
-import { RefineDraftCommand } from '../../../services/workflows/commands/refine-draft.command'
 import { useEditorStore } from '../../../stores/editor-store'
 import { useAgentStore } from '../../../stores/agent-store'
 import { useLayoutStore } from '../../../stores/layout-store'
 import { useProjectStore } from '../../../stores/project-store'
-import { useWorkflowStore, type WorkflowDefinition } from '../../../stores/workflow-store'
+import { useWorkflowStore } from '../../../stores/workflow-store'
 import DraftEditor from '../DraftEditor'
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -54,7 +53,6 @@ async function defaultInvoke(channel: string, ...args: unknown[]): Promise<unkno
 
 let invoke: ReturnType<typeof vi.fn>
 let startWorkflow: ReturnType<typeof vi.fn>
-let refineExecute: ReturnType<typeof vi.spyOn>
 const originalEditorState = useEditorStore.getState()
 const originalProjectState = useProjectStore.getState()
 const originalWorkflowState = useWorkflowStore.getState()
@@ -62,7 +60,6 @@ const originalAgentState = useAgentStore.getState()
 const originalLayoutState = useLayoutStore.getState()
 
 beforeEach(async () => {
-  refineExecute = vi.spyOn(RefineDraftCommand.prototype, 'execute').mockResolvedValue('')
   container = document.createElement('div')
   document.body.append(container)
   root = createRoot(container)
@@ -158,44 +155,11 @@ afterEach(async () => {
   useWorkflowStore.setState(originalWorkflowState)
   useAgentStore.setState(originalAgentState)
   useLayoutStore.setState(originalLayoutState)
-  refineExecute.mockRestore()
   setActiveProjectSessionContext(null)
   Reflect.deleteProperty(window, 'velaAPI')
 })
 
-describe('DraftEditor AI source snapshot', () => {
-  it('freezes the dirty screen body before starting AI 修稿', async () => {
-    await act(async () => page.getByRole('button', { name: 'AI 修稿' }).click())
-    await act(async () => page.getByRole('button', { name: '确认执行' }).click())
-
-    await vi.waitFor(() => expect(startWorkflow).toHaveBeenCalled())
-    const definition = startWorkflow.mock.calls[0]?.[0] as WorkflowDefinition
-    await definition.steps[0].executor({} as never, {} as never, {} as never)
-    const instance = refineExecute.mock.instances[0] as unknown as {
-      params: {
-        draftContent: string
-        sourceDraft: { id: number; chapterNumber: number; version: number; status: string; contentRevision: number }
-      }
-    }
-    expect(instance.params.draftContent).toBe(SCREEN_BODY)
-    expect(instance.params.sourceDraft).toEqual({
-      id: 7,
-      chapterNumber: 1,
-      version: 1,
-      status: 'draft',
-      contentRevision: 1,
-    })
-    expect(invoke.mock.calls).toContainEqual([
-      'db:draft-update-content',
-      7,
-      SCREEN_BODY,
-      SCREEN_BODY.length,
-      PROJECT_PATH,
-      PROJECT_SESSION,
-    ])
-    expect(invoke.mock.calls.some(([channel]) => channel === 'db:draft-get-full')).toBe(false)
-  })
-
+describe('DraftEditor AI review handoff', () => {
   it('hands AI 审稿 off to the review assistant after persisting the dirty body', async () => {
     const sendMessage = vi.fn(async () => {})
     useAgentStore.setState({ sendMessage })
@@ -218,46 +182,6 @@ describe('DraftEditor AI source snapshot', () => {
       PROJECT_SESSION,
     ])
     expect(startWorkflow).not.toHaveBeenCalled()
-  })
-
-  it('does not start AI 修稿 when the author keeps typing while the frozen source is being verified', async () => {
-      const originalInvoke = invoke.getMockImplementation() as
-        | ((channel: string, ...args: unknown[]) => unknown)
-        | undefined
-      if (!originalInvoke) throw new Error('missing IPC fixture')
-      let releaseDraftSave!: () => void
-      const draftSaveGate = new Promise<void>((resolve) => {
-        releaseDraftSave = resolve
-      })
-      invoke.mockImplementation(async (channel: string, ...args: unknown[]) => {
-        if (channel === 'db:draft-update-content') await draftSaveGate
-        return originalInvoke(channel, ...args)
-      })
-
-      await act(async () => page.getByRole('button', { name: 'AI 修稿' }).click())
-      await act(async () => page.getByRole('button', { name: '确认执行' }).click())
-      await vi.waitFor(() => expect(
-        invoke.mock.calls.some(([channel]) => channel === 'db:draft-update-content'),
-      ).toBe(true))
-
-      const bodyAfterConfirmation = `${SCREEN_BODY}，确认后继续输入。`
-      const view = EditorView.findFromDOM(container.querySelector('.cm-editor')!)!
-      await act(async () => view.dispatch({
-        changes: { from: view.state.doc.length, insert: '，确认后继续输入。' },
-      }))
-      expect(useEditorStore.getState().tabs[0]).toMatchObject({
-        content: bodyAfterConfirmation,
-        contentRevision: 2,
-        dirty: true,
-      })
-
-      releaseDraftSave()
-      await act(async () => {
-        await draftSaveGate
-        await new Promise(resolve => setTimeout(resolve, 20))
-      })
-
-      expect(startWorkflow).not.toHaveBeenCalled()
   })
 
   it('keeps annotations with their own draft when the editor switches chapters', async () => {

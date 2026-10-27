@@ -8,7 +8,6 @@ import { sameProjectPathKey } from '../../shared/project-session-context'
 import { FINALIZATION_SHARED_WRITE_RESOURCE_KINDS } from '../../shared/workflow-resource-claims'
 import { normalizeChapterWordsTarget } from './chapter-creation-parameters'
 import { localize } from '../../i18n/core'
-import type { DraftAnnotation } from '../../shared/draft-annotation'
 import type { Locale } from '../../i18n/types'
 import { useLocaleStore } from '../../stores/locale-store'
 
@@ -48,17 +47,6 @@ export interface FrozenDraftSourceIdentity {
   readonly status: DraftStatus
   /** Renderer edit generation captured with the body shown to the author. */
   readonly contentRevision: number
-}
-
-export interface RefineOnlyParams {
-  projectPath: string
-  chapterNumber: number
-  chapterTitle: string
-  draftPath: string
-  draftContent: string
-  sourceDraft: FrozenDraftSourceIdentity
-  userRefinePrompt?: string
-  annotations?: readonly DraftAnnotation[]
 }
 
 export interface RefineFromReviewParams {
@@ -223,54 +211,6 @@ export function createChapterWorkflow(
         `Chapter ${chapterInfo.chapterNumber} draft generated`,
       ),
     },
-  }
-}
-
-export function createRefineOnlyWorkflow(
-  params: RefineOnlyParams,
-  sourceProjectSession: ProjectSessionContext,
-): WorkflowDefinition {
-  const uiLocale = chapterWorkflowLocale()
-  const frozenParams = Object.freeze({
-    ...params,
-    sourceDraft: Object.freeze({ ...params.sourceDraft }),
-    annotations: Object.freeze([...(params.annotations ?? [])]),
-  })
-  return {
-    type: 'chapter_creation',
-    projectPath: params.projectPath,
-    projectSession: workflowProjectSession(params.projectPath, sourceProjectSession),
-    uiLocale,
-    resourceKeys: [workflowResourceKey('chapter', params.chapterNumber)],
-    readResourceKeys: CHAPTER_CONTEXT_READ_RESOURCE_KEYS,
-    title: localize(uiLocale,
-      `修稿 — 第${params.chapterNumber}章 ${params.chapterTitle}`,
-      `Revise — Chapter ${params.chapterNumber} ${params.chapterTitle}`,
-    ),
-    steps: [
-      {
-        name: localize(uiLocale, '修稿', 'Revise draft'),
-        description: localize(
-          uiLocale,
-          '在保留作者事实与叙事意图的前提下精修草稿，保存修订并打开合并视图',
-          'Revise the draft while preserving authorial facts and intent, save the revision, and open the merge view',
-        ),
-        executor: async (step, context, callbacks) => {
-          const { RefineDraftCommand } = await import('./commands/refine-draft.command')
-          const cmd = new RefineDraftCommand({
-            draftPath: frozenParams.draftPath,
-            draftContent: frozenParams.draftContent,
-            sourceDraft: frozenParams.sourceDraft,
-            chapterNumber: frozenParams.chapterNumber,
-            chapterInfo: { projectPath: frozenParams.projectPath, chapterNumber: frozenParams.chapterNumber, title: frozenParams.chapterTitle, role: '', purpose: '', characters: [], keyEvents: '' },
-            userRefinePrompt: frozenParams.userRefinePrompt,
-            annotations: frozenParams.annotations,
-          })
-          return cmd.execute({ step, context, callbacks })
-        },
-      },
-    ],
-    onComplete: { mode: 'open', openResult: async () => { } },
   }
 }
 
