@@ -485,6 +485,58 @@ describe('AgentSessionManager', () => {
   })
 
 
+  it('writes author-selected review dimensions into the delegated review prompt', async () => {
+    const store = fakeStore({
+      listConversations: vi.fn(async () => []),
+      open: vi.fn(async (id: string) => ({
+        metadata: { id },
+        setName: vi.fn(),
+      })),
+    })
+    const { manager } = buildManager(store as never)
+    listSummariesMock
+      .mockReturnValueOnce([])
+      .mockReturnValue([{ id: 9 }])
+
+    await manager.delegateTask({
+      target: 'review',
+      task: '审查草稿',
+      chapter_number: 2,
+      review_dimensions: ['logic', 'continuity'],
+    }, 'parent-conv-1')
+
+    const session = h.sessions.at(-1)!
+    const prompt = session.prompt.mock.calls[0][0] as string
+    expect(prompt).toContain('目标章节：第 2 章')
+    // 维度按定义顺序归一，和手动「AI 审稿」发出的侧重点同源。
+    expect(prompt).toContain('重点检查维度：剧情连贯性、剧情合理性')
+  })
+
+  it('omits the focus line when no review dimensions are requested', async () => {
+    const store = fakeStore({
+      listConversations: vi.fn(async () => []),
+      open: vi.fn(async (id: string) => ({
+        metadata: { id },
+        setName: vi.fn(),
+      })),
+    })
+    const { manager } = buildManager(store as never)
+    listSummariesMock
+      .mockReturnValueOnce([])
+      .mockReturnValue([{ id: 9 }])
+
+    await manager.delegateTask({
+      target: 'review',
+      task: '审查草稿',
+      chapter_number: 2,
+    }, 'parent-conv-1')
+
+    const session = h.sessions.at(-1)!
+    const prompt = session.prompt.mock.calls[0][0] as string
+    expect(prompt).not.toContain('重点检查维度')
+    expect(prompt).not.toContain('全部维度')
+  })
+
   it('fails delegated review when no report is ever persisted', async () => {
     const store = fakeStore({
       listConversations: vi.fn(async () => []),

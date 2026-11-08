@@ -28,6 +28,7 @@ import { retryFinalizationPublication } from '../../services/finalization-client
 import { captureFinalizationSnapshot } from '../../services/finalization-snapshot'
 
 import { DRAFT_STATUS_LABEL, DRAFT_STATUS_COLOR } from '../../shared/draft-status'
+import { REVIEW_DIMENSION_KEYS, REVIEW_DIMENSIONS, formatReviewFocus } from '../../shared/review-dimensions'
 import { countDraftUnits } from '../../shared/draft-units'
 import { type DraftAnnotation } from '../../shared/draft-annotation'
 import { useDraftDiffProposals } from './use-draft-diff-proposals'
@@ -251,31 +252,12 @@ function DraftEditorSession({ tabId, filePath, content, projectKey }: Props) {
     }, 300)
     return () => clearTimeout(timer)
   }, [annotations, annotationsReady, currentProject, isReadonly, meta?.id, projectKey])
-  // 审稿维度多选
-  const REVIEW_DIMS = [
-    {
-      key: 'continuity',
-      label: text('剧情连贯性', 'Story continuity'),
-      desc: text('与前文是否矛盾', 'Consistency with earlier chapters'),
-      promptLabel: '剧情连贯性'},
-    {
-      key: 'logic',
-      label: text('剧情合理性', 'Story logic'),
-      desc: text('因果逻辑、动机、常识', 'Causality, motivation, and plausibility'),
-      promptLabel: '剧情合理性'},
-    {
-      key: 'character',
-      label: text('角色状态', 'Character state'),
-      desc: text('能力/位置/情感一致性', 'Ability, location, and emotional consistency'),
-      promptLabel: '角色状态'},
-    {
-      key: 'foreshadow',
-      label: text('前后章节串联', 'Chapter connections'),
-      desc: text('伏笔、悬念连贯', 'Foreshadowing and suspense continuity'),
-      promptLabel: '前后章节串联'},
-  ]
+  // 审稿维度多选：维度定义收归 shared 层，与项目助手委派审稿共用同一组 key 与名称。
+  const REVIEW_DIMS = REVIEW_DIMENSIONS.map(d => ({
+    key: d.key,
+    label: text(d.label.zhCN, d.label.enUS)}))
   const [reviewDims, setReviewDims] = useState<Record<string, boolean>>(
-    Object.fromEntries(REVIEW_DIMS.map(d => [d.key, true]))
+    Object.fromEntries(REVIEW_DIMENSION_KEYS.map(key => [key, true]))
   )
   const [charCount, setCharCount] = useState(0)
   const viewingHistory = historyView !== null && historyView.filePath === filePath
@@ -412,13 +394,14 @@ function DraftEditorSession({ tabId, filePath, content, projectKey }: Props) {
       const source = await freezeDraftSourceForAI(projectSession)
       if (!source || !isProjectSessionCurrent(projectSession)) return
       if (!isFrozenAISourceCurrent(source.body, source.sourceDraft)) return
-      const focus = REVIEW_DIMS
-        .filter(d => reviewDims[d.key])
-        .map(d => d.promptLabel)
-        .join('、')
+      // 侧重点与项目助手委派审稿用同一套维度名，中英各自成句。
+      const focus = formatReviewFocus(
+        REVIEW_DIMS.filter(d => reviewDims[d.key]).map(d => d.key),
+        useLocaleStore.getState().locale,
+      )
       const prompt = text(
-        `请审查第 ${meta.chapterNumber} 章《${meta.chapterTitle || '未命名'}》的草稿（draft_id: ${meta.id}）。先读取最新草稿、本章蓝图与已定稿的连续性事实，再逐项审查；重点检查维度：${focus || '全部维度'}。每条问题引用原文，最后调用 submit_chapter_review 提交审稿报告。`,
-        `Review the draft of Chapter ${meta.chapterNumber} "${meta.chapterTitle || 'Untitled'}" (draft_id: ${meta.id}). Read the latest draft, this chapter's blueprint, and finalized continuity facts first and then review it. Focus: ${focus || 'all dimensions'}. Quote the draft for each issue, and finish with submit_chapter_review.`,
+        `请审查第 ${meta.chapterNumber} 章《${meta.chapterTitle || '未命名'}》的草稿（draft_id: ${meta.id}）。先读取最新草稿、本章蓝图与已定稿的连续性事实，再逐项审查；${focus}。每条问题引用原文，最后调用 submit_chapter_review 提交审稿报告。`,
+        `Review the draft of Chapter ${meta.chapterNumber} "${meta.chapterTitle || 'Untitled'}" (draft_id: ${meta.id}). Read the latest draft, this chapter's blueprint, and finalized continuity facts first and then review it. ${focus}. Quote the draft for each issue, and finish with submit_chapter_review.`,
       )
       useLayoutStore.getState().openRightPanel('review')
       void useAgentStore.getState().sendMessage(prompt, 'review')

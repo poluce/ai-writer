@@ -15,21 +15,20 @@ import {
 } from '../ui/Dialog'
 import { useLocaleStore } from '../../stores/locale-store'
 import type { DraftMeta } from '../../services/workflows/chapter-workflow'
+import type { ReviewDimensionKey } from '../../shared/review-dimensions'
 
 export interface ReviewDimension {
-  key: string
+  key: ReviewDimensionKey
   label: string
-  desc: string
-  promptLabel: string
 }
 
 export interface DraftActionConfirmDialogProps {
   open: boolean
   meta: DraftMeta | null
-  reviewDims: Record<string, boolean>
-  reviewDimensions: ReviewDimension[]
+  reviewDims: Partial<Record<ReviewDimensionKey, boolean>>
+  reviewDimensions: readonly ReviewDimension[]
   onClose: () => void
-  onToggleReviewDim: (key: string) => void
+  onToggleReviewDim: (key: ReviewDimensionKey) => void
   onConfirm: () => void
 }
 

@@ -22,6 +22,7 @@ import type { AgentPromptHistoryTurn, AssistantType, PersistedAgentConversation 
 import { assistantTypeFromConversationId } from '../../src/shared/agent-conversation-archive'
 import type { ModelProfile } from '../../src/shared/ipc-channels'
 import { writingLanguageText, type WritingLanguage } from '../../src/shared/writing-language'
+import { formatReviewFocus, normalizeReviewDimensions, type ReviewDimensionKey } from '../../src/shared/review-dimensions'
 import { logFailure, logInfo } from '../../src/shared/fail-log'
 import { getProjectDb } from '../database'
 import { ReviewRepository } from '../repositories/review-repository'
@@ -190,6 +191,7 @@ export class AgentSessionManager {
       task: string
       chapter_number?: number
       instructions?: string
+      review_dimensions?: readonly ReviewDimensionKey[]
       context?: string
     },
     parentConversationId?: string,
@@ -249,6 +251,13 @@ export class AgentSessionManager {
         const instructionPart = instructionText
           ? writingLanguageText(language, `\n关注重点与指示：\n${instructionText}`, `\nSpecific Instructions & Focus:\n${instructionText}`)
           : ''
+        // 委派审稿时把作者指定的维度独立成行，和手动「AI 审稿」发出的侧重点完全同源。
+        const reviewDimensions = params.target === 'review'
+          ? normalizeReviewDimensions(params.review_dimensions)
+          : []
+        const focusPart = reviewDimensions.length === 0
+          ? ''
+          : `\n${formatReviewFocus(reviewDimensions, language)}`
 
         let targetGuidance = ''
         if (params.target === 'review') {
@@ -273,8 +282,8 @@ export class AgentSessionManager {
 
         const input = writingLanguageText(
           language,
-          `【来自项目助手的任务委派】\n\n核心任务：\n${params.task}${chapterPart}${instructionPart}\n${targetGuidance}`,
-          `[Task Delegated from Project Assistant]\n\nTask:\n${params.task}${chapterPart}${instructionPart}\n${targetGuidance}`,
+          `【来自项目助手的任务委派】\n\n核心任务：\n${params.task}${chapterPart}${focusPart}${instructionPart}\n${targetGuidance}`,
+          `[Task Delegated from Project Assistant]\n\nTask:\n${params.task}${chapterPart}${focusPart}${instructionPart}\n${targetGuidance}`,
         )
 
         // 获取或创建目标助手会话

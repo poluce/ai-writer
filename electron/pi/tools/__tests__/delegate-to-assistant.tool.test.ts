@@ -96,6 +96,58 @@ describe('createDelegateToAssistantTool', () => {
     })
   })
 
+  it('passes author-selected review dimensions through in canonical order', async () => {
+    const handler = vi.fn().mockResolvedValue({
+      success: true,
+      result: '审稿完成，报告已生成。',
+      conversationId: 'review-321',
+      reviewId: 7,
+    })
+
+    const tool = createDelegateToAssistantTool('zh-CN', handler)
+    const result = await tool.execute('call-7', {
+      assistant: 'review',
+      task: '审查草稿并提交审稿报告',
+      chapter_number: 3,
+      review_dimensions: ['foreshadow', 'continuity', 'continuity'],
+    })
+
+    expect(handler).toHaveBeenCalledWith({
+      target: 'review',
+      task: '审查草稿并提交审稿报告',
+      chapter_number: 3,
+      instructions: undefined,
+      review_dimensions: ['continuity', 'foreshadow'],
+    })
+    expect(result.details).toMatchObject({
+      reviewId: 7,
+      reviewDimensions: ['continuity', 'foreshadow'],
+    })
+  })
+
+  it('ignores review dimensions when delegating to non-review assistants', async () => {
+    const handler = vi.fn().mockResolvedValue({
+      success: true,
+      result: '设定完成',
+      conversationId: 'architect-2',
+    })
+
+    const tool = createDelegateToAssistantTool('zh-CN', handler)
+    const result = await tool.execute('call-8', {
+      assistant: 'architect',
+      task: '梳理设定',
+      review_dimensions: ['continuity'],
+    })
+
+    expect(handler).toHaveBeenCalledWith({
+      target: 'architect',
+      task: '梳理设定',
+      chapter_number: undefined,
+      instructions: undefined,
+    })
+    expect(result.details).not.toHaveProperty('reviewDimensions')
+  })
+
   it('throws an error when delegation fails', async () => {
     const handler = vi.fn().mockResolvedValue({
       success: false,

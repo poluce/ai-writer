@@ -1,6 +1,11 @@
 import type { AgentTool } from '@earendil-works/pi-agent-core'
 import { Type, StringEnum } from '@earendil-works/pi-ai'
 import { writingLanguageText, type WritingLanguage } from '../../../src/shared/writing-language'
+import {
+  REVIEW_DIMENSION_KEYS,
+  normalizeReviewDimensions,
+  type ReviewDimensionKey,
+} from '../../../src/shared/review-dimensions'
 import type { RendererActionSink } from '../renderer-action'
 
 export type DelegatableAssistantType = 'architect' | 'blueprint' | 'review'
@@ -10,6 +15,7 @@ export type AssistantDelegateHandler = (params: {
   task: string
   chapter_number?: number
   instructions?: string
+  review_dimensions?: ReviewDimensionKey[]
 }) => Promise<{
   success: boolean
   result?: string
@@ -38,6 +44,9 @@ const Schema = Type.Object({
   instructions: Type.Optional(Type.String({
     description: '作者提出的额外特殊要求、重点侧重维度或风格约束（可选，例如"重点关注打斗节奏"、"排查玉佩设定的前后矛盾"）。仅传递指示与关注点，严禁复制大段前文背景。',
   })),
+  review_dimensions: Type.Optional(Type.Array(StringEnum(REVIEW_DIMENSION_KEYS), {
+    description: '委派审稿（assistant="review"）时，作者要求优先、深入检查的维度，与主界面「AI 审稿」弹窗的勾选一致：continuity=剧情连贯性（与前文、前章是否矛盾）、logic=剧情合理性（因果、动机、常识）、character=角色状态（能力、位置、情感一致性）、foreshadow=前后章节串联（伏笔、悬念连贯）。省略时按全部维度审查；只列部分维度表示优先深查这几项，未列出的维度仍需覆盖。其它助手忽略此参数。',
+  })),
 })
 
 export function createDelegateToAssistantTool(
@@ -51,8 +60,8 @@ export function createDelegateToAssistantTool(
     label: isEn ? 'Delegate to Assistant' : '委派助手任务',
     description: writingLanguageText(
       language,
-      '向专门领域助手（架构助手、章节蓝图助手或审稿助手）委派专门任务并获取执行结果。所有助手共享项目权威数据库并自带专属读取工具。委派审稿任务前，系统会自动保存作者当前打开的单章草稿；保存失败会中止委派。委派时遵守【指针传递】原则：仅需指定目标助手、核心任务、目标章节（chapter_number，如适用）以及作者的关注重点（instructions）。严禁在此复制大段正文或设定，目标助手会以专业角色自行调用工具精准调取事实并深入推演。',
-      'Delegate a dedicated task to the Architecture Assistant, Chapter Blueprint Assistant, or Review Assistant and retrieve their response. All assistants share the project authoritative database and possess dedicated tools. Before a review delegation, the system automatically saves the author\'s currently open chapter draft; if saving fails the delegation is aborted. Follow the "Pass Pointers, Not Payloads" principle: supply only the target assistant, core task, chapter_number (if applicable), and author focus instructions. Never copy draft text or settings into the parameters; the target assistant will query the database directly using its own tools.',
+      '向专门领域助手（架构助手、章节蓝图助手或审稿助手）委派专门任务并获取执行结果。所有助手共享项目权威数据库并自带专属读取工具。委派审稿任务前，系统会自动保存作者当前打开的单章草稿；保存失败会中止委派。委派时遵守【指针传递】原则：仅需指定目标助手、核心任务、目标章节（chapter_number，如适用）以及作者的关注重点（instructions）。委派审稿时，作者点名要重点检查的维度用 review_dimensions 传递（与主界面「AI 审稿」弹窗的勾选一致），不要塞进 instructions。严禁在此复制大段正文或设定，目标助手会以专业角色自行调用工具精准调取事实并深入推演。',
+      'Delegate a dedicated task to the Architecture Assistant, Chapter Blueprint Assistant, or Review Assistant and retrieve their response. All assistants share the project authoritative database and possess dedicated tools. Before a review delegation, the system automatically saves the author\'s currently open chapter draft; if saving fails the delegation is aborted. Follow the "Pass Pointers, Not Payloads" principle: supply only the target assistant, core task, chapter_number (if applicable), and author focus instructions. For review delegations, pass the dimensions the author wants prioritized via review_dimensions (same options as the AI review dialog in the main workspace) instead of stuffing them into instructions. Never copy draft text or settings into the parameters; the target assistant will query the database directly using its own tools.',
     ),
     parameters: Schema,
     isWriteOperation: () => true,
@@ -63,6 +72,11 @@ export function createDelegateToAssistantTool(
         : target === 'blueprint'
           ? (isEn ? 'Chapter Blueprint Assistant' : '蓝图助手')
           : (isEn ? 'Review Assistant' : '审稿助手')
+
+      // 维度只对审稿有意义；其它助手带上该参数只会变成噪音，直接丢弃。
+      const reviewDimensions = target === 'review'
+        ? normalizeReviewDimensions(params.review_dimensions)
+        : []
 
       // 审稿委派前先请渲染层保存作者屏幕上未保存的草稿；保存失败就中止委派，
       // 避免审稿助手读到数据库旧稿却把报告绑在新版本上。
@@ -85,6 +99,7 @@ export function createDelegateToAssistantTool(
         task: params.task,
         chapter_number: params.chapter_number,
         instructions: params.instructions,
+        ...(reviewDimensions.length > 0 ? { review_dimensions: reviewDimensions } : {}),
       })
 
       if (!response.success || !response.result) {
@@ -113,6 +128,7 @@ export function createDelegateToAssistantTool(
           conversationId: response.conversationId,
           result: response.result,
           ...(response.reviewId === undefined ? {} : { reviewId: response.reviewId }),
+          ...(reviewDimensions.length === 0 ? {} : { reviewDimensions }),
           ...(savedDraftSummary ? { savedDraft: savedDraftSummary } : {}),
         },
       }
