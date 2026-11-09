@@ -56,7 +56,7 @@ describe('agent renderer actions', () => {
   it('opens the novel configuration page as a project-scoped tab', async () => {
     await handleRendererAction({ type: 'open_editor', target: 'builtin', editor: 'config' })
 
-    expect(activeTab()).toMatchObject({ type: 'config', name: '小说配置', projectKey: PROJECT_PATH })
+    expect(activeTab()).toMatchObject({ type: 'config', name: '作品设定', projectKey: PROJECT_PATH })
     expect(useEditorStore.getState().tabs.filter(tab => tab.type === 'config')).toHaveLength(1)
   })
 

@@ -171,7 +171,7 @@ export function createConfigGenerationWorkflow(params: ConfigGenerationWorkflowP
   const projectSession = Object.freeze({ ...params.projectSession })
   return {
     type: 'config_generation',
-    title: text('AI 生成小说配置', 'Generate novel configuration with AI'),
+    title: text('AI 生成作品设定', 'Generate story settings with AI'),
     projectPath: params.projectPath,
     projectSession,
     resourceKeys: [workflowResourceKey('novel-config')],
@@ -179,7 +179,7 @@ export function createConfigGenerationWorkflow(params: ConfigGenerationWorkflowP
       {
         name: text('智能分析并填充配置', 'Analyze and fill the configuration'),
         description: text(
-          `根据创作脑洞生成小说配置（全书规划约 ${params.totalChapters} 章）`,
+          `根据创作脑洞生成作品设定（全书规划约 ${params.totalChapters} 章）`,
           `Generate a novel configuration from the idea (about ${params.totalChapters} chapters total)`,
         ),
         executor: async (step, context, callbacks) => {
@@ -194,7 +194,7 @@ export function createConfigGenerationWorkflow(params: ConfigGenerationWorkflowP
         },
       },
     ],
-    onComplete: { mode: 'silent', message: text('小说配置已自动生成完毕，请查阅确认。', 'Novel configuration is ready. Please review it.') },
+    onComplete: { mode: 'silent', message: text('作品设定已自动生成完毕，请查阅确认。', 'Story settings are ready. Please review them.') },
   }
 }
 

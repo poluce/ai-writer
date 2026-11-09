@@ -1,4 +1,4 @@
-import { X, FileText, Settings, Users, ArrowLeftRight, MoreHorizontal, BookOpen, History, ClipboardCheck, Globe, Save, ChevronLeft, ChevronRight, PenTool, Check, Map } from 'lucide-react'
+import { X, FileText, Users, ArrowLeftRight, MoreHorizontal, BookOpen, History, ClipboardCheck, Globe, Save, ChevronLeft, ChevronRight, PenTool, Check, Map } from 'lucide-react'
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { ContextMenu, type ContextMenuEntry } from '../ui/ContextMenu'
 import {
@@ -199,7 +199,7 @@ export default function EditorArea() {
     if (!projectPath) return
     openFile({
       id: 'config',
-      name: useLocaleStore.getState().text('小说配置', 'Novel configuration'),
+      name: useLocaleStore.getState().text('作品设定', 'Story settings'),
       type: 'config',
       projectKey: projectPath,
     })
@@ -486,7 +486,7 @@ export default function EditorArea() {
 
   /** Tab 图标 */
   const TabIcon = ({ type }: { type: EditorTab['type'] }) => {
-    if (type === 'config') return <Settings size={14} />
+    if (type === 'config') return <BookOpen size={14} />
     if (type === 'character') return <Users size={14} />
     if (type === 'diff') return <ArrowLeftRight size={14} />
     if (type === 'chapter-card') return <BookOpen size={14} />

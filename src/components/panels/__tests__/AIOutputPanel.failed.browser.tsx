@@ -266,7 +266,7 @@ describe('AIOutputPanel failed chapter draft', () => {
 
 describe('AIOutputPanel prompt budget failure', () => {
   it.each([
-    ['zh-CN', '提示词预算不足', '打开小说配置'],
+    ['zh-CN', '提示词预算不足', '打开作品设定'],
     ['en-US', 'Prompt budget is insufficient', 'Open novel configuration'],
   ] as const)('shows a %s actionable adjustment entry', async (locale, heading, actionLabel) => {
     useLocaleStore.setState({ locale })
@@ -292,7 +292,7 @@ describe('AIOutputPanel prompt budget failure', () => {
   })
 
   it.each([
-    ['zh-CN', '请返回该生成步骤，缩短步骤指导后重试。', '本次被预算预检阻止的请求未发送，未产生额外模型尝试或消费。', '打开小说配置'],
+    ['zh-CN', '请返回该生成步骤，缩短步骤指导后重试。', '本次被预算预检阻止的请求未发送，未产生额外模型尝试或消费。', '打开作品设定'],
     ['en-US', 'Return to that generation step, shorten its step guidance, and try again.', 'The request blocked by this budget preflight was not sent and caused no additional model attempt or consumption.', 'Open novel configuration'],
   ] as const)('shows accurate %s guidance without a configuration action for a non-configuration section', async (
     locale,
@@ -337,9 +337,9 @@ describe('AIOutputPanel prompt budget failure', () => {
 
     expect(container?.textContent).toContain('提示词预算不足')
     expect(container?.textContent).not.toContain('Prompt budget is insufficient')
-    expect(container?.textContent).toContain('此结果属于另一项目会话。请切回该项目后再打开小说配置。')
+    expect(container?.textContent).toContain('此结果属于另一项目会话。请切回该项目后再打开作品设定。')
     const action = Array.from(container?.querySelectorAll('button') ?? [])
-      .find(button => button.textContent?.includes('打开小说配置'))
+      .find(button => button.textContent?.includes('打开作品设定'))
     expect(action).toBeDisabled()
 
     await act(async () => action?.click())

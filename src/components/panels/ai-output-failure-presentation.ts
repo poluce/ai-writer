@@ -35,12 +35,12 @@ function promptBudgetAdjustment(
   if (sectionName && NOVEL_CONFIG_SECTIONS.has(sectionName)) {
     return locale === 'zh-CN'
       ? {
-          guidance: '请在小说配置中缩短列出的项目配置字段后重试。',
+          guidance: '请在作品设定中缩短列出的项目配置字段后重试。',
           action: 'open-novel-config',
-          actionLabel: '打开小说配置',
+          actionLabel: '打开作品设定',
         }
       : {
-          guidance: 'Shorten the listed project configuration fields in Novel configuration, then try again.',
+          guidance: 'Shorten the listed project configuration fields in Story settings, then try again.',
           action: 'open-novel-config',
           actionLabel: 'Open novel configuration',
         }

@@ -52,6 +52,7 @@ async function mount(projectData: ProjectData) {
   document.body.append(container)
   root = createRoot(container)
   await act(async () => root?.render(<NovelConfigEditor projectKey={projectData.path} />))
+  await act(async () => page.getByRole('button', { name: '编辑作品坐标' }).click())
 }
 
 afterEach(async () => {
@@ -85,6 +86,6 @@ describe('novel config golden-finger setting', () => {
     expect(page.getByText('金手指 / 核心卖点', { exact: true }).query()).toBeNull()
     expect((page.getByRole('combobox', { name: '金手指' }).element() as HTMLSelectElement).value).toBe('no')
     // 其他章节仍然正常呈现
-    await expect.element(page.getByText('核心大纲', { exact: true })).toBeVisible()
+    await expect.element(page.getByRole('heading', { name: '核心大纲', exact: true })).toBeVisible()
   })
 })

@@ -30,7 +30,7 @@ const AFFECTED_DRAFT_LEDGERS: Partial<Record<
   string,
   { scope: ProjectClearScope; label: string }
 >> = {
-  config: { scope: 'creativeFields', label: '小说配置' },
+  config: { scope: 'creativeFields', label: '作品设定' },
   'chapter-card-editor': { scope: 'blueprints', label: '章节蓝图' },
 }
 

@@ -38,7 +38,7 @@ describe('AI output failure presentation', () => {
     expect(presentation.heading).not.toBe('正文生成被内容策略拦截')
   })
 
-  it('offers Novel configuration only for a project-configuration contributor', () => {
+  it('offers Story settings only for a project-configuration contributor', () => {
     expect(presentWorkflowFailure(
       'prompt_budget_exhausted',
       'safe report summary',
@@ -47,11 +47,11 @@ describe('AI output failure presentation', () => {
       promptBudgetReport('global-guidance'),
     )).toMatchObject({
       action: 'open-novel-config',
-      guidance: 'Shorten the listed project configuration fields in Novel configuration, then try again.',
+      guidance: 'Shorten the listed project configuration fields in Story settings, then try again.',
     })
   })
 
-  it('keeps a step-guidance overflow away from the unrelated Novel configuration action', () => {
+  it('keeps a step-guidance overflow away from the unrelated Story settings action', () => {
     const presentation = presentWorkflowFailure(
       'prompt_budget_exhausted',
       'safe report summary',

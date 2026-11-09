@@ -59,7 +59,7 @@ export async function handleRendererAction(action: RendererAction): Promise<Rend
         if (entry === null) {
           useEditorStore.getState().openFile({
             id: 'config',
-            name: uiText('小说配置', 'Novel configuration'),
+            name: uiText('作品设定', 'Story settings'),
             type: 'config',
             projectKey: useProjectStore.getState().currentProject?.path ?? '',
           })

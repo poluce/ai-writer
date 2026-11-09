@@ -61,6 +61,10 @@ function project(id: string, writingLanguage: 'zh-CN' | 'en-US'): ProjectData {
   }
 }
 
+async function openCoordinates(label: '编辑作品坐标' | 'Edit coordinates' = '编辑作品坐标') {
+  await act(async () => page.getByRole('button', { name: label }).click())
+}
+
 function writingLanguageSelect(): HTMLSelectElement {
   const select = document.getElementById('project-writing-language')
   if (!(select instanceof HTMLSelectElement)) throw new Error('Missing project writing language selector')
@@ -107,6 +111,7 @@ describe('project writing language', () => {
       })
 
       await mount(<NovelConfigEditor projectKey={currentProject.path} />)
+      await openCoordinates(uiLocale === 'zh-CN' ? '编辑作品坐标' : 'Edit coordinates')
 
       await expect.element(page.getByRole('combobox', { name: label })).toBeVisible()
       expect(writingLanguageSelect().value).toBe(writingLanguage)
@@ -127,6 +132,7 @@ describe('project writing language', () => {
       })
 
       await mount(<NovelConfigEditor projectKey={currentProject.path} />)
+      await openCoordinates(uiLocale === 'zh-CN' ? '编辑作品坐标' : 'Edit coordinates')
 
       const options = Array.from(document.querySelectorAll('option'))
       const genre = options.find(option => option.value === currentProject.novelConfig.genre)
@@ -157,6 +163,7 @@ describe('project writing language', () => {
     })
 
     await mount(<NovelConfigEditor projectKey={currentProject.path} />)
+    await openCoordinates(uiLocale === 'zh-CN' ? '编辑作品坐标' : 'Edit coordinates')
 
     const emptyOptions = Array.from(document.querySelectorAll<HTMLOptionElement>('option[value=""]'))
     expect(emptyOptions.map(option => option.textContent)).toEqual(labels)
@@ -177,6 +184,7 @@ describe('project writing language', () => {
     })
 
     await mount(<NovelConfigEditor projectKey={projectA.path} />)
+    await openCoordinates()
     await expect.element(page.getByText('写作语言', { exact: true })).toBeVisible()
     await expect.element(page.getByRole('combobox', { name: '写作语言' })).toBeVisible()
     expect(writingLanguageSelect().value).toBe('en-US')
@@ -192,6 +200,7 @@ describe('project writing language', () => {
       root?.render(<NovelConfigEditor projectKey={projectB.path} />)
     })
 
+    await openCoordinates('Edit coordinates')
     await expect.element(page.getByText('Writing language', { exact: true })).toBeVisible()
     await expect.element(page.getByRole('combobox', { name: 'Writing language' })).toBeVisible()
     expect(writingLanguageSelect().value).toBe('zh-CN')
@@ -208,6 +217,7 @@ describe('project writing language', () => {
     })
 
     await mount(<NovelConfigEditor projectKey={currentProject.path} />)
+    await openCoordinates()
     const originalOutline = currentProject.novelConfig.coreOutline
     await act(async () => {
       const select = writingLanguageSelect()
@@ -219,8 +229,7 @@ describe('project writing language', () => {
       writingLanguage: 'en-US',
       coreOutline: originalOutline,
     })
-    await act(async () => page.getByRole('button', { name: '保存', exact: true }).click())
-    await vi.waitFor(() => expect(saveProject).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(saveProject).toHaveBeenCalled(), { timeout: 3000 })
     expect(useProjectStore.getState().currentProject?.novelConfig.coreOutline).toBe(originalOutline)
   })
 
@@ -235,7 +244,8 @@ describe('project writing language', () => {
     })
 
     await mount(<NovelConfigEditor projectKey={currentProject.path} />)
-    await expect.element(page.getByText('基本信息', { exact: true })).toBeVisible()
+    await openCoordinates()
+    await expect.element(page.getByText('作品坐标', { exact: true })).toBeVisible()
     await expect.element(page.getByText('沉寂提醒阈值（章）', { exact: true })).toBeVisible()
     const threshold = document.getElementById('narrative-thread-dormant-threshold')
     if (!(threshold instanceof HTMLInputElement)) throw new Error('Missing narrative thread threshold input')
@@ -249,7 +259,7 @@ describe('project writing language', () => {
       useLocaleStore.setState({ locale: 'en-US' })
       root?.render(<NovelConfigEditor projectKey={currentProject.path} />)
     })
-    await expect.element(page.getByText('Basic information', { exact: true })).toBeVisible()
+    await expect.element(page.getByText('Project coordinates', { exact: true })).toBeVisible()
     await expect.element(page.getByText('Dormant reminder threshold (chapters)', { exact: true })).toBeVisible()
   })
 })

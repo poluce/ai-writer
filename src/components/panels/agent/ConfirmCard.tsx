@@ -301,7 +301,7 @@ function generateDescription(
       )
     }
     case 'novel_config':
-      return text('小说配置修改', 'Novel configuration update')
+      return text('作品设定修改', 'Story settings update')
     case 'story_architecture': {
       const section = String(args.section ?? '故事架构')
       return text(

@@ -1,7 +1,7 @@
 /**
  * ProjectTree — 项目导航树（侧边栏核心视图）
  *
- * 包含：小说配置、故事架构、章节蓝图、草稿箱、正文章节、全局摘要
+ * 包含：作品设定、故事架构、章节蓝图、草稿箱、正文章节、全局摘要
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
@@ -22,6 +22,7 @@ import { useOutsideClick } from '../../../hooks/useOutsideClick'
 
 import { LeafItem } from './SidebarShared'
 import { ARCH_FILES } from './sidebar-arch-files'
+import { GENRE_EN } from '../../editor/novel-config-labels'
 import {
   confirmCurrentProjectSession,
   openArchFile,
@@ -191,8 +192,8 @@ export default function ProjectTree() {
             style={{ color: 'var(--color-text-muted)' }}
           >
             {text(
-              '打开项目后，这里显示小说配置、故事架构、章节蓝图与正文章节。',
-              'Once a project is open, its configuration, architecture, blueprints, and chapters appear here.',
+              '打开项目后，这里显示作品设定、故事架构、章节蓝图与正文章节。',
+              'Once a project is open, its settings, architecture, blueprints, and chapters appear here.',
             )}
           </span>
         </EmptyState>
@@ -213,15 +214,25 @@ export default function ProjectTree() {
       chapterTitle: draft!.chapterTitle,
     }))
 
-  // 小说配置是否已完成（核心大纲非空视为已完成）
   const nc = currentProject.novelConfig
-  const configDone = !!(nc.coreOutline?.trim() || nc.protagonistProfile?.trim())
+  const configTracked = [
+    nc.coreOutline,
+    nc.worldSetting,
+    ...(nc.needsGoldenFinger === false ? [] : [nc.goldenFinger]),
+    nc.protagonistProfile,
+    nc.globalGuidance,
+    nc.writingStyle,
+    nc.referenceWorks,
+  ]
+  const configFilledCount = configTracked.filter(value => Boolean(value?.trim())).length
+  const configTotal = configTracked.length
+  const configDone = configFilledCount === configTotal
 
   // 故事架构进度
   const archDone = ARCH_FILES.filter(f => archStatus[f.key]).length
   const clearDisabled = activeRuns.length > 0
 
-  /** 删除整个项目（含目录）：从首页搬到这里，与「清除全部」相邻 */
+  /** 删除整个项目（含目录） */
   const handleDeleteProject = async () => {
     setMenuOpen(false)
     const ok = await confirm(
@@ -243,75 +254,79 @@ export default function ProjectTree() {
   }
   const openConfigEditor = () => useEditorStore.getState().openFile({
     id: 'config',
-    name: text('小说配置', 'Novel configuration'),
+    name: text('作品设定', 'Story settings'),
     type: 'config',
     projectKey: currentProject.path,
   })
 
   return (
     <div className="writer-project-tree min-h-full text-sm py-1">
-      {/* 项目名 + 刷新 */}
-      <div className="flex items-center justify-between gap-1 px-3 py-1.5 mb-0.5">
-        <span className="font-semibold text-xs truncate" style={{ color: 'var(--color-text)' }}>
-          {currentProject.name}
-        </span>
-        <div className="flex flex-shrink-0 items-center gap-0.5">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setClearDialogOpen(true)}
-            disabled={clearDisabled}
-            title={clearDisabled
-              ? text('工作流运行中，暂不能清除', 'A workflow is running. Project data cannot be cleared yet.')
-              : text('清除项目生成内容', 'Clear generated project data')}
-          >
-            <Trash2 size={12} />
-            {text('清除全部', 'Clear all')}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => { void refreshAll() }}
-            title={text('刷新', 'Refresh')}
-            disabled={refreshing}
-          >
-            <RefreshCw size={12} />
-          </Button>
-          <div className="relative" ref={menuRef}>
+      {/* 项目名 + 项目坐标摘要 */}
+      <div className="px-3 pt-2 pb-1.5 mb-0.5">
+        <div className="flex items-center justify-between gap-1">
+          <span className="font-semibold text-xs truncate" style={{ color: 'var(--color-text)' }}>
+            {currentProject.name}
+          </span>
+          <div className="flex flex-shrink-0 items-center gap-0.5">
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setMenuOpen(v => !v)}
-              title={text('更多项目操作', 'More project actions')}
+              onClick={() => { void refreshAll() }}
+              title={text('刷新', 'Refresh')}
+              disabled={refreshing}
             >
-              <MoreHorizontal size={12} />
+              <RefreshCw size={12} />
             </Button>
-            {menuOpen && (
-              <div
-                role="menu"
-                aria-label={text('更多项目操作', 'More project actions')}
-                className="absolute right-0 top-full z-50 mt-1 w-44 rounded-lg py-1"
-                style={{
-                  backgroundColor: 'var(--color-sidebar)',
-                  border: '1px solid var(--color-border)',
-                  boxShadow: 'var(--shadow-popover)',
-                }}
+            <div className="relative" ref={menuRef}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setMenuOpen(v => !v)}
+                title={text('更多项目操作', 'More project actions')}
               >
-                <MenuItem
-                  label={text('刷新项目数据', 'Refresh project data')}
-                  icon={<RefreshCw size={13} />}
-                  disabled={refreshing}
-                  onClick={() => { setMenuOpen(false); void refreshAll() }}
-                />
-                <MenuItem
-                  label={text('删除项目', 'Delete project')}
-                  icon={<Trash2 size={13} />}
-                  danger
-                  onClick={() => void handleDeleteProject()}
-                />
-              </div>
-            )}
+                <MoreHorizontal size={12} />
+              </Button>
+              {menuOpen && (
+                <div
+                  role="menu"
+                  aria-label={text('更多项目操作', 'More project actions')}
+                  className="absolute right-0 top-full z-50 mt-1 w-44 rounded-lg py-1"
+                  style={{
+                    backgroundColor: 'var(--color-sidebar)',
+                    border: '1px solid var(--color-border)',
+                    boxShadow: 'var(--shadow-popover)',
+                  }}
+                >
+                  <MenuItem
+                    label={text('刷新项目数据', 'Refresh project data')}
+                    icon={<RefreshCw size={13} />}
+                    disabled={refreshing}
+                    onClick={() => { setMenuOpen(false); void refreshAll() }}
+                  />
+                  <MenuItem
+                    label={text('清除项目生成内容', 'Clear generated project data')}
+                    icon={<Trash2 size={13} />}
+                    disabled={clearDisabled}
+                    disabledHint={text('工作流运行中', 'Workflow running')}
+                    onClick={() => { setMenuOpen(false); setClearDialogOpen(true) }}
+                  />
+                  <MenuItem
+                    label={text('删除项目', 'Delete project')}
+                    icon={<Trash2 size={13} />}
+                    danger
+                    onClick={() => void handleDeleteProject()}
+                  />
+                </div>
+              )}
+            </div>
           </div>
+        </div>
+        <div className="mt-0.5 truncate" style={{ color: 'var(--color-text-muted)', fontSize: 10.5 }}>
+          {nc.genre ? text(nc.genre, GENRE_EN[nc.genre] ?? nc.genre) : text('未设置类型', 'No genre')}
+          <span style={{ opacity: 0.55, margin: '0 5px' }}>·</span>
+          {nc.totalChapters
+            ? text(`计划 ${nc.totalChapters} 章`, `${nc.totalChapters} chapters planned`)
+            : text('未设置篇幅', 'No length set')}
         </div>
       </div>
 
@@ -321,28 +336,44 @@ export default function ProjectTree() {
         onCleared={refreshAll}
       />
 
-      {/* 1. 小说配置 */}
+      <SidebarGroupLabel>{text('设定', 'Settings')}</SidebarGroupLabel>
+
       <LeafItem
         iconName="book-open"
-        label={text('小说配置', 'Novel configuration')}
-        desc={text('基础参数与写作要求', 'Core parameters and writing guidance')}
-        badge={configDone ? text('已完成', 'Complete') : text('待配置', 'Pending')}
+        label={text('作品设定', 'Story settings')}
+        desc={text('作品坐标与写作纪律', 'Project coordinates and writing rules')}
+        badge={`${configFilledCount}/${configTotal}`}
         badgeDone={configDone}
+        badgeColor={
+          configDone
+            ? 'var(--color-success-text)'
+            : configFilledCount > 0
+              ? 'var(--color-warning-text, #7A5414)'
+              : undefined
+        }
         onClick={openConfigEditor}
         onContextMenu={e => showSidebarMenu([
           {
             key: 'open',
-            label: text('打开小说配置', 'Open novel configuration'),
+            label: text('打开作品设定', 'Open story settings'),
             icon: <FolderOpen size={13} />,
             onClick: openConfigEditor,
           },
         ], e)}
       />
 
-      {/* 2. 故事架构 — 点击标题行打开编辑器，子文件（前提概要、人物、环境、情节）均在组内 */}
+      {/* 故事架构 — 点击标题行打开编辑器，子文件（前提概要、人物、环境、情节）均在组内 */}
       <WorldBuildingGroup archStatus={archStatus} archDone={archDone} onCleared={refreshAll} />
 
-      {/* 3. 章节蓝图 — 点击打开编辑器页 */}
+      <LeafItem
+        iconName="git-branch"
+        label={text('伏笔与叙事线索', 'Foreshadowing & narrative threads')}
+        desc={text('规划埋设/回收章节，自动注入写作并提示逾期', 'Plan setup/payoff chapters, inject active threads, and flag overdue ones')}
+        onClick={() => openBuiltinEditor('narrative-thread-editor', text('伏笔与叙事线索', 'Foreshadowing & narrative threads'), 'narrative-thread')}
+      />
+
+      <SidebarGroupLabel>{text('写作', 'Writing')}</SidebarGroupLabel>
+
       <LeafItem
         iconName="layout-list"
         label={text('章节蓝图', 'Chapter blueprints')}
@@ -367,20 +398,18 @@ export default function ProjectTree() {
         ], e)}
       />
 
-      <LeafItem
-        iconName="git-branch"
-        label={text('伏笔与叙事线索', 'Foreshadowing & narrative threads')}
-        desc={text('规划埋设/回收章节，自动注入写作并提示逾期', 'Plan setup/payoff chapters, inject active threads, and flag overdue ones')}
-        onClick={() => openBuiltinEditor('narrative-thread-editor', text('伏笔与叙事线索', 'Foreshadowing & narrative threads'), 'narrative-thread')}
-      />
-
-      {/* 5. 草稿箱 — 独立分区，按章节分组展示草稿 */}
+      {/* 草稿箱 — 独立分区，按章节分组展示草稿 */}
       <DraftBoxGroup draftsByChapter={draftsByChapter} />
 
-      {/* 6. 正文章节 — 仅显示已定稿 */}
+      {/* 正文章节 — 仅显示已定稿 */}
       <ManuscriptGroup files={manuscriptFiles} projectPath={p} />
     </div>
   )
+}
+
+
+function SidebarGroupLabel({ children }: { children: React.ReactNode }) {
+  return <div className="sidebar-group-label">{children}</div>
 }
 
 

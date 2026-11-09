@@ -151,7 +151,7 @@ export default function NovelStudyProjectionDialog({
                 </span>
               </div>
               <span className="text-xs text-[var(--color-text-muted)]">
-                {text('写入小说配置', 'Project writing style')}
+                {text('写入作品设定', 'Write to story settings')}
               </span>
             </div>
             {dossier.styleProfile?.rawAnalysis && (

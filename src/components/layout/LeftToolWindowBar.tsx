@@ -85,7 +85,7 @@ export default function LeftToolWindowBar() {
     if (!project) return
     useEditorStore.getState().openFile({
       id: 'config',
-      name: text('小说配置', 'Novel configuration'),
+      name: text('作品设定', 'Story settings'),
       type: 'config',
       projectKey: project.path})
   }

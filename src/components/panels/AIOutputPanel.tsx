@@ -679,7 +679,7 @@ function WorkflowFailureNotice({
     ) return
     useEditorStore.getState().openFile({
       id: 'config',
-      name: locale === 'zh-CN' ? '小说配置' : 'Novel configuration',
+      name: locale === 'zh-CN' ? '作品设定' : 'Story settings',
       type: 'config',
       projectKey: projectPath})
   }
@@ -721,8 +721,8 @@ function WorkflowFailureNotice({
         {presentation.action === 'open-novel-config' && !matchesCurrentProject && (
           <p className="m-0 mt-1" style={{ color: 'var(--color-text-muted)' }}>
             {locale === 'zh-CN'
-              ? '此结果属于另一项目会话。请切回该项目后再打开小说配置。'
-              : 'This result belongs to another project session. Switch back to that project before opening Novel configuration.'}
+              ? '此结果属于另一项目会话。请切回该项目后再打开作品设定。'
+              : 'This result belongs to another project session. Switch back to that project before opening Story settings.'}
           </p>
         )}
 

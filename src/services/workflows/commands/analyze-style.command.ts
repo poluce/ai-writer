@@ -145,7 +145,7 @@ export class AnalyzeWritingStyleCommand extends BaseWorkflowCommand<string> {
     const { updateNovelConfig } = useProjectStore.getState()
     updateNovelConfig({ writingStyle: cleanResult }, projectSession)
     callbacks.log(text(
-      '文风特征已保存到小说配置',
+      '文风特征已保存到作品设定',
       'Writing-style profile saved to the novel configuration',
     ))
 

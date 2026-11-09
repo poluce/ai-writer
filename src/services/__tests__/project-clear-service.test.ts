@@ -174,7 +174,7 @@ describe('clearProjectData', () => {
   it('blocks clear when affected tabs have unsaved edits', async () => {
     vi.mocked(useEditorStore.getState).mockReturnValue({
       tabs: [
-        { id: 'config', name: '小说配置', type: 'config', projectKey: projectPath, dirty: true },
+        { id: 'config', name: '作品设定', type: 'config', projectKey: projectPath, dirty: true },
         { id: 'character-a', name: '角色A', type: 'character', projectKey: projectPath, dirty: true },
       ],
       clearTabs,
@@ -198,7 +198,7 @@ describe('clearProjectData', () => {
       closeTab,
     } as never)
 
-    await expect(clearProjectData({ creativeFields: true }, projectSession)).rejects.toThrow(/小说配置/)
+    await expect(clearProjectData({ creativeFields: true }, projectSession)).rejects.toThrow(/作品设定/)
     expect(ipc.invokeWithProjectSession).not.toHaveBeenCalled()
   })
 

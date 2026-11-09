@@ -79,7 +79,7 @@ export function guardArchitectureGeneration(
       ok: false,
       message: localize(
         uiLocale,
-        `请先填写「小说配置」中的核心大纲或主角人设，AI 才能据此生成故事架构。\n\n当前类型：${genre || '未设置'}`,
+        `请先填写「作品设定」中的核心大纲或主角人设，AI 才能据此生成故事架构。\n\n当前类型：${genre || '未设置'}`,
         `Fill in the core outline or protagonist profile in Novel Configuration before generating the story architecture.\n\nCurrent genre: ${genre || 'Not set'}`,
       ),
       action: 'open-config',

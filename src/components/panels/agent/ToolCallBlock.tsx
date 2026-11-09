@@ -54,7 +54,7 @@ function formatToolCallTitle(
       return text(`在主工作区打开：第 ${args.chapter_number} 章草稿`, `Open in Workspace: Chapter ${args.chapter_number} draft`)
     }
     const targetLabels: Record<string, [string, string]> = {
-      config: ['小说配置', 'Novel configuration'],
+      config: ['作品设定', 'Story settings'],
       blueprints: ['章节蓝图', 'Chapter blueprints'],
       characters: ['角色管理', 'Characters'],
       architecture: ['故事架构', 'Story architecture'],
