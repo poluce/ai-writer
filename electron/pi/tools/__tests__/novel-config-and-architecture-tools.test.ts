@@ -105,7 +105,7 @@ describe('novel_config tool', () => {
     const tool = createNovelConfigTool('zh-CN', () => {})
 
     await expect(tool.execute('call-write', { action: 'update', goldenFinger: '新的金手指' }))
-      .rejects.toThrow('该项目并不涉及金手指，已关闭，不能写入内容')
+      .rejects.toThrow('如需写入请先联系通知作者，需要把开关设为「需要」')
   })
 
   it('updates multiple fields directly', async () => {

@@ -177,6 +177,11 @@ export function createNovelConfigTool(
 
       const isUpdate = isNovelConfigWrite(params as Record<string, unknown>)
 
+      const goldenFingerDisabledError = () => new Error(text(
+        '该项目并不涉及金手指，已关闭，不能写入内容；如需写入请先联系通知作者，需要把开关设为「需要」。',
+        'This project does not involve a golden finger, so the field is disabled and content cannot be written. To write it, notify the author and set the switch to "Needed".',
+      ))
+
       const writesGoldenFingerText = (): boolean => {
         if (typeof params.goldenFinger === 'string' && params.goldenFinger.trim().length > 0) return true
         if (FIELD_ALIASES[params.field ?? ''] === 'goldenFinger'
@@ -251,10 +256,7 @@ export function createNovelConfigTool(
       if (params.old_text && params.new_text) {
         const targetFieldKey = FIELD_ALIASES[params.field ?? 'coreOutline'] ?? (params.field ?? 'coreOutline')
         if (targetFieldKey === 'goldenFinger' && !isGoldenFingerEnabled(core)) {
-          throw new Error(text(
-            '该项目并不涉及金手指，已关闭，不能写入内容',
-            'This project does not involve a golden finger; the field is disabled, so content cannot be written.',
-          ))
+          throw goldenFingerDisabledError()
         }
         const currentVal = String((core as unknown as Record<string, unknown>)[targetFieldKey] ?? '')
         if (!currentVal.includes(params.old_text)) {
@@ -290,10 +292,7 @@ export function createNovelConfigTool(
 
       // ========== 整体字段写入 / 填充逻辑 ==========
       if (!isGoldenFingerEnabled(core) && writesGoldenFingerText()) {
-        throw new Error(text(
-          '该项目并不涉及金手指，已关闭，不能写入内容',
-          'This project does not involve a golden finger; the field is disabled, so content cannot be written.',
-        ))
+        throw goldenFingerDisabledError()
       }
       const current = {
         ...(core ?? {}),
