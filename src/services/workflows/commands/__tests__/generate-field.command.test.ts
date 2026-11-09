@@ -113,6 +113,8 @@ describe('GenerateFieldCommand project identity', () => {
         novelConfig: {
           genre: 'Mystery',
           targetAudience: 'Adult readers',
+          plotStructure: 'three_act',
+          narrativePOV: 'third_limited',
           coreOutline: longOutline,
           writingLanguage: 'en-US',
         },
@@ -138,6 +140,35 @@ describe('GenerateFieldCommand project identity', () => {
     expect(`${systemPrompt}\n${prompt}`).not.toMatch(/[\u3400-\u9fff]/u)
     expect(prompt).toContain(longOutline)
     expect(String(prompt)).toContain(longOutline.slice(500))
+    expect(String(prompt)).toContain('Story structure: Three-act')
+    expect(String(prompt)).toContain('Point of view: Third-person limited')
+  })
+
+  it('feeds the chosen story structure and point of view into the field prompt', async () => {
+    useProjectStore.setState({
+      currentProject: {
+        ...project(projectAPath),
+        novelConfig: {
+          genre: '仙侠',
+          plotStructure: 'multi_thread',
+          narrativePOV: 'first_person',
+        },
+      } as never,
+      updateNovelConfig: vi.fn(),
+      saveProject: vi.fn(async () => true),
+    })
+    const command = new GenerateFieldCommand('coreOutline')
+    const callLlm = vi.spyOn(
+      command as unknown as { callLLM: (...args: unknown[]) => Promise<string> },
+      'callLLM',
+    ).mockResolvedValue('方玄在边陲仙门醒来，发现寿元只剩百日。')
+
+    await command.execute({ step: {}, context, callbacks })
+
+    const [prompt] = callLlm.mock.calls[0]!
+    expect(String(prompt)).toContain('故事结构: 多线叙事')
+    expect(String(prompt)).toContain('叙事视角: 第一人称')
+    expect(String(prompt)).toContain('核心大纲')
   })
 
   it('keeps single-field global guidance compact instead of requesting a chapter outline', async () => {

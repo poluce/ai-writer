@@ -9,6 +9,7 @@ import { requireWorkflowProjectSession } from '../workflow-project-session'
 import { workflowUiText, workflowWritingLanguage } from '../workflow-project-session'
 import { composePromptSystemRole, resolvePromptTemplate, renderPrompt } from '../../prompt-templates'
 import { promptLanguageText } from '../../prompt-language'
+import { localizeNovelConfigFacts } from '../../../shared/novel-config-localization'
 import { internalPrompt } from '../../../prompts/internal/load'
 import type { WritingLanguage } from '../../../shared/writing-language'
 import { GenerationAttemptError, PromptBudgetExceededError } from '../../generation/generation-harness'
@@ -215,15 +216,18 @@ export class GenerateFieldCommand extends BaseWorkflowCommand<string> {
     return expandedResult
   }
 
-  /** 构建已有配置的上下文摘要 */
+  /** 构建已有配置的上下文摘要（基础信息按写作语言本地化，结构 / 视角同样入列） */
   private buildContext(config: NovelConfig, writingLanguage: WritingLanguage): string {
     const parts: string[] = []
     const line = (zhLabel: string, enLabel: string, value: string | number) => (
       `- ${promptLanguageText(writingLanguage, zhLabel, enLabel)}: ${value}`
     )
-    if (config.genre) parts.push(line('类型', 'Genre', config.genre))
+    const facts = localizeNovelConfigFacts(config, writingLanguage)
+    if (facts.genre) parts.push(line('类型', 'Genre', facts.genre))
     if (config.subGenre) parts.push(line('细分类型', 'Subgenre', config.subGenre))
-    if (config.targetAudience) parts.push(line('目标受众', 'Target audience', config.targetAudience))
+    if (facts.targetAudience) parts.push(line('目标受众', 'Target audience', facts.targetAudience))
+    if (facts.plotStructure) parts.push(line('故事结构', 'Story structure', facts.plotStructure))
+    if (facts.narrativePOV) parts.push(line('叙事视角', 'Point of view', facts.narrativePOV))
     if (config.totalChapters) parts.push(line('总章数', 'Total chapters', config.totalChapters))
     if (config.wordsPerChapter) parts.push(line('每章目标字数', 'Target words per chapter', config.wordsPerChapter))
     if (config.coreOutline?.trim())
