@@ -65,22 +65,41 @@ describe('TitleBar menus', () => {
     expect(mainMenu.getByRole('button', { name: '设置' }).query()).toBeNull()
   })
 
-  it('exposes the four themes as a menu instead of a single cycling icon', async () => {
+  it('exposes the four themes from the main menu instead of a standalone title-bar control', async () => {
     await act(async () => root.render(<TitleBar />))
 
-    // 当前主题直接写在按钮上，不需要盲点循环
-    const trigger = page.getByRole('button', { name: '浅色' })
-    await expect.element(trigger).toBeVisible()
+    // 主题不再占用标题栏：入口统一收进主菜单
+    expect(page.getByRole('button', { name: '浅色' }).query()).toBeNull()
 
+    const trigger = page.getByRole('button', { name: '主菜单' })
+    await expect.element(trigger).toBeVisible()
     await act(async () => trigger.click())
 
-    const themeMenu = page.getByRole('menu')
+    const mainMenu = page.getByRole('menu', { name: '主菜单' })
     for (const label of ['浅色', '黑夜', '纸质', '星空']) {
-      await expect.element(themeMenu.getByRole('button', { name: label, exact: true })).toBeVisible()
+      await expect.element(mainMenu.getByRole('button', { name: label, exact: true })).toBeVisible()
     }
 
-    await act(async () => themeMenu.getByRole('button', { name: '纸质', exact: true }).click())
+    await act(async () => mainMenu.getByRole('button', { name: '纸质', exact: true }).click())
     // 主题切换走 View Transition，状态在动画回调里落地
     await expect.poll(() => useThemeStore.getState().theme).toBe('paper')
+  })
+
+  it('exposes both interface languages from the main menu', async () => {
+    await act(async () => root.render(<TitleBar />))
+
+    // 语言不再占用标题栏：入口统一收进主菜单
+    expect(page.getByRole('button', { name: 'EN' }).query()).toBeNull()
+
+    const trigger = page.getByRole('button', { name: '主菜单' })
+    await expect.element(trigger).toBeVisible()
+    await act(async () => trigger.click())
+
+    const mainMenu = page.getByRole('menu', { name: '主菜单' })
+    await expect.element(mainMenu.getByRole('button', { name: '简体中文', exact: true })).toBeVisible()
+    await expect.element(mainMenu.getByRole('button', { name: 'English', exact: true })).toBeVisible()
+
+    await act(async () => mainMenu.getByRole('button', { name: 'English', exact: true }).click())
+    await expect.poll(() => useLocaleStore.getState().locale).toBe('en-US')
   })
 })

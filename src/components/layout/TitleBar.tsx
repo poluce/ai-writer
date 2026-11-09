@@ -6,7 +6,6 @@ import {
   FileText,
   FolderOpen,
   Import,
-  Languages,
   LogOut,
   Menu,
   Minus,
@@ -73,7 +72,7 @@ export default function TitleBar() {
   const openExport = useLayoutStore(s => s.openExport)
   const openAuthorManuscriptImport = useLayoutStore(s => s.openAuthorManuscriptImport)
   const openNovelDeconstruction = useLayoutStore(s => s.openNovelDeconstruction)
-  const { locale, toggleLocale, t, text } = useLocaleStore()
+  const { locale, setLocale, t, text } = useLocaleStore()
   const [exitRequest, setExitRequest] = useState<{ requestId: string; workflowBlocked?: boolean } | null>(null)
   const [exitBusy, setExitBusy] = useState(false)
   const [exitError, setExitError] = useState<string | null>(null)
@@ -160,12 +159,10 @@ export default function TitleBar() {
   }
 
   const [showMainMenu, setShowMainMenu] = useState(false)
-  const [showThemeMenu, setShowThemeMenu] = useState(false)
   const mainMenuRef = useRef<HTMLDivElement>(null)
-  const themeMenuRef = useRef<HTMLDivElement>(null)
-  const themeMenuPoint = useRef({ x: 0, y: 0 })
+  /** 主题切换的圆形展开原点：取最近一次在主菜单内的按下位置 */
+  const mainMenuPoint = useRef({ x: 0, y: 0 })
   useOutsideClick(mainMenuRef, () => setShowMainMenu(false), showMainMenu)
-  useOutsideClick(themeMenuRef, () => setShowThemeMenu(false), showThemeMenu)
 
   /** 从点击位置做圆形展开的主题切换；不支持 View Transition 时直接切换。 */
   const switchTheme = (next: Theme, point: { x: number; y: number }) => {
@@ -195,7 +192,6 @@ export default function TitleBar() {
     })
   }
 
-  const ThemeIcon = themeIcons[theme] || Sun
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey
@@ -260,6 +256,9 @@ export default function TitleBar() {
               role="menu"
               aria-label={text('主菜单', 'Main menu')}
               className="absolute left-0 top-full z-50 mt-1 w-56 rounded-lg py-1"
+              onPointerDown={event => {
+                mainMenuPoint.current = { x: event.clientX, y: event.clientY }
+              }}
               style={{
                 backgroundColor: 'var(--color-sidebar)',
                 border: '1px solid var(--color-border)',
@@ -307,6 +306,41 @@ export default function TitleBar() {
                 disabled
                 onClick={() => {}}
               />
+              <div className="my-1 h-px mx-2" style={{ backgroundColor: 'var(--color-border)' }} />
+              <div className="px-3 pb-0.5 pt-1 text-[10px] font-medium" style={{ color: 'var(--color-text-muted)' }}>
+                {text('外观', 'Appearance')}
+              </div>
+              {(Object.keys(themeIcons) as Theme[]).map(name => {
+                const Icon = themeIcons[name]
+                return (
+                  <MenuItem
+                    key={name}
+                    label={t(themeLabelKeys[name])}
+                    icon={<Icon size={13} />}
+                    checked={name === theme}
+                    onClick={() => {
+                      setShowMainMenu(false)
+                      if (name === theme) return
+                      switchTheme(name, mainMenuPoint.current)
+                    }}
+                  />
+                )
+              })}
+              <div className="my-1 h-px mx-2" style={{ backgroundColor: 'var(--color-border)' }} />
+              <div className="px-3 pb-0.5 pt-1 text-[10px] font-medium" style={{ color: 'var(--color-text-muted)' }}>
+                {text('语言', 'Language')}
+              </div>
+              {(['zh-CN', 'en-US'] as const).map(code => (
+                <MenuItem
+                  key={code}
+                  label={code === 'zh-CN' ? text('简体中文', 'Simplified Chinese') : 'English'}
+                  checked={locale === code}
+                  onClick={() => {
+                    setShowMainMenu(false)
+                    if (locale !== code) void setLocale(code)
+                  }}
+                />
+              ))}
               <div className="my-1 h-px mx-2" style={{ backgroundColor: 'var(--color-border)' }} />
               <MenuItem
                 label={text('退出', 'Exit')}
@@ -362,59 +396,6 @@ export default function TitleBar() {
           style={{ minHeight: 24, padding: '0 6px' }}
         >
           <ZoomIn size={13} strokeWidth={1.5} />
-        </button>
-        {/* 主题：从「单图标循环」改为可见的四选一菜单 */}
-        <div className="relative" ref={themeMenuRef}>
-          <button
-            onClick={() => setShowThemeMenu(v => !v)}
-            title={t('theme.label', { name: t(themeLabelKeys[theme]) })}
-            className="writer-command-button"
-            style={{ minHeight: 24, padding: '0 7px' }}
-          >
-            <ThemeIcon size={13} strokeWidth={1.5} />
-            <span className="text-xs">{t(themeLabelKeys[theme])}</span>
-          </button>
-          {showThemeMenu && (
-            <div
-              role="menu"
-              aria-label={t('theme.label', { name: t(themeLabelKeys[theme]) })}
-              className="absolute right-0 top-full z-50 mt-1 w-36 rounded-lg py-1"
-              onPointerDown={event => {
-                themeMenuPoint.current = { x: event.clientX, y: event.clientY }
-              }}
-              style={{
-                backgroundColor: 'var(--color-sidebar)',
-                border: '1px solid var(--color-border)',
-                boxShadow: 'var(--shadow-popover)',
-                WebkitAppRegion: 'no-drag',
-              } as CSSProperties}
-            >
-              {(Object.keys(themeIcons) as Theme[]).map(name => {
-                const Icon = themeIcons[name]
-                return (
-                  <MenuItem
-                    key={name}
-                    label={t(themeLabelKeys[name])}
-                    icon={<Icon size={13} />}
-                    onClick={() => {
-                      setShowThemeMenu(false)
-                      if (name === theme) return
-                      switchTheme(name, themeMenuPoint.current)
-                    }}
-                  />
-                )
-              })}
-            </div>
-          )}
-        </div>
-        <button
-          onClick={() => void toggleLocale()}
-          title={t('language.switch')}
-          className="writer-command-button"
-          style={{ minHeight: 24, padding: '0 7px' }}
-        >
-          <Languages size={13} strokeWidth={1.5} />
-          <span>{locale === 'zh-CN' ? 'EN' : '中文'}</span>
         </button>
         <div className="writer-command-divider h-5 w-px mx-1" />
         <button

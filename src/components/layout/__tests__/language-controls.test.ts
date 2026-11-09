@@ -2,12 +2,13 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 describe('language controls', () => {
-  it('provides a Lucide quick toggle in the title bar', () => {
+  it('offers both interface languages from the title bar main menu', () => {
     const source = readFileSync('src/components/layout/TitleBar.tsx', 'utf8')
 
-    expect(source).toMatch(/import[\s\S]*Languages[\s\S]*from 'lucide-react'/)
-    expect(source).toContain('toggleLocale')
-    expect(source).toContain("t('language.switch')")
+    expect(source).toContain('setLocale')
+    expect(source).toContain("text('简体中文', 'Simplified Chinese')")
+    expect(source).toContain("'en-US'")
+    expect(source).not.toContain('toggleLocale')
   })
 
   it('provides explicit locale choices in settings', () => {

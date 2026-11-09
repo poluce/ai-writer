@@ -1,3 +1,4 @@
+import { Check } from 'lucide-react'
 import { useLocaleStore } from '../../stores/locale-store'
 
 /**
@@ -11,14 +12,17 @@ export interface MenuItemProps {
   shortcut?: string
   disabled?: boolean
   danger?: boolean
+  /** 单选菜单项的当前项标记 */
+  checked?: boolean
 }
 
-export function MenuItem({ label, onClick, icon, shortcut, disabled, danger }: MenuItemProps) {
+export function MenuItem({ label, onClick, icon, shortcut, disabled, danger, checked }: MenuItemProps) {
   const text = useLocaleStore(state => state.text)
   return (
     <button
       onClick={!disabled ? onClick : undefined}
       disabled={disabled}
+      aria-pressed={checked}
       className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors"
       style={{
         color: danger
@@ -47,6 +51,11 @@ export function MenuItem({ label, onClick, icon, shortcut, disabled, danger }: M
       <span className="flex-1">{label}</span>
       {shortcut && (
         <span className="text-[0.7rem] opacity-40 font-mono ml-2 flex-shrink-0">{shortcut}</span>
+      )}
+      {checked && (
+        <span className="ml-2 flex-shrink-0" style={{ color: 'var(--color-accent)' }}>
+          <Check size={12} strokeWidth={2.2} />
+        </span>
       )}
       {disabled && (
         <span className="ml-auto text-[0.7rem] opacity-40">{text('即将推出', 'Coming soon')}</span>
