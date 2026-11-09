@@ -14,6 +14,11 @@ const movedProject = {
   path: 'C:\\novels\\moved-away',
   updatedAt: '2026-09-01T00:00:00.000Z',
 }
+const currentProjectEntry = {
+  name: '正在写的书',
+  path: 'C:\\novels\\current',
+  updatedAt: '2026-10-01T00:00:00.000Z',
+}
 
 let root: Root
 let container: HTMLDivElement
@@ -39,7 +44,7 @@ beforeEach(async () => {
     },
   })
   useLocaleStore.setState({ locale: 'zh-CN' })
-  useProjectStore.setState({ currentProject: null, recentProjects: [movedProject] })
+  useProjectStore.setState({ currentProject: null, recentProjects: [currentProjectEntry, movedProject] })
   container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
@@ -56,6 +61,7 @@ afterEach(async () => {
 
 describe('OpenProjectFirstPage recent project removal', () => {
   it('removes a stale recent-project record without deleting project data', async () => {
+    await act(async () => page.getByRole('button', { name: '更多操作：已移动的项目' }).click())
     await act(async () => page.getByRole('button', { name: '从最近项目移除' }).click())
     await expect.element(page.getByRole('dialog')).toBeVisible()
     await expect.element(page.getByText('这只会移除列表记录，不会删除项目文件。')).toBeVisible()
@@ -65,7 +71,8 @@ describe('OpenProjectFirstPage recent project removal', () => {
     })
 
     await vi.waitFor(() => expect(invoke).toHaveBeenCalledWith('project:recent-remove', movedProject.path))
-    expect(useProjectStore.getState().recentProjects).toEqual([])
+    expect(useProjectStore.getState().recentProjects.map(project => project.path))
+      .toEqual([currentProjectEntry.path])
     expect(invoke.mock.calls.some(([channel]) => channel === 'project:delete')).toBe(false)
   })
 })

@@ -124,83 +124,87 @@ export default function LeftToolWindowBar() {
           )
         })}
 
-        <div className="writer-nav-divider w-8 my-1" style={{ height: 1 }} />
+        {hasOpenProject && (
+          <>
+          <div className="writer-nav-divider w-8 my-1" style={{ height: 1 }} />
 
-        <LeftNavButton
-          icon={Globe2}
-          label={text('架构', 'Architecture')}
-          active={activeRailItem === 'world'}
-          disabled={!hasOpenProject}
-          title={text('故事架构', 'Story architecture')}
-          onClick={() => {
-            if (!hasOpenProject) return
-            setSidebarView('project', 'world')
-            openBuiltinEditor('world-building-editor', text('故事架构', 'Story architecture'), 'world-building')
-          }}
-        />
-        <LeftNavButton
-          icon={Map}
-          label={text('情节', 'Plot')}
-          active={activeRailItem === 'synopsis'}
-          disabled={!hasOpenProject}
-          title={text('情节', 'Plot')}
-          onClick={() => {
-            if (!hasOpenProject) return
-            setSidebarView('project', 'synopsis')
-            openBuiltinEditor('synopsis-editor', text('情节', 'Plot'), 'synopsis')
-          }}
-        />
-        <LeftNavButton
-          icon={ListTree}
-          label={text('蓝图', 'Plot')}
-          active={activeRailItem === 'blueprint'}
-          disabled={!hasOpenProject}
-          title={text('章节蓝图', 'Chapter blueprint')}
-          onClick={() => {
-            if (!hasOpenProject) return
-            setSidebarView('project', 'blueprint')
-            openBuiltinEditor('chapter-card-editor', text('章节蓝图', 'Chapter blueprint'), 'chapter-card')
-          }}
-        />
-        <LeftNavButton
-          icon={GitBranch}
-          label={text('剧情', 'Plot tree')}
-          active={plotTreeActive}
-          disabled={!hasOpenProject}
-          title={text('剧情树', 'Plot tree')}
-          onClick={() => {
-            if (!hasOpenProject) return
-            setSidebarView('project', 'plot-tree')
-            openBuiltinEditor(
-              'narrative-thread-editor',
-              text('剧情树与叙事线索', 'Plot tree & narrative threads'),
-              'narrative-thread',
-              'plot-tree',
-            )
-          }}
-        />
-        <LeftNavButton
-          icon={Users}
-          label={text('人物', 'Cast')}
-          active={activeRailItem === 'characters'}
-          disabled={!hasOpenProject}
-          title={text('人物', 'Cast')}
-          onClick={() => {
-            if (!hasOpenProject) return
-            setSidebarView('characters')
-          }}
-        />
-        <LeftNavButton
-          icon={BookOpen}
-          label={text('知识库', 'Knowledge')}
-          active={activeRailItem === 'knowledge'}
-          disabled={!hasOpenProject}
-          title={text('知识库', 'Knowledge base')}
-          onClick={() => {
-            if (!hasOpenProject) return
-            setSidebarView('knowledge')
-          }}
-        />
+          <LeftNavButton
+            icon={Globe2}
+            label={text('架构', 'Architecture')}
+            active={activeRailItem === 'world'}
+            disabled={!hasOpenProject}
+            title={text('故事架构', 'Story architecture')}
+            onClick={() => {
+              if (!hasOpenProject) return
+              setSidebarView('project', 'world')
+              openBuiltinEditor('world-building-editor', text('故事架构', 'Story architecture'), 'world-building')
+            }}
+          />
+          <LeftNavButton
+            icon={Map}
+            label={text('情节', 'Plot')}
+            active={activeRailItem === 'synopsis'}
+            disabled={!hasOpenProject}
+            title={text('情节', 'Plot')}
+            onClick={() => {
+              if (!hasOpenProject) return
+              setSidebarView('project', 'synopsis')
+              openBuiltinEditor('synopsis-editor', text('情节', 'Plot'), 'synopsis')
+            }}
+          />
+          <LeftNavButton
+            icon={ListTree}
+            label={text('蓝图', 'Plot')}
+            active={activeRailItem === 'blueprint'}
+            disabled={!hasOpenProject}
+            title={text('章节蓝图', 'Chapter blueprint')}
+            onClick={() => {
+              if (!hasOpenProject) return
+              setSidebarView('project', 'blueprint')
+              openBuiltinEditor('chapter-card-editor', text('章节蓝图', 'Chapter blueprint'), 'chapter-card')
+            }}
+          />
+          <LeftNavButton
+            icon={GitBranch}
+            label={text('剧情', 'Plot tree')}
+            active={plotTreeActive}
+            disabled={!hasOpenProject}
+            title={text('剧情树', 'Plot tree')}
+            onClick={() => {
+              if (!hasOpenProject) return
+              setSidebarView('project', 'plot-tree')
+              openBuiltinEditor(
+                'narrative-thread-editor',
+                text('剧情树与叙事线索', 'Plot tree & narrative threads'),
+                'narrative-thread',
+                'plot-tree',
+              )
+            }}
+          />
+          <LeftNavButton
+            icon={Users}
+            label={text('人物', 'Cast')}
+            active={activeRailItem === 'characters'}
+            disabled={!hasOpenProject}
+            title={text('人物', 'Cast')}
+            onClick={() => {
+              if (!hasOpenProject) return
+              setSidebarView('characters')
+            }}
+          />
+          <LeftNavButton
+            icon={BookOpen}
+            label={text('知识库', 'Knowledge')}
+            active={activeRailItem === 'knowledge'}
+            disabled={!hasOpenProject}
+            title={text('知识库', 'Knowledge base')}
+            onClick={() => {
+              if (!hasOpenProject) return
+              setSidebarView('knowledge')
+            }}
+          />
+            </>
+        )}
       </div>
 
       {/* 弹性间隔 */}

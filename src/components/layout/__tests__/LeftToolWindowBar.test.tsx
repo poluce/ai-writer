@@ -5,7 +5,6 @@ import { describe, expect, it } from 'vitest'
 import LeftToolWindowBar from '../LeftToolWindowBar'
 import { useLayoutStore } from '../../../stores/layout-store'
 import { useProjectStore } from '../../../stores/project-store'
-
 function countActiveRailButtons(html: string) {
   return [...html.matchAll(/<button\b[^>]*\bclass="([^"]*)"[^>]*>/g)]
     .filter(([, className]) => {
@@ -16,14 +15,6 @@ function countActiveRailButtons(html: string) {
 }
 
 describe('LeftToolWindowBar', () => {
-  it('renders visible Chinese labels for every left navigation item', () => {
-    const html = renderToString(<LeftToolWindowBar />)
-
-    for (const label of ['项目', '架构', '情节', '蓝图', '剧情', '人物', '知识库', '设置']) {
-      expect(html).toContain(label)
-    }
-  })
-
   it('keeps bottom panel tabs out of the content rail', () => {
     const html = renderToString(<LeftToolWindowBar />)
     // 任务/日志/模型 属于底部页签条（BottomPanelTabs），不应再占用左侧内容导航
@@ -54,7 +45,7 @@ describe('LeftToolWindowBar', () => {
   })
 
   it('replaces the duplicate AI settings entry with the plot tree', () => {
-    const source = renderToString(<LeftToolWindowBar />)
+    const source = readFileSync(resolve(process.cwd(), 'src/components/layout/LeftToolWindowBar.tsx'), 'utf8')
 
     expect(source).toContain('剧情树')
     expect(source).not.toContain('配置模型 API')
@@ -71,20 +62,14 @@ describe('LeftToolWindowBar', () => {
     expect(sidebar).toContain("activeRailItem !== 'project'")
   })
 
-  it('disables project-dependent navigation buttons when no project is open', () => {
+  it('keeps only the project and settings entries on the launcher', () => {
     useProjectStore.setState({ currentProject: null })
 
     const html = renderToString(<LeftToolWindowBar />)
-    const projectDependentLabels = ['架构', '情节', '蓝图', '剧情', '人物', '知识库']
-
-    for (const label of projectDependentLabels) {
-      // Button containing this label must have disabled attribute and is-disabled class
-      const pattern = new RegExp(`<button disabled=""[^>]*class="[^"]*is-disabled[^"]*"[^>]*>[\\s\\S]*?<span class="left-nav-label">${label}<\\/span>`, 'u')
-      expect(html).toMatch(pattern)
+    expect(html).toContain('<span class="left-nav-label">项目</span>')
+    expect(html).toContain('<span class="left-nav-label">设置</span>')
+    for (const label of ['架构', '情节', '蓝图', '剧情', '人物', '知识库']) {
+      expect(html).not.toContain(`<span class="left-nav-label">${label}</span>`)
     }
-
-    // 项目入口必须保持可用（无项目时它是启动页）
-    const projectPattern = new RegExp(`<button(?! disabled)[^>]*>[\\s\\S]*?<span class="left-nav-label">项目<\\/span>`, 'u')
-    expect(html).toMatch(projectPattern)
   })
 })

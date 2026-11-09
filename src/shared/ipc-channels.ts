@@ -32,6 +32,7 @@ import type {
 import type { ReviewFull, ReviewMeta } from './contracts/review'
 import type { RevisionFull, RevisionMeta } from './contracts/revision'
 import type { DraftAnnotation } from './draft-annotation'
+import type { RecentProjectEntry } from './recent-projects'
 import type {
   RecoveryCandidate,
   RecoveryCandidateRecordInput} from './recovery-candidate'
@@ -330,7 +331,7 @@ export interface ProjectChannels {
   }
   'project:recent-list': {
     args: []
-    return: Array<{ name: string; path: string; updatedAt: string }>
+    return: RecentProjectEntry[]
   }
   'project:recent-remove': {
     args: [projectPath: string]

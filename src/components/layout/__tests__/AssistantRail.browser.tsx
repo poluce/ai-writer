@@ -70,20 +70,11 @@ describe('AssistantRail', () => {
     expect(container.querySelector('.writer-right-rail')).toBeNull()
   })
 
-  it('greys the rail out while no project is open', async () => {
+  it('hides the rail on the launcher, before a project is open', async () => {
     await act(async () => root.render(<AssistantRail />))
 
-    // 未打开项目时，助手视图全置灰；即便面板处于展开态也只保留置灰图标条
-    const rail = container.querySelector('.writer-right-rail')
-    expect(rail).not.toBeNull()
-    for (const label of ['写作', '架构', '蓝图', '审稿', '输出']) {
-      const button = page.getByRole('button', { name: label, exact: true }).element()
-      expect(button.hasAttribute('disabled')).toBe(true)
-    }
-    expect(useLayoutStore.getState().aiPanelOpen).toBe(false)
-
-    useLayoutStore.setState({ aiPanelOpen: true })
-    await act(async () => root.render(<AssistantRail />))
-    expect(container.querySelectorAll('.rail-button:disabled')).toHaveLength(5)
+    expect(container.querySelector('.writer-right-rail')).toBeNull()
+    expect(page.getByRole('toolbar').query()).toBeNull()
   })
 })
+

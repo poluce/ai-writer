@@ -11,6 +11,7 @@ import { IdempotencyRepository, IDEMPOTENCY_SCOPES } from './idempotency-reposit
 import { ContentRepository } from './content-repository'
 import type { DraftSourceDependency } from '../../src/shared/draft-source-dependency'
 import type { DraftFull, DraftMeta } from '../../src/shared/contracts/draft'
+import { recentProjectExcerpt, type RecentProjectSnapshot } from '../../src/shared/recent-projects'
 
 export type { DraftFull, DraftMeta }
 
@@ -474,6 +475,53 @@ export class DraftRepository {
       UPDATE drafts SET word_count = ?, updated_at = datetime('now')
       WHERE id = ?
     `).run(wordCount, id)
+    }
+
+    /**
+     * 启动页「最近写作」快照：最近编辑的章节、各章最新草稿总字数、
+     * 已定稿章节数与正文摘录。只读一次少量行，不加载整本书。
+     */
+    static getLauncherSummary(): Omit<RecentProjectSnapshot, 'totalChapters'> | null {
+        const db = getProjectDb()
+        if (!db) return null
+
+        const totals = db.prepare(`
+          WITH latest AS (
+            SELECT chapter_number, word_count, status,
+                   ROW_NUMBER() OVER (PARTITION BY chapter_number ORDER BY version DESC) AS rn
+            FROM drafts
+          )
+          SELECT COUNT(*) AS chapterCount,
+                 COALESCE(SUM(word_count), 0) AS totalWords,
+                 COALESCE(SUM(CASE WHEN status = 'finalized' THEN 1 ELSE 0 END), 0) AS finalizedChapters
+          FROM latest
+          WHERE rn = 1
+        `).get() as { chapterCount: number; totalWords: number; finalizedChapters: number } | undefined
+
+        if (!totals || totals.chapterCount === 0) return null
+
+        const last = db.prepare(`
+          SELECT drafts.chapter_number AS chapterNumber,
+                 drafts.content_id AS contentId,
+                 finalization_outbox.chapter_title AS chapterTitle
+          FROM drafts
+          LEFT JOIN finalization_outbox ON finalization_outbox.draft_id = drafts.id
+          ORDER BY drafts.updated_at DESC, drafts.id DESC
+          LIMIT 1
+        `).get() as { chapterNumber: number; contentId: number; chapterTitle: string | null } | undefined
+
+        if (!last) return null
+
+        const body = ContentRepository.getBody(last.contentId) ?? ''
+        const excerpt = recentProjectExcerpt(body)
+
+        return {
+            lastChapterNumber: last.chapterNumber,
+            lastChapterTitle: last.chapterTitle?.trim() || undefined,
+            totalWords: totals.totalWords,
+            finalizedChapters: totals.finalizedChapters,
+            ...(excerpt ? { excerpt } : {}),
+        }
     }
 
     /** 删除草稿（级联删除 revisions/reviews，但 contents 需手动清理） */

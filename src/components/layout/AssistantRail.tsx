@@ -12,7 +12,7 @@ import { resolveAssistantSurface } from './assistant-surface'
  * 面板收起后保留一条常驻窄图标条，保证每个助手视图都还能一键点回来，
  * 不会出现「关掉面板就再也找不到入口」的死角。
  *
- * 助手视图依赖项目事实，未打开项目时整条置灰，和左栏的「架构 / 情节 / 蓝图」一致。
+ * 助手视图依赖项目事实，未打开项目时整条收起，和左栏的「架构 / 情节 / 蓝图」一致。
  */
 export default function AssistantRail() {
   const aiPanelOpen = useLayoutStore(s => s.aiPanelOpen)
@@ -22,10 +22,11 @@ export default function AssistantRail() {
   const hasOpenProject = useProjectStore(s => Boolean(s.currentProject))
   const text = useLocaleStore(s => s.text)
 
+  // 助手视图依赖项目事实：启动页不显示这条竖栏，打开项目后再出现。
+  if (!hasOpenProject) return null
   if (resolveAssistantSurface(aiPanelOpen, hasOpenProject) === 'panel') return null
 
   const showOutputPulse = shouldPulseOutputTab(rightView, activeRuns)
-  const projectHint = text('请先打开项目', 'Open a project first')
 
   return (
     <div
@@ -41,14 +42,13 @@ export default function AssistantRail() {
             <button
               type="button"
               className="rail-button"
-              title={hasOpenProject ? label : `${label} (${projectHint})`}
+              title={label}
               aria-label={label}
-              disabled={!hasOpenProject}
               onClick={() => openRightPanel(id)}
             >
               <Icon size={17} strokeWidth={1.7} />
             </button>
-            {id === 'ai-output' && showOutputPulse && hasOpenProject && (
+            {id === 'ai-output' && showOutputPulse && (
               <span
                 className="absolute top-[3px] right-[3px] h-1.5 w-1.5 rounded-full animate-pulse pointer-events-none"
                 style={{ backgroundColor: 'var(--color-accent)' }}

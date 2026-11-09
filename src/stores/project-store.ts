@@ -14,6 +14,7 @@ import {
   confirmAndCancelProjectWorkflows} from '../services/project-workflow-gate'
 import { useEditorDraftLedgerStore } from './editor-draft-ledger-store'
 import { useLocaleStore } from './locale-store'
+import type { RecentProjectEntry } from '../shared/recent-projects'
 import { requireIpcSuccess } from '../services/ipc-result'
 import {
   projectPathKey,
@@ -279,8 +280,8 @@ interface ProjectState {
   currentProject: ProjectData | null
   /** 项目文件树 */
   fileTree: FileNode[]
-  /** 最近项目列表 */
-  recentProjects: Array<{ name: string; path: string; updatedAt: string }>
+  /** 最近项目列表（含启动页写作快照） */
+  recentProjects: RecentProjectEntry[]
   /** 是否正在加载 */
   loading: boolean
   /** 每次成功打开项目都递增；同一路径重开也属于新的渲染进程项目会话。 */

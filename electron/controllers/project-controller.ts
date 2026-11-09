@@ -22,6 +22,9 @@ import {
   ProjectCoreRepository,
   type ProjectCoreData,
 } from '../repositories/project-core-repository'
+import { BlueprintRepository } from '../repositories/blueprint-repository'
+import { DraftRepository } from '../repositories/draft-repository'
+import type { RecentProjectEntry } from '../../src/shared/recent-projects'
 import { projectAccess, type ProjectSessionLease } from '../services/project-access'
 import { assertExpectedProjectPath, assertRequiredExpectedProjectPath } from '../utils/project-context'
 import { sanitizeProjectName } from './project-path'
@@ -45,11 +48,7 @@ function projectRootSelectionFailure(error: unknown): {
   return null
 }
 
-interface RecentProject {
-  name: string
-  path: string
-  updatedAt: string
-}
+type RecentProject = RecentProjectEntry
 
 let latestProjectOpenRequestToken: string | null = null
 let projectOpenQueue: Promise<void> = Promise.resolve()
@@ -309,10 +308,29 @@ function loadRecentProjects(): RecentProject[] {
   return readJsonFile<RecentProject[]>(RECENT_PROJECTS_PATH, [])
 }
 
+/** 项目打开/保存时顺手写入的启动页快照；项目库不可用时返回 undefined。 */
+function buildRecentProjectSnapshot(): RecentProjectEntry['snapshot'] {
+  try {
+    const summary = DraftRepository.getLauncherSummary()
+    if (!summary) return undefined
+    const core = ProjectCoreRepository.get()
+    const blueprintTitle = summary.lastChapterTitle
+      ?? BlueprintRepository.getByChapter(summary.lastChapterNumber)?.title?.trim()
+    return {
+      ...summary,
+      ...(blueprintTitle ? { lastChapterTitle: blueprintTitle } : {}),
+      ...(core?.totalChapters ? { totalChapters: core.totalChapters } : {}),
+    }
+  } catch {
+    return undefined
+  }
+}
+
 function addRecentProject(project: RecentProject): void {
   const list = loadRecentProjects()
   const filtered = list.filter((p) => !sameRecentProjectPath(p.path, project.path))
-  filtered.unshift(project)
+  const snapshot = buildRecentProjectSnapshot()
+  filtered.unshift(snapshot ? { ...project, snapshot } : project)
   writeJsonFile(RECENT_PROJECTS_PATH, filtered.slice(0, 20))
 }
 

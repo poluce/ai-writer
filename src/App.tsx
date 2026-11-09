@@ -292,8 +292,8 @@ export default function App() {
             <Panel id="top" defaultSize={75} minSize={30}>
               <PanelGroup orientation="horizontal" className="flex-1 h-full">
 
-                {/* 左侧边栏 */}
-                {sidebarOpen && (
+                {/* 左侧边栏：启动页（未打开项目）不占用工作区 */}
+                {sidebarOpen && hasOpenProject && (
                   <>
                     <Panel id="sidebar" defaultSize={18} minSize={10}>
                       <ErrorBoundary fallbackLabel={text('侧边栏渲染失败', 'Sidebar failed to render')}>

@@ -26,7 +26,7 @@ export default function StatusBar() {
         <StatusBarSegment title={`${text(APP_BRAND.zhName, APP_BRAND.enName)} v${__APP_VERSION__}`}>
           <img src={publicAssetUrl('logo.svg')} alt="logo" className="w-[11px] h-[11px] object-contain" />
           <span className="opacity-90 font-medium">{text(APP_BRAND.shortName, APP_BRAND.enName)}</span>
-          <span className="opacity-55 font-mono">v{__APP_VERSION__}</span>
+          <span className="font-mono" style={{ color: 'var(--color-text-muted)' }}>v{__APP_VERSION__}</span>
         </StatusBarSegment>
 
         {currentProject && (
