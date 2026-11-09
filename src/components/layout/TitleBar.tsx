@@ -226,7 +226,9 @@ export default function TitleBar() {
       className="writer-topbar no-select flex items-center gap-2"
       style={{
         height: 'var(--height-titlebar)',
-        paddingLeft: isMac ? 78 : 14,
+        // 让品牌标左右留白与垂直居中留白一致（30px 标在 44px 栏内留 7px），
+        // 使标左边缘落在窗口圆角结束处，与窗口 R 角同心对齐。
+        paddingLeft: isMac ? 78 : 7,
         paddingRight: 10,
         WebkitAppRegion: 'drag',
       } as CSSProperties}
