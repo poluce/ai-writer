@@ -938,6 +938,38 @@
     background: var(--writer-nav-divider);
   }
 
+  .writer-right-rail {
+    width: 32px;
+    flex-shrink: 0;
+    gap: 4px;
+    padding: 6px 0 8px;
+    background: var(--writer-surface-left-rail);
+    border-left: 1px solid var(--writer-left-rail-border);
+    color: var(--writer-left-rail-text);
+  }
+
+  .writer-right-rail .rail-button {
+    -webkit-app-region: no-drag;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: var(--radius-md);
+    color: inherit;
+    transition: background-color 0.12s ease, color 0.12s ease;
+  }
+
+  .writer-right-rail .rail-button:hover {
+    background: var(--writer-left-rail-hover);
+    color: var(--writer-left-rail-active-text);
+  }
+
+  .writer-right-rail .rail-button:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+  }
+
   .writer-project-tree .tree-item {
     height: 28px;
     margin: 1px 4px;

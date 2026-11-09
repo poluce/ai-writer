@@ -12,6 +12,7 @@ import { ipc } from './services/ipc-client'
 import TitleBar from './components/layout/TitleBar'
 import StatusBar from './components/layout/StatusBar'
 import LeftToolWindowBar from './components/layout/LeftToolWindowBar'
+import AssistantRail from './components/layout/AssistantRail'
 import Sidebar from './components/panels/Sidebar'
 import EditorArea from './components/panels/EditorArea'
 import AIPanel from './components/panels/AIPanel'
@@ -356,8 +357,10 @@ export default function App() {
             </div>
           )}
         </div>
-      </div>
 
+        {/* 右侧助手栏：面板收起后保留窄图标条，五个视图随时可点回 */}
+        <AssistantRail />
+      </div>
 
       {/* 状态栏（全宽） */}
       <StatusBar />

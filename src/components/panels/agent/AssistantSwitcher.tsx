@@ -5,7 +5,7 @@ import { useWorkflowStore } from '../../../stores/workflow-store'
 import { useLocaleStore } from '../../../stores/locale-store'
 
 /** 右侧面板的五个视图；顺序即展示顺序。 */
-const VIEWS: ReadonlyArray<{
+export const ASSISTANT_VIEWS: ReadonlyArray<{
   id: RightView
   zh: string
   en: string
@@ -69,7 +69,7 @@ export function AssistantSwitcher() {
       }}
       role="tablist"
     >
-      {VIEWS.map(({ id, zh, en, Icon }) => {
+      {ASSISTANT_VIEWS.map(({ id, zh, en, Icon }) => {
         const active = rightView === id
         return (
           <button
