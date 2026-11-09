@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
-import { FolderOpen, Sparkles } from 'lucide-react'
+import { FolderOpen } from 'lucide-react'
 import { useProjectStore } from '../../stores/project-store'
 import { ipc } from '../../services/ipc-client'
 import {
-  Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription,
+  Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle,
 } from '../ui/Dialog'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
@@ -58,11 +58,7 @@ export default function NewProjectDialog({ open, onClose }: NewProjectDialogProp
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-[420px]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Sparkles size={18} className="text-[var(--color-accent)]" />
-            {text('新建小说项目', 'New novel project')}
-          </DialogTitle>
-          <DialogDescription>{text('填写作品名称和保存位置，其余配置在项目内完成', 'Enter a title and save location; configure the rest inside the project.')}</DialogDescription>
+          <DialogTitle>{text('新建项目', 'New project')}</DialogTitle>
         </DialogHeader>
 
         {/* 表单 */}
@@ -103,7 +99,6 @@ export default function NewProjectDialog({ open, onClose }: NewProjectDialogProp
             onClick={handleCreate}
             disabled={creating || !name.trim() || !path.trim()}
           >
-            <Sparkles size={14} />
             {creating ? text('创建中...', 'Creating...') : text('创建项目', 'Create project')}
           </Button>
         </DialogFooter>
