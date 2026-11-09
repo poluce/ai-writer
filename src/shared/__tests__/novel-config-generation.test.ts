@@ -5,6 +5,8 @@ import {
   NOVEL_CONFIG_GENERATION_KEYS,
   generationFieldLabels,
   generationFieldRequirements,
+  goldenFingerForPrompt,
+  isGenerationFieldEnabled,
   previousGenerationSteps,
 } from '../novel-config-generation'
 
@@ -22,6 +24,23 @@ describe('novel config generation chain', () => {
       .toEqual(['coreOutline', 'worldSetting'])
     expect(previousGenerationSteps('writingStyle').map(step => step.key))
       .toEqual(NOVEL_CONFIG_GENERATION_CHAIN.slice(0, -1).map(step => step.key))
+  })
+
+  it('drops the optional golden-finger field from the chain when it is switched off', () => {
+    expect(isGenerationFieldEnabled('goldenFinger', {})).toBe(true)
+    expect(isGenerationFieldEnabled('coreOutline', { needsGoldenFinger: false })).toBe(true)
+    expect(isGenerationFieldEnabled('goldenFinger', { needsGoldenFinger: false })).toBe(false)
+
+    const enabledChain = previousGenerationSteps('protagonistProfile')
+      .map(step => step.key)
+    expect(enabledChain).toContain('goldenFinger')
+
+    const disabledChain = previousGenerationSteps('protagonistProfile', { needsGoldenFinger: false })
+      .map(step => step.key)
+    expect(disabledChain).toEqual(['coreOutline', 'worldSetting'])
+
+    expect(goldenFingerForPrompt({ goldenFinger: '万劫道鉴' })).toBe('万劫道鉴')
+    expect(goldenFingerForPrompt({ goldenFinger: '万劫道鉴', needsGoldenFinger: false })).toBe('')
   })
 
   it('resolves labels and requirements per writing language', () => {

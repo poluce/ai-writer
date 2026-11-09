@@ -13,6 +13,7 @@ import { localizeNovelConfigFacts } from '../../../shared/novel-config-localizat
 import {
   generationFieldLabels,
   generationFieldRequirements,
+  isGenerationFieldEnabled,
   previousGenerationSteps,
   type GeneratableField,
 } from '../../../shared/novel-config-generation'
@@ -62,6 +63,13 @@ export class GenerateFieldCommand extends BaseWorkflowCommand<string> {
     }
 
     const config = project.novelConfig
+    if (!isGenerationFieldEnabled(this.fieldKey, config)) {
+      throw new Error(workflowUiText(
+        context,
+        '该字段在本项目中已设为不需要，已跳过生成',
+        'This field is marked as not needed for this project, so generation was skipped.',
+      ))
+    }
     const writingLanguage = workflowWritingLanguage(context)
     const facts = localizeNovelConfigFacts(config, writingLanguage)
     const labelPair = generationFieldLabels(this.fieldKey)
@@ -233,7 +241,7 @@ export class GenerateFieldCommand extends BaseWorkflowCommand<string> {
     if (config.totalChapters) parts.push(line('总章数', 'Total chapters', config.totalChapters))
     if (config.wordsPerChapter) parts.push(line('每章目标字数', 'Target words per chapter', config.wordsPerChapter))
 
-    for (const step of previousGenerationSteps(targetField)) {
+    for (const step of previousGenerationSteps(targetField, config)) {
       const value = config[step.key as GeneratableField]
       if (typeof value !== 'string' || !value.trim()) continue
       parts.push(line(step.labels[0], step.labels[1], value.trim()))

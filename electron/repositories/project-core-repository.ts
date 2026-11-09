@@ -42,6 +42,7 @@ export interface ProjectCoreRow {
     reference_works: string
     global_guidance: string
     golden_finger: string
+    needs_golden_finger: number
     core_outline: string
     world_setting: string
     protagonist_profile: string
@@ -72,6 +73,7 @@ function rowToData(row: ProjectCoreRow): ProjectCoreData {
         narrativeThreadDormantChapterThreshold: resolveNarrativeThreadDormantThreshold(
             row.narrative_thread_dormant_threshold,
         ),
+        needsGoldenFinger: row.needs_golden_finger !== 0,
         plotStructure: row.plot_structure,
         narrativePov: row.narrative_pov,
         writingStyle: row.writing_style,
@@ -135,6 +137,7 @@ export class ProjectCoreRepository {
             writingLanguage: 'writing_language',
             creativeStrategy: 'creative_strategy',
             narrativeThreadDormantChapterThreshold: 'narrative_thread_dormant_threshold',
+            needsGoldenFinger: 'needs_golden_finger',
             plotStructure: 'plot_structure',
             narrativePov: 'narrative_pov',
             writingStyle: 'writing_style',
@@ -159,7 +162,9 @@ export class ProjectCoreRepository {
                 const value = (data as Record<string, unknown>)[camel]
                 values.push(camel === 'narrativeThreadDormantChapterThreshold'
                     ? resolveNarrativeThreadDormantThreshold(value)
-                    : value)
+                    : camel === 'needsGoldenFinger'
+                        ? (value === false ? 0 : 1)
+                        : value)
             }
         }
 

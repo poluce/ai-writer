@@ -686,6 +686,7 @@ export const useProjectStore = create<ProjectState>()((set, get) => ({
         writingLanguage: core.writingLanguage ?? current.novelConfig.writingLanguage,
         creativeStrategy: core.creativeStrategy ?? current.novelConfig.creativeStrategy,
         narrativeThreadDormantChapterThreshold: core.narrativeThreadDormantChapterThreshold ?? current.novelConfig.narrativeThreadDormantChapterThreshold,
+        needsGoldenFinger: core.needsGoldenFinger ?? current.novelConfig.needsGoldenFinger,
         plotStructure: (core.plotStructure || current.novelConfig.plotStructure) as NovelConfig['plotStructure'],
         narrativePOV: ((core.narrativePov || (core as unknown as Record<string, unknown>).narrativePOV) || current.novelConfig.narrativePOV) as NovelConfig['narrativePOV'],
         coreOutline: core.coreOutline ?? current.novelConfig.coreOutline,

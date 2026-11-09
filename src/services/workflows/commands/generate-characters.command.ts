@@ -43,6 +43,7 @@ import {
   CHARACTER_STATE_TEXT_FIELDS,
   MAX_CHARACTER_STRUCTURED_CONTEXT_UTF8_BYTES,
 } from './architecture-json-contract'
+import { goldenFingerForPrompt } from '../../../shared/novel-config-generation'
 import {
   assertArchitectureProjectSessionCurrent,
   loadPartialData,
@@ -140,7 +141,7 @@ export class GenerateCharactersCommand extends BaseWorkflowCommand<string> {
       step_guidance: manifestContext.stepGuidance,
       reference_works: manifestContext.referenceWorks,
       number_of_chapters: String(config.totalChapters),
-      golden_finger: config.goldenFinger || missingValue,
+      golden_finger: goldenFingerForPrompt(config) || missingValue,
       world_building: config.worldSetting || missingValue,
     }
     const creativeSystem = composePromptSystemRole(creativeTemplate, writingLanguage)

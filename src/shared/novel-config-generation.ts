@@ -20,6 +20,11 @@ export type NovelConfigGenerationRequirements =
   | readonly [zhCN: string, enUS: string]
   | ((facts: NovelConfigGenerationFacts) => readonly [zhCN: string, enUS: string])
 
+/** 控制可选生成字段开关的配置形状（NovelConfig 的子集）。 */
+export interface NovelConfigGenerationToggleConfig {
+  needsGoldenFinger?: boolean
+}
+
 export interface NovelConfigGenerationStep {
   /** NovelConfig 中的文本字段键 */
   key: string
@@ -27,6 +32,11 @@ export interface NovelConfigGenerationStep {
   labels: readonly [zhCN: string, enUS: string]
   /** 该字段的生成要求，随写作语言二选一 */
   requirements: NovelConfigGenerationRequirements
+  /**
+   * 可选字段的开关：对应 NovelConfig 上的布尔字段。
+   * 开关为 false 时该字段既不参与生成，也不进入后续字段的上下文。
+   */
+  toggle?: keyof NovelConfigGenerationToggleConfig
 }
 
 export const NOVEL_CONFIG_GENERATION_CHAIN = [
@@ -49,6 +59,7 @@ export const NOVEL_CONFIG_GENERATION_CHAIN = [
   {
     key: 'goldenFinger',
     labels: ['金手指/核心卖点', 'Special advantage / core story engine'],
+    toggle: 'needsGoldenFinger',
     requirements: [
       '说明差异化优势的来源、机制、成长路径、限制与代价，使其与世界规则发生冲突而非成为万能能力。',
       'Define the origin, mechanism, growth path, limits, and cost of the protagonist’s special advantage. It must interact with world rules rather than solve everything.',
@@ -90,10 +101,43 @@ export function findGenerationStep(field: GeneratableField): NovelConfigGenerati
   return NOVEL_CONFIG_GENERATION_CHAIN.find(step => step.key === field)
 }
 
-/** 生成上下文阶梯：返回该字段之前已经写好的字段（按链条顺序）。 */
-export function previousGenerationSteps(field: GeneratableField): readonly NovelConfigGenerationStep[] {
+/** 字段是否启用（用于金手指这类整篇可选字段）。 */
+export function isGenerationFieldEnabled(
+  field: GeneratableField,
+  config: NovelConfigGenerationToggleConfig = {},
+): boolean {
+  const step = findGenerationStep(field)
+  if (!step?.toggle) return true
+  return config[step.toggle] !== false
+}
+
+/**
+ * 生成上下文阶梯：返回该字段之前已经写好、且已启用的字段（按链条顺序）。
+ * 传入 config 时会跳过被开关关闭的字段。
+ */
+export function previousGenerationSteps(
+  field: GeneratableField,
+  config?: NovelConfigGenerationToggleConfig,
+): readonly NovelConfigGenerationStep[] {
   const index = NOVEL_CONFIG_GENERATION_CHAIN.findIndex(step => step.key === field)
-  return index > 0 ? NOVEL_CONFIG_GENERATION_CHAIN.slice(0, index) : []
+  const steps = index > 0 ? NOVEL_CONFIG_GENERATION_CHAIN.slice(0, index) : []
+  if (!config) return steps
+  return steps.filter(step => isGenerationFieldEnabled(step.key as GeneratableField, config))
+}
+
+/** 是否启用金手指字段。缺失视为启用，兼容旧项目。 */
+export function isGoldenFingerEnabled(
+  config: NovelConfigGenerationToggleConfig & { goldenFinger?: string } = {},
+): boolean {
+  return config.needsGoldenFinger !== false
+}
+
+/** 供提示词使用的金手指文本：关闭时视为「无」，避免旧内容继续注入。 */
+export function goldenFingerForPrompt(
+  config: NovelConfigGenerationToggleConfig & { goldenFinger?: string } = {},
+): string {
+  if (!isGoldenFingerEnabled(config)) return ''
+  return (config.goldenFinger ?? '').trim()
 }
 
 /** 字段显示名：[中文, 英文] */

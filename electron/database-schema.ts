@@ -35,6 +35,7 @@ export function ensureProjectSchema(db: BetterSqlite3.Database, importSourceSecr
       reference_works TEXT DEFAULT '',            -- 参考作品
       global_guidance TEXT DEFAULT '',            -- 全局行文指导
       golden_finger TEXT DEFAULT '',              -- 金手指设定
+      needs_golden_finger INTEGER NOT NULL DEFAULT 1, -- 是否需要金手指（0=不需要）
       core_outline TEXT DEFAULT '',               -- 作者配置核心大纲（独立于推演摘要）
       world_setting TEXT DEFAULT '',              -- 作者配置世界设定（独立于架构世界观）
       protagonist_profile TEXT DEFAULT '',        -- 作者配置主角档案（独立于角色名单投影）
@@ -1046,6 +1047,10 @@ export function ensureProjectSchema(db: BetterSqlite3.Database, importSourceSecr
   if (!projectCoreColumns.has('narrative_thread_dormant_threshold')) {
     db.exec('ALTER TABLE project_core ADD COLUMN narrative_thread_dormant_threshold INTEGER NOT NULL DEFAULT 3')
     projectCoreColumns.add('narrative_thread_dormant_threshold')
+  }
+  if (!projectCoreColumns.has('needs_golden_finger')) {
+    db.exec('ALTER TABLE project_core ADD COLUMN needs_golden_finger INTEGER NOT NULL DEFAULT 1')
+    projectCoreColumns.add('needs_golden_finger')
   }
 
   const characterStateColumns = new Set(

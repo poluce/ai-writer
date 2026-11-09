@@ -200,6 +200,41 @@ describe('GenerateFieldCommand project identity', () => {
     expect(goldenPrompt).not.toContain('方玄隐忍伪装')
   })
 
+  it('skips the golden-finger field and its context when the project does not need it', async () => {
+    useProjectStore.setState({
+      currentProject: {
+        id: projectAPath,
+        name: '城中村改造纪实',
+        path: projectAPath,
+        novelConfig: {
+          genre: '都市',
+          needsGoldenFinger: false,
+          coreOutline: '陈默要在城中村拆完前保住老屋。',
+          worldSetting: '城中村改造与资本博弈。',
+          goldenFinger: '前世记忆。',
+        },
+      } as never,
+      updateNovelConfig: vi.fn(),
+      saveProject: vi.fn(async () => true),
+    })
+    const command = new GenerateFieldCommand('protagonistProfile')
+    const callLlm = vi.spyOn(
+      command as unknown as { callLLM: (...args: unknown[]) => Promise<string> },
+      'callLLM',
+    ).mockResolvedValue('陈默，二十八岁，护住老屋。')
+
+    await command.execute({ step: {}, context, callbacks })
+
+    const prompt = String(callLlm.mock.calls[0]![0])
+    expect(prompt).toContain('核心大纲: 陈默要在城中村拆完前保住老屋。')
+    expect(prompt).toContain('世界观设定: 城中村改造与资本博弈。')
+    // 关闭后旧的金手指文本不再进入后续字段的上下文
+    expect(prompt).not.toContain('前世记忆')
+
+    await expect(new GenerateFieldCommand('goldenFinger').execute({ step: {}, context, callbacks }))
+      .rejects.toThrow('已跳过生成')
+  })
+
   it('feeds the chosen story structure and point of view into the field prompt', async () => {
     useProjectStore.setState({
       currentProject: {

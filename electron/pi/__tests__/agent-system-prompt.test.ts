@@ -18,6 +18,7 @@ function core(overrides: Partial<ProjectCoreData> = {}): ProjectCoreData {
     writingLanguage: 'zh-CN',
     creativeStrategy: 'auto',
     narrativeThreadDormantChapterThreshold: 3,
+    needsGoldenFinger: true,
     plotStructure: 'three_act',
     narrativePov: 'third_limited',
     writingStyle: '短句，克制。',
@@ -171,6 +172,19 @@ describe('sub-assistant default modules', () => {
     expect(prompt).toContain('章末钩子')
     expect(prompt).toContain('propose_chapter_blueprint')
     expect(prompt).toContain('read_continuity_facts')
+  })
+
+  it('omits the golden-finger fact when the project marks it as not needed', () => {
+    const blocks = resolveAssistantPromptBlocks('architect', 'zh-CN')
+    const disabled = buildAssistantSystemPrompt(blocks, core({
+      goldenFinger: '前世记忆。',
+      needsGoldenFinger: false,
+    }))
+    expect(disabled).not.toContain('前世记忆')
+    expect(disabled).not.toContain('金手指: ')
+
+    const enabled = buildAssistantSystemPrompt(blocks, core({ goldenFinger: '前世记忆。' }))
+    expect(enabled).toContain('金手指: 前世记忆。')
   })
 
   it('assembles the review identity with the review boundary', () => {

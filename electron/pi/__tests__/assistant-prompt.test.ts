@@ -30,6 +30,7 @@ function core(overrides: Partial<ProjectCoreData> = {}): ProjectCoreData {
     writingLanguage: 'zh-CN',
     creativeStrategy: 'auto',
     narrativeThreadDormantChapterThreshold: 3,
+    needsGoldenFinger: true,
     plotStructure: 'three_act',
     narrativePov: 'third_limited',
     writingStyle: '短句，克制。',

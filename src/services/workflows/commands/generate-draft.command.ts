@@ -41,6 +41,7 @@ import {
   type SelectedCandidateDraft,
 } from '../chapter-materials'
 import type { DraftSourceDependency } from '../../../shared/draft-source-dependency'
+import { goldenFingerForPrompt } from '../../../shared/novel-config-generation'
 import { internalPrompt } from '../../../prompts/internal/load'
 import {
   ACTIVE_THREAD_CONTEXT_MAX_CHARS,
@@ -179,13 +180,15 @@ export class GenerateDraftCommand extends BaseWorkflowCommand {
     // 以最大化 LLM 上下文缓存命中率
     // ==========================================
     const writingStyle = novelConfig.writingStyle?.trim() || ''
-    const { coreOutline, worldSetting, goldenFinger, protagonistProfile } = novelConfig
+    const { coreOutline, worldSetting, protagonistProfile } = novelConfig
+    const goldenFinger = goldenFingerForPrompt(novelConfig)
     const promptOnlyConfigKeys = new Set([
       'globalGuidance',
       'writingStyle',
       'coreOutline',
       'worldSetting',
       'goldenFinger',
+      'needsGoldenFinger',
       'protagonistProfile',
     ])
     const novelConfigFacts = Object.fromEntries(

@@ -14,7 +14,11 @@ import {
 import {
   resolveWritingLanguage,
   type WritingLanguage} from '../../shared/writing-language'
-import { generationFieldLabels, type GeneratableField } from '../../shared/novel-config-generation'
+import {
+  generationFieldLabels,
+  isGoldenFingerEnabled,
+  type GeneratableField,
+} from '../../shared/novel-config-generation'
 import { Button } from '../ui/Button'
 import { confirm } from '../ui/Confirm'
 import { Input } from '../ui/Input'
@@ -98,6 +102,8 @@ function NovelConfigEditorSession({ projectKey }: { projectKey: string }) {
   useEffect(() => {
     exitSaveRef.current = handleSave
   })
+
+  const goldenFingerEnabled = config ? isGoldenFingerEnabled(config) : true
 
   if (!config) return (
     <div className="h-full flex items-center justify-center" style={{ color: 'var(--color-text-muted)' }}>
@@ -379,6 +385,29 @@ function NovelConfigEditorSession({ projectKey }: { projectKey: string }) {
                   </Button>
                 </div>
               </Field>
+              <Field
+                label={text('金手指', 'Special advantage')}
+                htmlFor="project-golden-finger"
+                tipItems={[
+                  text(
+                    '不需要：隐藏「金手指 / 核心卖点」，且不进入 AI 生成上下文',
+                    'Not needed: hides the section and keeps it out of AI generation context',
+                  ),
+                  text(
+                    '已写内容保留，切换回「需要」即可恢复',
+                    'Existing text is kept and restored when switched back',
+                  ),
+                ]}
+              >
+                <NativeSelect
+                  id="project-golden-finger"
+                  value={goldenFingerEnabled ? 'yes' : 'no'}
+                  onChange={(event) => update('needsGoldenFinger', event.target.value === 'yes')}
+                >
+                  <option value="yes">{text('需要', 'Needed')}</option>
+                  <option value="no">{text('不需要', 'Not needed')}</option>
+                </NativeSelect>
+              </Field>
             </div>
           </Section>
 
@@ -415,6 +444,7 @@ function NovelConfigEditorSession({ projectKey }: { projectKey: string }) {
                 placeholder={text('时代、地点、规则、冲突来源……', 'Era, place, rules, and sources of conflict…')}
               />
             </SettingSection>
+            {goldenFingerEnabled && (
             <SettingSection
               title={text('金手指 / 核心卖点', 'Protagonist advantage / core hook')}
               collapsed={Boolean(collapsedSections.goldenFinger)}
@@ -431,6 +461,7 @@ function NovelConfigEditorSession({ projectKey }: { projectKey: string }) {
                 placeholder={text('来源、机制、限制与代价……', 'Origin, mechanism, limits, and cost…')}
               />
             </SettingSection>
+            )}
             <SettingSection
               title={text('主角人设', 'Protagonist profile')}
               collapsed={Boolean(collapsedSections.protagonistProfile)}

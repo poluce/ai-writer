@@ -12,6 +12,8 @@ export interface ProjectCoreData {
   writingLanguage: WritingLanguage
   creativeStrategy: CreativeStrategy
   narrativeThreadDormantChapterThreshold: number
+  /** 是否需要金手指 / 核心卖点（整篇可选字段的总开关）。 */
+  needsGoldenFinger: boolean
   plotStructure: string
   narrativePov: string
   writingStyle: string

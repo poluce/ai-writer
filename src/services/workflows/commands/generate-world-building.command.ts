@@ -15,6 +15,7 @@ import { promptLanguageText } from '../../prompt-language'
 import { localizeNovelConfigFacts } from '../../../shared/novel-config-localization'
 import type { PartialArchData } from './plot-outline-checkpoint'
 import { existingAuthorContentBlock } from './architecture-json-contract'
+import { goldenFingerForPrompt } from '../../../shared/novel-config-generation'
 import {
   assertArchitectureProjectSessionCurrent,
   loadPartialData,
@@ -67,7 +68,7 @@ export class GenerateWorldBuildingCommand extends BaseWorkflowCommand<string> {
       .withCoreSeed(premise_result)
       .withGenre(modelFacts.genre)
       .withCoreSetting(config.worldSetting || missingValue)
-      .withGoldenFinger(config.goldenFinger || missingValue)
+      .withGoldenFinger(goldenFingerForPrompt(config) || missingValue)
       .withProtagonistProfile(config.protagonistProfile || missingValue)
       .withGlobalGuidance(config.globalGuidance || missingValue)
       .withStepGuidance(((context.data.stepGuidance as Record<string, string>) || {}).worldbuilding || '')

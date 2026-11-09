@@ -67,6 +67,11 @@ export interface NovelConfig {
   creativeStrategy?: CreativeStrategy
   /** Project-scoped chapter count before an active narrative thread is marked dormant. */
   narrativeThreadDormantChapterThreshold?: number
+  /**
+   * 是否启用「金手指 / 核心卖点」字段。
+   * 缺失视为启用（兼容旧项目）；关闭时该配置整节隐藏，且不进入生成上下文。
+   */
+  needsGoldenFinger?: boolean
   genre: string
   subGenre: string
   targetAudience: string
