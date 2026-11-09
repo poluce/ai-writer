@@ -219,7 +219,8 @@ function NovelConfigEditorSession({ projectKey }: { projectKey: string }) {
         <div className="space-y-[18px]">
           {/* 基本信息 */}
           <Section title={text('基本信息', 'Basic information')}>
-            <div className="grid grid-cols-3 gap-4">
+            {/* 统一三列网格：题材 / 结构 / 篇幅三行共享列边界，数字字段收窄避免拉满 */}
+            <div className="grid grid-cols-3 gap-x-6 gap-y-4">
               <Field label={text('类型', 'Genre')}>
                 <NativeSelect value={config.genre} onChange={(e) => update('genre', e.target.value)}>
                   <option value="" disabled>{text('请选择类型', 'Select a genre')}</option>
@@ -243,8 +244,6 @@ function NovelConfigEditorSession({ projectKey }: { projectKey: string }) {
                   ))}
                 </NativeSelect>
               </Field>
-            </div>
-            <div className="grid grid-cols-4 gap-4 mt-4">
               <Field label={text('故事结构', 'Story structure')} tipItems={[
                 '三幕结构：经典的“建置→对抗→高潮”，适合大多数网文类型',
                 '英雄之旅：神话学十二阶段，适合冒险/成长类，强调内在蜕变',
@@ -287,34 +286,6 @@ function NovelConfigEditorSession({ projectKey }: { projectKey: string }) {
                   <option value="multi_pov">{text('多视角轮换', 'Multiple POV')}</option>
                 </NativeSelect>
               </Field>
-              <Field label={text('总章数', 'Total chapters')}>
-                <Input
-                  type="number"
-                  value={config.totalChapters}
-                  onChange={(e) => update('totalChapters', (e.target.value === '' ? '' : parseInt(e.target.value)) as number)}
-                  onBlur={() => {
-                    const v = Number(config.totalChapters)
-                    if (!v || v < 1) update('totalChapters', 100)
-                  }}
-                  placeholder="100"
-                  min={1}
-                />
-              </Field>
-              <Field label={text('每章字数', 'Words per chapter')}>
-                <Input
-                  type="number"
-                  value={config.wordsPerChapter}
-                  onChange={(e) => update('wordsPerChapter', (e.target.value === '' ? '' : parseInt(e.target.value)) as number)}
-                  onBlur={() => {
-                    const v = Number(config.wordsPerChapter)
-                    if (!v || v < 100) update('wordsPerChapter', 3000)
-                  }}
-                  placeholder="3000"
-                  min={100}
-                />
-              </Field>
-            </div>
-            <div className="grid grid-cols-4 gap-4 mt-4 items-end">
               <Field
                 label={text('写作语言', 'Writing language')}
                 htmlFor="project-writing-language"
@@ -342,6 +313,34 @@ function NovelConfigEditorSession({ projectKey }: { projectKey: string }) {
                   <option value="en-US">English</option>
                 </NativeSelect>
               </Field>
+              <Field label={text('总章数', 'Total chapters')}>
+                <Input
+                  type="number"
+                  value={config.totalChapters}
+                  onChange={(e) => update('totalChapters', (e.target.value === '' ? '' : parseInt(e.target.value)) as number)}
+                  onBlur={() => {
+                    const v = Number(config.totalChapters)
+                    if (!v || v < 1) update('totalChapters', 100)
+                  }}
+                  placeholder="100"
+                  min={1}
+                  className="max-w-[160px]"
+                />
+              </Field>
+              <Field label={text('每章字数', 'Words per chapter')}>
+                <Input
+                  type="number"
+                  value={config.wordsPerChapter}
+                  onChange={(e) => update('wordsPerChapter', (e.target.value === '' ? '' : parseInt(e.target.value)) as number)}
+                  onBlur={() => {
+                    const v = Number(config.wordsPerChapter)
+                    if (!v || v < 100) update('wordsPerChapter', 3000)
+                  }}
+                  placeholder="3000"
+                  min={100}
+                  className="max-w-[160px]"
+                />
+              </Field>
               <Field
                 label={text('沉寂提醒阈值（章）', 'Dormant reminder threshold (chapters)')}
                 htmlFor="narrative-thread-dormant-threshold"
@@ -367,6 +366,7 @@ function NovelConfigEditorSession({ projectKey }: { projectKey: string }) {
                     min={MIN_NARRATIVE_THREAD_DORMANT_THRESHOLD}
                     max={MAX_NARRATIVE_THREAD_DORMANT_THRESHOLD}
                     value={dormantThreshold}
+                    className="max-w-[120px]"
                     onChange={event => update(
                       'narrativeThreadDormantChapterThreshold',
                       resolveNarrativeThreadDormantThreshold(Number(event.target.value)),
