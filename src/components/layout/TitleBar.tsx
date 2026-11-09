@@ -8,6 +8,7 @@ import {
   Import,
   LogOut,
   Menu,
+  MessageSquare,
   Minus,
   Moon,
   ScrollText,
@@ -72,6 +73,8 @@ export default function TitleBar() {
   const openExport = useLayoutStore(s => s.openExport)
   const openAuthorManuscriptImport = useLayoutStore(s => s.openAuthorManuscriptImport)
   const openNovelDeconstruction = useLayoutStore(s => s.openNovelDeconstruction)
+  const aiPanelOpen = useLayoutStore(s => s.aiPanelOpen)
+  const toggleAIPanel = useLayoutStore(s => s.toggleAIPanel)
   const { locale, setLocale, t, text } = useLocaleStore()
   const [exitRequest, setExitRequest] = useState<{ requestId: string; workflowBlocked?: boolean } | null>(null)
   const [exitBusy, setExitBusy] = useState(false)
@@ -205,11 +208,14 @@ export default function TitleBar() {
       } else if (e.key === '0') {
         e.preventDefault()
         zoomReset()
+      } else if (e.shiftKey && (e.key === 'a' || e.key === 'A')) {
+        e.preventDefault()
+        toggleAIPanel()
       }
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [zoomIn, zoomOut, zoomReset])
+  }, [zoomIn, zoomOut, zoomReset, toggleAIPanel])
 
   const handleOpenProject = async () => {
     const folder = await ipc.invoke('dialog:select-folder')
@@ -307,6 +313,17 @@ export default function TitleBar() {
                 icon={<Archive size={13} />}
                 disabled
                 onClick={() => {}}
+              />
+              <div className="my-1 h-px mx-2" style={{ backgroundColor: 'var(--color-border)' }} />
+              <div className="px-3 pb-0.5 pt-1 text-[10px] font-medium" style={{ color: 'var(--color-text-muted)' }}>
+                {text('视图', 'View')}
+              </div>
+              <MenuItem
+                label={text('AI 写作助手', 'AI Writing Assistant')}
+                icon={<MessageSquare size={13} />}
+                shortcut={isMac ? '⇧⌘A' : 'Ctrl+Shift+A'}
+                checked={aiPanelOpen}
+                onClick={() => { setShowMainMenu(false); toggleAIPanel() }}
               />
               <div className="my-1 h-px mx-2" style={{ backgroundColor: 'var(--color-border)' }} />
               <div className="px-3 pb-0.5 pt-1 text-[10px] font-medium" style={{ color: 'var(--color-text-muted)' }}>

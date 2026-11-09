@@ -4,6 +4,7 @@ import { page } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { ProjectData } from '../../../shared/ipc-channels'
+import { useLayoutStore } from '../../../stores/layout-store'
 import { useLocaleStore } from '../../../stores/locale-store'
 import { useProjectStore } from '../../../stores/project-store'
 import { useThemeStore } from '../../../stores/theme-store'
@@ -16,6 +17,7 @@ let container: HTMLDivElement
 const originalLocaleState = useLocaleStore.getState()
 const originalThemeState = useThemeStore.getState()
 const originalProjectState = useProjectStore.getState()
+const originalLayoutState = useLayoutStore.getState()
 
 const project: ProjectData = {
   id: 'titlebar-menu-project',
@@ -35,6 +37,7 @@ beforeEach(() => {
   useLocaleStore.setState({ locale: 'zh-CN' })
   useThemeStore.setState({ theme: 'light', resolvedTheme: 'light' })
   useProjectStore.setState({ currentProject: null })
+  useLayoutStore.setState({ aiPanelOpen: true })
   Object.defineProperty(window, 'velaAPI', {
     configurable: true,
     value: {
@@ -58,6 +61,7 @@ afterEach(async () => {
   useLocaleStore.setState(originalLocaleState)
   useThemeStore.setState(originalThemeState)
   useProjectStore.setState(originalProjectState)
+  useLayoutStore.setState(originalLayoutState)
   Reflect.deleteProperty(window, 'velaAPI')
 })
 
@@ -120,6 +124,33 @@ describe('TitleBar menus', () => {
 
     await act(async () => mainMenu.getByRole('button', { name: 'English', exact: true }).click())
     await expect.poll(() => useLocaleStore.getState().locale).toBe('en-US')
+  })
+
+  it('reopens the assistant panel from the main menu after it was closed', async () => {
+    useLayoutStore.setState({ aiPanelOpen: false })
+    await act(async () => root.render(<TitleBar />))
+
+    const trigger = page.getByRole('button', { name: '主菜单' })
+    await expect.element(trigger).toBeVisible()
+    await act(async () => trigger.click())
+
+    // 面板关闭后，关闭按钮随面板消失；主菜单里保留唯一的重新打开入口
+    const item = page
+      .getByRole('menu', { name: '主菜单' })
+      .getByRole('button', { name: 'AI 写作助手' })
+    await expect.element(item).toBeVisible()
+    expect(item.element().getAttribute('aria-pressed')).toBe('false')
+
+    await act(async () => item.click())
+    expect(useLayoutStore.getState().aiPanelOpen).toBe(true)
+
+    // 快捷键是第二条恢复路径：Ctrl+Shift+A 收起 / 展开助手面板
+    await act(async () => {
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'a', ctrlKey: true, shiftKey: true, bubbles: true }),
+      )
+    })
+    expect(useLayoutStore.getState().aiPanelOpen).toBe(false)
   })
 
   it('shows the project switch only while a project is open', async () => {
