@@ -210,6 +210,7 @@ export default function TitleBar() {
         zoomReset()
       } else if (e.shiftKey && (e.key === 'a' || e.key === 'A')) {
         e.preventDefault()
+        if (!useProjectStore.getState().currentProject) return
         toggleAIPanel()
       }
     }
@@ -322,7 +323,9 @@ export default function TitleBar() {
                 label={text('AI 写作助手', 'AI Writing Assistant')}
                 icon={<MessageSquare size={13} />}
                 shortcut={isMac ? '⇧⌘A' : 'Ctrl+Shift+A'}
-                checked={aiPanelOpen}
+                checked={aiPanelOpen && Boolean(currentProject)}
+                disabled={!currentProject}
+                disabledHint={text('请先打开项目', 'Open a project first')}
                 onClick={() => { setShowMainMenu(false); toggleAIPanel() }}
               />
               <div className="my-1 h-px mx-2" style={{ backgroundColor: 'var(--color-border)' }} />

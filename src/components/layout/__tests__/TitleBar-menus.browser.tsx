@@ -81,7 +81,7 @@ describe('TitleBar menus', () => {
     await act(async () => trigger.click())
 
     const mainMenu = page.getByRole('menu', { name: '主菜单' })
-    for (const name of [/新建项目/, /打开项目/, /导入原稿/, /拆解仿写/, /导出/, /备份/, /退出/]) {
+    for (const name of [/^新建项目/, /^打开项目/, /^导入原稿/, /^拆解仿写/, /^导出/, /^备份/, /^退出/]) {
       await expect.element(mainMenu.getByRole('button', { name })).toBeVisible()
     }
     // 主菜单不再重复设置入口
@@ -127,6 +127,7 @@ describe('TitleBar menus', () => {
   })
 
   it('reopens the assistant panel from the main menu after it was closed', async () => {
+    useProjectStore.setState({ currentProject: project })
     useLayoutStore.setState({ aiPanelOpen: false })
     await act(async () => root.render(<TitleBar />))
 
@@ -145,6 +146,29 @@ describe('TitleBar menus', () => {
     expect(useLayoutStore.getState().aiPanelOpen).toBe(true)
 
     // 快捷键是第二条恢复路径：Ctrl+Shift+A 收起 / 展开助手面板
+    await act(async () => {
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'a', ctrlKey: true, shiftKey: true, bubbles: true }),
+      )
+    })
+    expect(useLayoutStore.getState().aiPanelOpen).toBe(false)
+  })
+
+  it('greys the assistant toggle out while no project is open', async () => {
+    await act(async () => root.render(<TitleBar />))
+
+    const trigger = page.getByRole('button', { name: '主菜单' })
+    await act(async () => trigger.click())
+
+    const item = page
+      .getByRole('menu', { name: '主菜单' })
+      .getByRole('button', { name: 'AI 写作助手' })
+    await expect.element(item).toBeVisible()
+    expect(item.element().hasAttribute('disabled')).toBe(true)
+    expect(item.element().textContent).toContain('请先打开项目')
+
+    // 快捷键在无项目时不应改变面板状态
+    useLayoutStore.setState({ aiPanelOpen: false })
     await act(async () => {
       window.dispatchEvent(
         new KeyboardEvent('keydown', { key: 'a', ctrlKey: true, shiftKey: true, bubbles: true }),

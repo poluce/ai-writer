@@ -14,9 +14,11 @@ export interface MenuItemProps {
   danger?: boolean
   /** 单选菜单项的当前项标记 */
   checked?: boolean
+  /** 置灰项右侧的说明（默认「即将推出」） */
+  disabledHint?: string
 }
 
-export function MenuItem({ label, onClick, icon, shortcut, disabled, danger, checked }: MenuItemProps) {
+export function MenuItem({ label, onClick, icon, shortcut, disabled, danger, checked, disabledHint }: MenuItemProps) {
   const text = useLocaleStore(state => state.text)
   return (
     <button
@@ -58,7 +60,7 @@ export function MenuItem({ label, onClick, icon, shortcut, disabled, danger, che
         </span>
       )}
       {disabled && (
-        <span className="ml-auto text-[0.7rem] opacity-40">{text('即将推出', 'Coming soon')}</span>
+        <span className="ml-auto text-[0.7rem] opacity-40">{disabledHint ?? text('即将推出', 'Coming soon')}</span>
       )}
     </button>
   )

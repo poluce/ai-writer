@@ -13,6 +13,7 @@ import TitleBar from './components/layout/TitleBar'
 import StatusBar from './components/layout/StatusBar'
 import LeftToolWindowBar from './components/layout/LeftToolWindowBar'
 import AssistantRail from './components/layout/AssistantRail'
+import { resolveAssistantSurface } from './components/layout/assistant-surface'
 import Sidebar from './components/panels/Sidebar'
 import EditorArea from './components/panels/EditorArea'
 import AIPanel from './components/panels/AIPanel'
@@ -104,6 +105,8 @@ export default function App() {
   const text = useLocaleStore((s) => s.text)
   const sidebarOpen = useLayoutStore(s => s.sidebarOpen)
   const aiPanelOpen = useLayoutStore(s => s.aiPanelOpen)
+  const hasOpenProject = useProjectStore(s => Boolean(s.currentProject))
+  const assistantSurface = resolveAssistantSurface(aiPanelOpen, hasOpenProject)
   const bottomPanelOpen = useLayoutStore(s => s.bottomPanelOpen)
   const rightView = useLayoutStore(s => s.rightView)
   const settingsOpen = useLayoutStore(s => s.settingsOpen)
@@ -309,7 +312,7 @@ export default function App() {
                 </Panel>
 
                 {/* 右侧面板（Agent 对话 / 架构助手 / 蓝图助手 / 审稿助手 / AI 输出） */}
-                {aiPanelOpen && (
+                {assistantSurface === 'panel' && (
                   <>
                     <PanelResizeHandle />
                     <Panel id="ai-panel" defaultSize={25} minSize={10}>

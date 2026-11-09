@@ -3,8 +3,10 @@ import { createRoot, type Root } from 'react-dom/client'
 import { page } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import type { ProjectData } from '../../../shared/ipc-channels'
 import { useLayoutStore } from '../../../stores/layout-store'
 import { useLocaleStore } from '../../../stores/locale-store'
+import { useProjectStore } from '../../../stores/project-store'
 import AssistantRail from '../AssistantRail'
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -13,10 +15,26 @@ let root: Root
 let container: HTMLDivElement
 const originalLayoutState = useLayoutStore.getState()
 const originalLocaleState = useLocaleStore.getState()
+const originalProjectState = useProjectStore.getState()
+
+const project: ProjectData = {
+  id: 'assistant-rail-project',
+  name: '测试书',
+  path: 'C:\\novels\\assistant-rail',
+  novelConfig: {
+    genre: '', subGenre: '', targetAudience: '', totalChapters: 3, wordsPerChapter: 2500,
+    plotStructure: 'three_act', narrativePOV: 'third_limited', coreOutline: 'Configured',
+    worldSetting: '', goldenFinger: '', protagonistProfile: '', globalGuidance: '',
+  },
+  characterStates: '',
+  createdAt: '',
+  updatedAt: '',
+}
 
 beforeEach(() => {
   useLocaleStore.setState({ locale: 'zh-CN' })
   useLayoutStore.setState({ aiPanelOpen: false, rightView: 'agent' })
+  useProjectStore.setState({ currentProject: null })
   container = document.createElement('div')
   document.body.append(container)
   root = createRoot(container)
@@ -27,10 +45,12 @@ afterEach(async () => {
   container.remove()
   useLayoutStore.setState(originalLayoutState)
   useLocaleStore.setState(originalLocaleState)
+  useProjectStore.setState(originalProjectState)
 })
 
 describe('AssistantRail', () => {
   it('keeps the five assistant views reachable while the panel is closed', async () => {
+    useProjectStore.setState({ currentProject: project })
     await act(async () => root.render(<AssistantRail />))
 
     for (const label of ['写作', '架构', '蓝图', '审稿', '输出']) {
@@ -42,10 +62,28 @@ describe('AssistantRail', () => {
     expect(useLayoutStore.getState().rightView).toBe('review')
   })
 
-  it('steps aside while the assistant panel is open', async () => {
+  it('steps aside while the assistant panel is shown', async () => {
+    useProjectStore.setState({ currentProject: project })
     useLayoutStore.setState({ aiPanelOpen: true })
     await act(async () => root.render(<AssistantRail />))
 
     expect(container.querySelector('.writer-right-rail')).toBeNull()
+  })
+
+  it('greys the rail out while no project is open', async () => {
+    await act(async () => root.render(<AssistantRail />))
+
+    // 未打开项目时，助手视图全置灰；即便面板处于展开态也只保留置灰图标条
+    const rail = container.querySelector('.writer-right-rail')
+    expect(rail).not.toBeNull()
+    for (const label of ['写作', '架构', '蓝图', '审稿', '输出']) {
+      const button = page.getByRole('button', { name: label, exact: true }).element()
+      expect(button.hasAttribute('disabled')).toBe(true)
+    }
+    expect(useLayoutStore.getState().aiPanelOpen).toBe(false)
+
+    useLayoutStore.setState({ aiPanelOpen: true })
+    await act(async () => root.render(<AssistantRail />))
+    expect(container.querySelectorAll('.rail-button:disabled')).toHaveLength(5)
   })
 })
