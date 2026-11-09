@@ -22,6 +22,7 @@ const NOVEL_CONFIG_STRING_FIELDS = new Set<keyof NovelConfig>([
   'protagonistProfile', 'globalGuidance', 'writingStyle', 'referenceWorks',
 ])
 const NOVEL_CONFIG_NUMBER_FIELDS = new Set<keyof NovelConfig>(['totalChapters', 'wordsPerChapter'])
+const NOVEL_CONFIG_BOOLEAN_FIELDS = new Set<keyof NovelConfig>(['needsGoldenFinger'])
 const NOVEL_CONFIG_ENUM_FIELDS: Partial<Record<keyof NovelConfig, readonly string[]>> = {
   plotStructure: ['three_act', 'heros_journey', 'save_the_cat', 'kishotenketsu', 'multi_thread', 'freeform'],
   narrativePOV: ['third_limited', 'first_person', 'third_omniscient', 'multi_pov'],
@@ -109,6 +110,12 @@ const NOVEL_CONFIG_FIELD_ALIASES: Record<string, keyof NovelConfig> = {
   writingLanguage: 'writingLanguage',
   writing_language: 'writingLanguage',
   '写作语言': 'writingLanguage',
+
+  needsGoldenFinger: 'needsGoldenFinger',
+  needs_golden_finger: 'needsGoldenFinger',
+  '需要金手指': 'needsGoldenFinger',
+  '金手指开关': 'needsGoldenFinger',
+  '是否金手指': 'needsGoldenFinger',
 }
 
 const PLOT_STRUCTURE_VALUE_ALIASES: Record<string, string> = {
@@ -192,6 +199,15 @@ export function buildNovelConfigProposal(
     } else if (NOVEL_CONFIG_NUMBER_FIELDS.has(canonicalField as keyof NovelConfig)) {
       if (!Number.isInteger(normalizedValue) || (normalizedValue as number) <= 0) {
         return { valid: false, error: text(`字段 ${field} 必须是正整数`, `Field ${field} must be a positive integer`) }
+      }
+    } else if (NOVEL_CONFIG_BOOLEAN_FIELDS.has(canonicalField as keyof NovelConfig)) {
+      if (typeof normalizedValue === 'string') {
+        const lowered = normalizedValue.trim().toLowerCase()
+        if (lowered === 'true' || lowered === '1' || normalizedValue.trim() === '需要') normalizedValue = true
+        else if (lowered === 'false' || lowered === '0' || normalizedValue.trim() === '不需要') normalizedValue = false
+      }
+      if (typeof normalizedValue !== 'boolean') {
+        return { valid: false, error: text(`字段 ${field} 必须是布尔值`, `Field ${field} must be a boolean`) }
       }
     } else if (canonicalField in NOVEL_CONFIG_ENUM_FIELDS) {
       const allowedValues = NOVEL_CONFIG_ENUM_FIELDS[canonicalField as keyof NovelConfig] ?? []

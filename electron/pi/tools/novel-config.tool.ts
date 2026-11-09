@@ -8,6 +8,7 @@ import {
   type ProposalText,
 } from '../../../src/shared/domain-proposals'
 import type { NovelConfig } from '../../../src/shared/ipc-channels'
+import { isGoldenFingerEnabled } from '../../../src/shared/novel-config-generation'
 import {
   writingLanguageText,
   type WritingLanguage,
@@ -53,6 +54,7 @@ const Schema = Type.Object({
   coreOutline: Type.Optional(Type.String({ description: 'Full-text core outline: central conflict, main plot chain, and beginning-to-climax overview' })),
   worldSetting: Type.Optional(Type.String({ description: 'World setting details: era, world rules, hierarchy, and core resources' })),
   goldenFinger: Type.Optional(Type.String({ description: 'Protagonist special advantage / cheat / unique mechanism, usage constraints, and progression path' })),
+  needsGoldenFinger: Type.Optional(Type.Boolean({ description: 'Whether the project needs a special advantage at all; false hides the golden-finger section and keeps it out of generation context' })),
   protagonistProfile: Type.Optional(Type.String({ description: 'Protagonist character card: identity, personality, core motivations, weaknesses, and character arc' })),
   genre: Type.Optional(Type.String({ description: 'Primary novel genre (e.g. Fantasy, Sci-Fi, Urban, Mystery, Historical, Cultivation)' })),
   subGenre: Type.Optional(Type.String({ description: 'Subgenre or tropes (e.g. Rebirth, Cyberpunk, Xianxia, System)' })),
@@ -111,6 +113,7 @@ const FIELD_DISPLAY_NAMES: Record<string, [string, string]> = {
   globalGuidance: ['全局创作指导', 'Global Guidance'],
   writingStyle: ['文风配置', 'Writing Style'],
   referenceWorks: ['参考作品', 'Reference Works'],
+  needsGoldenFinger: ['金手指开关', 'Golden Finger Toggle'],
   genre: ['类型', 'Genre'],
   subGenre: ['细分类型', 'Subgenre'],
   targetAudience: ['目标受众', 'Target Audience'],
@@ -132,6 +135,7 @@ export function isNovelConfigWrite(params: Record<string, unknown>): boolean {
     || params.coreOutline
     || params.worldSetting
     || params.goldenFinger
+    || params.needsGoldenFinger !== undefined
     || params.protagonistProfile
     || params.genre
     || params.subGenre
@@ -156,8 +160,8 @@ export function createNovelConfigTool(
 ): AgentTool<typeof Schema, { action: string; fields?: number }> {
   const text = (zhCN: string, enUS: string) => writingLanguageText(language, zhCN, enUS)
   const description = language === 'en-US'
-    ? 'Read or update novel configuration fields: basic info (genre, chapters, POV), core outline, world setting, golden finger, protagonist profile, guidance, style. Discuss the content with the author first, then call this tool to fill it in directly. Read existing fields with action: "read" before modifying them; use old_text/new_text to patch one section of a long document without rewriting the whole text.'
-    : '读取或修改当前项目的小说配置。支持按字段单独或批量读写：基本信息（类型、章节规模、叙事视角等）、核心大纲、世界观设定、金手指/核心卖点、主角人设、创作指导、文风配置等。在对话中与作者探讨确定后，可直接调用此工具将生成的设定填入小说配置中。修改已有设定前先用 action: "read" 读取现状；长文只需改一段时用 old_text/new_text 局部替换，不要整篇重写。'
+    ? 'Read or update novel configuration fields: basic info (genre, chapters, POV), core outline, world setting, golden finger (set needsGoldenFinger: false when the story has no special advantage), protagonist profile, guidance, style. Discuss the content with the author first, then call this tool to fill it in directly. Read existing fields with action: "read" before modifying them; use old_text/new_text to patch one section of a long document without rewriting the whole text.'
+    : '读取或修改当前项目的小说配置。支持按字段单独或批量读写：基本信息（类型、章节规模、叙事视角等）、核心大纲、世界观设定、金手指/核心卖点（整篇不需要时可传 needsGoldenFinger: false 关闭）、主角人设、创作指导、文风配置等。在对话中与作者探讨确定后，可直接调用此工具将生成的设定填入小说配置中。修改已有设定前先用 action: "read" 读取现状；长文只需改一段时用 old_text/new_text 局部替换，不要整篇重写。'
 
   return {
     name: 'novel_config',
@@ -172,6 +176,22 @@ export function createNovelConfigTool(
       }
 
       const isUpdate = isNovelConfigWrite(params as Record<string, unknown>)
+
+      const writesGoldenFingerText = (): boolean => {
+        if (typeof params.goldenFinger === 'string' && params.goldenFinger.trim().length > 0) return true
+        if (FIELD_ALIASES[params.field ?? ''] === 'goldenFinger'
+          && typeof params.content === 'string'
+          && params.content.trim().length > 0) return true
+        const changes = params.changes
+        if (changes && typeof changes === 'object' && !Array.isArray(changes)) {
+          for (const [key, value] of Object.entries(changes)) {
+            if (FIELD_ALIASES[key] === 'goldenFinger' && typeof value === 'string' && value.trim().length > 0) {
+              return true
+            }
+          }
+        }
+        return false
+      }
 
       if (!isUpdate) {
         // ========== 读取逻辑 ==========
@@ -189,6 +209,7 @@ export function createNovelConfigTool(
             `- ${text('故事结构', 'Story Structure')}: ${core.plotStructure || '—'}`,
             `- ${text('叙事视角', 'Narrative POV')}: ${core.narrativePov || '—'}`,
             `- ${text('写作语言', 'Writing Language')}: ${core.writingLanguage || '—'}`,
+            `- ${text('金手指', 'Golden Finger')}: ${isGoldenFingerEnabled(core) ? text('需要', 'Needed') : text('不需要', 'Not needed')}`,
           ].join('\n')
         }
 
@@ -208,6 +229,10 @@ export function createNovelConfigTool(
 
         for (const [key, zh, en] of documentFields) {
           if (targetFieldKey === 'all' || targetFieldKey === key) {
+            if (key === 'goldenFinger' && !isGoldenFingerEnabled(core)) {
+              parts.push(`### ${text(zh, en)}\n${text('（已设为不需要，历史文本未启用）', '(Marked as not needed; historical text is inactive)')}`)
+              continue
+            }
             const val = String(core[key] ?? '').trim()
             parts.push(`### ${text(zh, en)}\n${val ? val : text('（暂无设定）', '(Empty)')}`)
           }
@@ -225,6 +250,12 @@ export function createNovelConfigTool(
       // ========== 局部片段精准替换逻辑 ==========
       if (params.old_text && params.new_text) {
         const targetFieldKey = FIELD_ALIASES[params.field ?? 'coreOutline'] ?? (params.field ?? 'coreOutline')
+        if (targetFieldKey === 'goldenFinger' && !isGoldenFingerEnabled(core)) {
+          throw new Error(text(
+            '该项目并不涉及金手指，已关闭，不能写入内容',
+            'This project does not involve a golden finger; the field is disabled, so content cannot be written.',
+          ))
+        }
         const currentVal = String((core as unknown as Record<string, unknown>)[targetFieldKey] ?? '')
         if (!currentVal.includes(params.old_text)) {
           const entry = FIELD_DISPLAY_NAMES[targetFieldKey]
@@ -258,6 +289,12 @@ export function createNovelConfigTool(
       }
 
       // ========== 整体字段写入 / 填充逻辑 ==========
+      if (!isGoldenFingerEnabled(core) && writesGoldenFingerText()) {
+        throw new Error(text(
+          '该项目并不涉及金手指，已关闭，不能写入内容',
+          'This project does not involve a golden finger; the field is disabled, so content cannot be written.',
+        ))
+      }
       const current = {
         ...(core ?? {}),
         narrativePOV: core?.narrativePov,

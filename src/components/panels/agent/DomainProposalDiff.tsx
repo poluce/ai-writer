@@ -20,6 +20,7 @@ export const CONFIG_LABELS: Record<string, readonly [string, string]> = {
   goldenFinger: ['金手指', 'Special advantage'], protagonistProfile: ['主角设定', 'Protagonist profile'],
   globalGuidance: ['全局指导', 'Global guidance'], writingStyle: ['写作风格', 'Writing style'],
   referenceWorks: ['参考作品', 'Reference works'], writingLanguage: ['写作语言', 'Writing language'],
+  needsGoldenFinger: ['金手指开关', 'Special advantage'],
 }
 export const BLUEPRINT_LABELS: Record<string, readonly [string, string]> = {
   title: ['章节标题', 'Chapter title'], role: ['章节定位', 'Chapter role'], purpose: ['章节目的', 'Purpose'],
@@ -37,6 +38,11 @@ export interface DomainProposalPreview {
 
 function displayValue(value: unknown, locale: string): string {
   if (Array.isArray(value)) return value.join(locale === 'zh-CN' ? '、' : ', ')
+  if (typeof value === 'boolean') {
+    return value
+      ? (locale === 'zh-CN' ? '需要' : 'Needed')
+      : (locale === 'zh-CN' ? '不需要' : 'Not needed')
+  }
   if (value === undefined || value === null || value === '') return '—'
   return String(value)
 }

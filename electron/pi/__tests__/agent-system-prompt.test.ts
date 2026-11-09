@@ -181,7 +181,7 @@ describe('sub-assistant default modules', () => {
       needsGoldenFinger: false,
     }))
     expect(disabled).not.toContain('前世记忆')
-    expect(disabled).not.toContain('金手指: ')
+    expect(disabled).toContain('金手指: 不需要')
 
     const enabled = buildAssistantSystemPrompt(blocks, core({ goldenFinger: '前世记忆。' }))
     expect(enabled).toContain('金手指: 前世记忆。')

@@ -38,6 +38,20 @@ describe('buildNovelConfigProposal', () => {
     ])
   })
 
+  it('normalizes the golden-finger toggle and rejects non-boolean values', () => {
+    const disabled = buildNovelConfigProposal({ changes: { needsGoldenFinger: false } }, novelConfig, text)
+    expect(disabled).toMatchObject({ valid: true, changes: { needsGoldenFinger: false } })
+
+    const alias = buildNovelConfigProposal({ changes: { 金手指开关: '不需要' } }, novelConfig, text)
+    expect(alias).toMatchObject({ valid: true, changes: { needsGoldenFinger: false } })
+
+    const enabled = buildNovelConfigProposal({ changes: { needs_golden_finger: true } }, novelConfig, text)
+    expect(enabled).toMatchObject({ valid: true, changes: { needsGoldenFinger: true } })
+
+    const wrong = buildNovelConfigProposal({ changes: { needsGoldenFinger: 'maybe' } }, novelConfig, text)
+    expect(wrong).toMatchObject({ valid: false, error: 'Field needsGoldenFinger must be a boolean' })
+  })
+
   it('rejects unknown fields, wrong types, and unsupported enum values', () => {
     const unknown = buildNovelConfigProposal({ changes: { theme: 'x' } }, novelConfig, text)
     expect(unknown).toMatchObject({ valid: false, error: 'Unknown novel configuration field: theme' })

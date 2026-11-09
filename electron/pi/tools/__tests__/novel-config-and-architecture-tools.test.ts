@@ -24,6 +24,7 @@ describe('novel_config tool', () => {
     coreOutline: '主角穿越成为反派圣子，开始逆天改命。',
     worldSetting: '上界下界三千州，强者为尊。',
     goldenFinger: '天道气运掠夺系统',
+    needsGoldenFinger: true,
     protagonistProfile: '顾长歌，天生重瞳至尊骨，心思缜密冷酷。',
     globalGuidance: '不无脑送女，杀伐果断。',
     writingStyle: '快节奏，偏爽文。',
@@ -69,6 +70,42 @@ describe('novel_config tool', () => {
       coreOutline: '全新大纲：决战神域之巅。',
     }))
     expect(actions).toEqual([{ type: 'refresh_project_config' }])
+  })
+
+  it('treats a golden-finger toggle update as a write, even when set to false', () => {
+    expect(isNovelConfigWrite({ needsGoldenFinger: false })).toBe(true)
+  })
+
+  it('reports the golden-finger toggle and keeps stale text out of reads while disabled', async () => {
+    vi.mocked(ProjectCoreRepository.get).mockReturnValue({ ...mockCore, needsGoldenFinger: false } as never)
+    const tool = createNovelConfigTool('zh-CN', () => {})
+
+    const basic = await tool.execute('call-basic', { action: 'read', field: 'basic_info' })
+    expect((basic.content[0] as { text: string }).text).toContain('金手指: 不需要')
+
+    const field = await tool.execute('call-golden', { action: 'read', field: 'goldenFinger' })
+    const fieldText = (field.content[0] as { text: string }).text
+    expect(fieldText).toContain('已设为不需要')
+    expect(fieldText).not.toContain('天道气运掠夺系统')
+  })
+
+  it('writes the golden-finger toggle and refreshes the renderer', async () => {
+    const actions: unknown[] = []
+    const tool = createNovelConfigTool('zh-CN', (a) => { actions.push(a) })
+    await tool.execute('call-toggle', { action: 'update', field: 'basic_info', needsGoldenFinger: false })
+
+    expect(ProjectCoreRepository.update).toHaveBeenCalledWith(expect.objectContaining({
+      needsGoldenFinger: false,
+    }))
+    expect(actions).toEqual([{ type: 'refresh_project_config' }])
+  })
+
+  it('refuses golden-finger text while the project marks it as not needed', async () => {
+    vi.mocked(ProjectCoreRepository.get).mockReturnValue({ ...mockCore, needsGoldenFinger: false } as never)
+    const tool = createNovelConfigTool('zh-CN', () => {})
+
+    await expect(tool.execute('call-write', { action: 'update', goldenFinger: '新的金手指' }))
+      .rejects.toThrow('该项目并不涉及金手指，已关闭，不能写入内容')
   })
 
   it('updates multiple fields directly', async () => {

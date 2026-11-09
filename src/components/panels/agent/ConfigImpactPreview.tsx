@@ -57,6 +57,11 @@ export type ConfigImpactPreviewState =
 
 function displayValue(value: unknown, locale: string): string {
   if (Array.isArray(value)) return value.join(locale === 'zh-CN' ? '、' : ', ')
+  if (typeof value === 'boolean') {
+    return value
+      ? (locale === 'zh-CN' ? '需要' : 'Needed')
+      : (locale === 'zh-CN' ? '不需要' : 'Not needed')
+  }
   if (value === undefined || value === null || value === '') return '—'
   return String(value)
 }

@@ -5,7 +5,10 @@ import {
   type AgentSkillCatalogEntry,
 } from '../../src/shared/agent-skills'
 import { localizeNovelConfigFacts } from '../../src/shared/novel-config-localization'
-import { goldenFingerForPrompt } from '../../src/shared/novel-config-generation'
+import {
+  goldenFingerForPrompt,
+  isGoldenFingerEnabled,
+} from '../../src/shared/novel-config-generation'
 import { writingLanguageText, type WritingLanguage } from '../../src/shared/writing-language'
 import type { ProjectCoreData } from '../repositories/project-core-repository'
 
@@ -123,6 +126,8 @@ export function buildAssistantProjectFactsBlock(core: ProjectCoreData | null, la
   const goldenFinger = goldenFingerForPrompt(core)
   if (goldenFinger) {
     parts.push(`${label('金手指', 'Golden finger')}: ${goldenFinger}`)
+  } else if (!isGoldenFingerEnabled(core)) {
+    parts.push(`${label('金手指', 'Golden finger')}: ${label('不需要', 'Not needed')}`)
   }
   if (core.worldSetting) {
     parts.push(`${label('世界观设定', 'World setting')}: ${core.worldSetting}`)
