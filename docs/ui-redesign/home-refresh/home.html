@@ -1,0 +1,708 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>AI Writer · 主页设计稿</title>
+<style>
+  @font-face { font-family: 'Inter'; src: url('../../../public/fonts/Inter-VariableFont_opsz,wght.ttf') format('truetype'); font-weight: 100 900; font-display: swap; }
+  @font-face { font-family: 'NotoSans'; src: url('../../../public/fonts/NotoSansSC-VariableFont_wght.ttf') format('truetype'); font-weight: 100 900; font-display: swap; }
+  @font-face { font-family: 'NotoSerif'; src: url('../../../public/fonts/NotoSerifSC-VariableFont_wght.ttf') format('truetype'); font-weight: 100 900; font-display: swap; }
+  @font-face { font-family: 'WenKai'; src: url('../../../public/fonts/LXGWWenKai-Regular.ttf') format('truetype'); font-weight: 400; font-display: swap; }
+
+  :root {
+    --bg: #F4F6F9;
+    --panel: #FAFBFC;
+    --surface: #FFFFFF;
+    --rail: #EDF0F4;
+    --titlebar: #FFFFFF;
+    --statusbar: #FAFBFC;
+
+    --border: #E3E7EE;
+    --border-strong: #D2D8E2;
+
+    --text: #12141A;
+    --text2: #4A5160;
+    --muted: #5F6773;
+
+    --accent: #3B6FE0;
+    --accent-text: #2557C7;
+    --accent-soft: rgba(59, 111, 224, 0.09);
+    --accent-line: rgba(59, 111, 224, 0.28);
+    --on-accent: #FFFFFF;
+
+    --success: #12805C;
+    --success-soft: rgba(18, 128, 92, 0.1);
+    --warning: #A65A05;
+    --warning-soft: rgba(166, 90, 5, 0.1);
+
+    --hover: #EDF0F5;
+    --selected: #E3E7EE;
+
+    --r1: 6px;
+    --r2: 8px;
+    --r3: 10px;
+    --r4: 14px;
+
+    --sh1: 0 1px 2px rgba(16, 24, 40, 0.05);
+    --sh2: 0 1px 2px rgba(16, 24, 40, 0.04), 0 16px 32px -28px rgba(16, 24, 40, 0.35);
+
+    --font-ui: 'Inter', 'NotoSans', 'Microsoft YaHei', sans-serif;
+    --font-head: 'NotoSerif', 'NotoSans', 'Microsoft YaHei', serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    padding: 30px 30px 34px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    background: #DDE2EA;
+    font-family: var(--font-ui);
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: default; }
+  a { color: inherit; text-decoration: none; }
+  .i { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; display: block; }
+
+  /* ===== 设计稿外壳（不属于应用窗口） ===== */
+  .mock-head {
+    width: 1440px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: #4A5160;
+  }
+  .mock-title { display: flex; align-items: baseline; gap: 10px; }
+  .mock-title b { font-size: 13px; font-weight: 600; color: #12141A; }
+  .mock-title span { font-size: 11.5px; color: #5F6773; }
+  .mock-switch { display: flex; align-items: center; gap: 8px; }
+  .mock-switch .hint { font-size: 11px; color: #6B7280; }
+  .seg { display: inline-flex; padding: 2px; gap: 2px; background: rgba(255,255,255,0.7); border: 1px solid #C9D0DB; border-radius: 8px; }
+  .seg button { height: 26px; padding: 0 12px; border-radius: 6px; font-size: 11.5px; color: #4A5160; }
+  .seg button.on { background: #FFFFFF; color: #12141A; font-weight: 600; box-shadow: var(--sh1); }
+  .mock-foot { width: 1440px; font-size: 11px; color: #5F6773; display: flex; justify-content: space-between; }
+  .mock-foot b { font-weight: 600; color: #3F4654; }
+
+  /* ===== 应用窗口 ===== */
+  .window {
+    width: 1440px; height: 900px;
+    flex: none;
+    border-radius: 12px; overflow: hidden;
+    display: flex; flex-direction: column;
+    background: var(--bg);
+    box-shadow: 0 40px 80px -40px rgba(16, 24, 40, 0.45), 0 2px 8px rgba(16, 24, 40, 0.08);
+  }
+
+  /* ===== 标题栏 ===== */
+  .titlebar {
+    height: 44px; flex: none;
+    display: flex; align-items: center; gap: 4px;
+    padding: 0 10px 0 12px;
+    background: var(--titlebar);
+    border-bottom: 1px solid var(--border);
+    user-select: none;
+  }
+  .brand { width: 30px; height: 30px; border-radius: 8px; overflow: hidden; flex: none; box-shadow: var(--sh1); }
+  .brand img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .icon-btn { width: 28px; height: 28px; display: grid; place-items: center; border-radius: var(--r1); color: var(--text2); }
+  .icon-btn:hover { background: var(--hover); }
+  .tb-right { margin-left: auto; display: flex; align-items: center; gap: 2px; }
+  .zoom-menu {
+    height: 26px; display: inline-flex; align-items: center; gap: 5px;
+    padding: 0 8px; border-radius: var(--r1); color: var(--text2);
+    font-size: 11.5px; font-variant-numeric: tabular-nums;
+  }
+  .zoom-menu:hover { background: var(--hover); }
+  .zoom-menu .i { width: 13px; height: 13px; }
+  .tb-divider { width: 1px; height: 16px; background: var(--border); margin: 0 6px; }
+  .win-controls { display: flex; align-items: center; gap: 0; }
+  .win-controls .icon-btn { width: 30px; }
+  .win-controls .close:hover { background: #C33127; color: #fff; }
+
+  /* ===== 主体：左栏 + 画布 ===== */
+  .body { flex: 1; display: flex; min-height: 0; }
+  .rail {
+    width: 64px; flex: none;
+    background: var(--rail);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    padding: 6px 0 10px;
+    user-select: none;
+  }
+  .rail-item {
+    width: 100%; height: 54px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    color: var(--text2); position: relative;
+  }
+  .rail-item .i { width: 19px; height: 19px; }
+  .rail-label { font-size: 10.5px; font-weight: 500; }
+  .rail-item:hover { background: rgba(18, 20, 26, 0.035); }
+  .rail-item.on { background: var(--selected); color: var(--accent-text); }
+  .rail-item.on::before {
+    content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px;
+    background: var(--accent); border-radius: 0 2px 2px 0;
+  }
+  .rail-sp { flex: 1; }
+  .rail-div { height: 1px; margin: 6px 12px; background: var(--border-strong); }
+  .rail-hint {
+    padding: 4px 6px 2px; text-align: center;
+    font-size: 9.5px; line-height: 1.5; color: var(--muted);
+  }
+
+  .canvas { flex: 1; min-width: 0; overflow: hidden; display: flex; flex-direction: column; }
+  .page { flex: 1; overflow: auto; display: flex; }
+  .page-inner {
+    width: 100%; max-width: 1080px;
+    margin: auto;
+    padding: 30px 48px;
+  }
+
+  /* ===== 通用 ===== */
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 11.5px; font-weight: 600; letter-spacing: 0.04em;
+    color: var(--accent-text);
+  }
+  .eyebrow .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    height: 33px; padding: 0 13px;
+    border-radius: var(--r2);
+    font-size: 12.5px; font-weight: 600;
+    white-space: nowrap;
+  }
+  .btn .i { width: 15px; height: 15px; }
+  .btn-primary { background: var(--accent); color: var(--on-accent); box-shadow: 0 1px 2px rgba(16,24,40,0.12); }
+  .btn-primary:hover { background: #3262CE; }
+  .btn-ghost { color: var(--text2); }
+  .btn-ghost:hover { background: var(--hover); }
+  .btn-outline { background: var(--surface); border: 1px solid var(--border); color: var(--text2); font-weight: 500; }
+  .btn-outline:hover { border-color: var(--border-strong); background: #FFF; }
+  kbd {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 18px; height: 18px; padding: 0 5px;
+    border: 1px solid var(--border); border-bottom-color: var(--border-strong);
+    border-radius: 5px; background: var(--panel);
+    font-family: var(--font-ui); font-size: 10px; font-weight: 500; color: var(--muted);
+    letter-spacing: 0.02em;
+  }
+  .link { font-size: 11.5px; color: var(--muted); }
+  .link:hover { color: var(--accent-text); }
+
+  /* ===== 继续写作（主卡） ===== */
+  .hero {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r4);
+    box-shadow: var(--sh2);
+    padding: 22px 26px 20px;
+  }
+  .hero::before {
+    content: "";
+    position: absolute; left: 0; top: 22px; bottom: 22px; width: 3px;
+    background: var(--accent);
+    border-radius: 0 3px 3px 0;
+  }
+  .hero-top { display: flex; align-items: center; gap: 12px; }
+  .hero-when { margin-left: 2px; font-size: 11.5px; color: var(--muted); }
+  .hero-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .book-title {
+    margin: 13px 0 0;
+    font-family: var(--font-head);
+    font-size: 29px; font-weight: 600; letter-spacing: 0.01em;
+    line-height: 1.22;
+    color: var(--text);
+  }
+  .hero-meta {
+    margin-top: 11px;
+    display: flex; align-items: center; flex-wrap: wrap; gap: 0 10px;
+    font-size: 12px; color: var(--text2);
+  }
+  .chapter-chip {
+    display: inline-flex; align-items: center;
+    height: 22px; padding: 0 7px;
+    border-radius: var(--r1);
+    background: var(--accent-soft);
+    color: var(--accent-text);
+    font-size: 11.5px; font-weight: 600;
+  }
+  .hero-meta .sep { width: 1px; height: 11px; background: var(--border-strong); }
+  .hero-meta .soft { color: var(--muted); }
+  .hero-progress {
+    margin-top: 16px; padding-top: 14px;
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .bar { flex: 1; height: 4px; border-radius: 2px; background: var(--hover); overflow: hidden; }
+  .bar > span { display: block; height: 100%; width: 39%; background: var(--accent); border-radius: 2px; }
+  .bar-caption { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .hero-excerpt {
+    margin-top: 15px;
+    display: flex; gap: 13px; align-items: flex-start;
+    padding: 11px 14px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--r2);
+    background: var(--panel);
+  }
+  .excerpt-label {
+    flex: none; padding-top: 2px;
+    font-size: 10.5px; letter-spacing: 0.06em; color: var(--muted); white-space: nowrap;
+  }
+  .excerpt-text {
+    margin: 0;
+    font-family: 'WenKai', 'NotoSerif', serif;
+    font-size: 13.5px; line-height: 1.75; color: var(--text2);
+  }
+  .excerpt-more { flex: none; align-self: center; }
+
+  /* ===== 下方两栏：其他项目 / 开始 ===== */
+  .cols {
+    margin-top: 24px;
+    display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr);
+    gap: 24px 34px;
+    align-items: start;
+  }
+  .hero { grid-column: 1 / -1; }
+  .intro { grid-column: 1; }
+  .start-panel { grid-column: 2; }
+  .col-left { grid-column: 1; }
+  .sec-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; padding: 0 2px; }
+  .sec-title { font-size: 12px; font-weight: 600; color: var(--text2); }
+  .sec-count { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .sec-head .link { margin-left: auto; }
+
+  .recent-list { display: flex; flex-direction: column; }
+  .recent-row {
+    display: flex; align-items: stretch;
+    border-bottom: 1px solid var(--border);
+    border-radius: var(--r2);
+  }
+  .recent-row:last-child { border-bottom-color: transparent; }
+  .recent-row:hover { background: var(--hover); }
+  .recent-main {
+    flex: 1; min-width: 0;
+    display: flex; align-items: center; gap: 11px;
+    height: 54px; padding: 0 10px 0 12px;
+    text-align: left;
+  }
+  .recent-ic {
+    width: 26px; height: 26px; flex: none;
+    display: grid; place-items: center;
+    border-radius: var(--r1);
+    background: var(--accent-soft); color: var(--accent);
+  }
+  .recent-ic .i { width: 14px; height: 14px; }
+  .recent-text { min-width: 0; flex: 1; }
+  .recent-name { display: block; font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .recent-meta { display: block; margin-top: 1px; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .recent-meta .sep { margin: 0 5px; color: var(--border-strong); }
+  .recent-time {
+    flex: none; font-size: 11px; color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    align-self: center; padding: 0 4px 0 10px;
+  }
+  .more-btn {
+    width: 26px; height: 26px; flex: none; align-self: center;
+    display: grid; place-items: center;
+    border-radius: var(--r1); color: var(--muted);
+    opacity: 1; color: var(--muted); transition: opacity 120ms ease, background 120ms ease, color 120ms ease;
+    margin-right: 2px;
+  }
+  .more-btn .i { width: 15px; height: 15px; }
+  .recent-row:hover .more-btn,
+  .recent-row:focus-within .more-btn,
+  .more-btn:focus-visible { opacity: 1; }
+  .more-btn:hover { background: var(--selected); color: var(--text); }
+  .recent-row:hover .more-btn { color: var(--text2); }
+
+  /* 开始列 */
+  .start-panel { padding-top: 3px; }
+  .action {
+    width: 100%;
+    display: flex; align-items: center; gap: 11px;
+    min-height: 46px; padding: 7px 10px;
+    border-radius: var(--r2);
+    text-align: left;
+  }
+  .action:hover { background: var(--hover); }
+  .action-ic {
+    width: 28px; height: 28px; flex: none;
+    display: grid; place-items: center;
+    border-radius: var(--r1);
+    color: var(--text2); background: var(--panel);
+    border: 1px solid var(--border);
+  }
+  .action-ic .i { width: 15px; height: 15px; }
+  .action-ic.accent { background: var(--accent-soft); border-color: transparent; color: var(--accent); }
+  .action-text { min-width: 0; flex: 1; }
+  .action-name { display: block; font-size: 12.5px; font-weight: 600; color: var(--text); }
+  .action-desc { display: block; margin-top: 0; font-size: 11px; color: var(--muted); }
+  .action kbd { margin-left: auto; }
+  .action-note { font-size: 11px; color: var(--muted); }
+  .panel-div { height: 1px; background: var(--border); margin: 10px 10px; }
+  .start-foot {
+    margin-top: 16px; padding: 14px 10px 0;
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11.5px; color: var(--text2);
+  }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; flex: none; }
+  .status-dot.ok { background: var(--success); box-shadow: 0 0 0 3px var(--success-soft); }
+  .status-dot.warn { background: var(--warning); box-shadow: 0 0 0 3px var(--warning-soft); }
+  .start-foot .model { color: var(--muted); }
+  .start-foot .link { margin-left: auto; }
+
+  /* ===== 首次使用状态 ===== */
+  .first-only { display: none; }
+  body.state-first .home-only { display: none; }
+  body.state-first .first-only { display: block; }
+  body.state-first .start-foot.first-only { display: flex; }
+
+  .intro { padding: 6px 0 0; }
+  .intro-title {
+    margin: 14px 0 0;
+    font-family: var(--font-head);
+    font-size: 34px; font-weight: 600; letter-spacing: 0.01em; line-height: 1.2;
+  }
+  .intro-sub { margin: 10px 0 0; font-size: 12.5px; color: var(--text2); }
+  .intro-actions { margin-top: 22px; display: flex; align-items: center; gap: 9px; }
+  .btn-lg { height: 38px; padding: 0 16px; font-size: 13px; border-radius: var(--r2); }
+  .btn-lg .i { width: 16px; height: 16px; }
+  .intro-alt { margin-top: 13px; font-size: 12px; color: var(--muted); }
+  .intro-alt a { color: var(--accent-text); }
+  .intro-alt a:hover { text-decoration: underline; }
+
+  .recent-empty {
+    margin-top: 34px;
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--r3);
+    padding: 16px 18px;
+    display: flex; align-items: center; gap: 12px;
+    color: var(--muted);
+  }
+  .recent-empty .i { width: 17px; height: 17px; opacity: 0.75; }
+  .recent-empty b { display: block; font-size: 12px; font-weight: 600; color: var(--text2); }
+  .recent-empty span { display: block; margin-top: 1px; font-size: 11px; }
+
+  /* ===== 底部面板（收起）与状态栏 ===== */
+  .bottom-bar {
+    height: 30px; flex: none;
+    display: flex; align-items: center; gap: 2px;
+    padding: 0 10px;
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+    user-select: none;
+  }
+  .panel-tab { height: 22px; display: inline-flex; align-items: center; gap: 5px; padding: 0 8px; border-radius: var(--r1); font-size: 10.5px; color: var(--text2); }
+  .panel-tab .i { width: 12px; height: 12px; opacity: 0.8; }
+  .panel-tab:hover { background: var(--hover); }
+  .bottom-bar .spacer { flex: 1; }
+  .statusbar {
+    height: 22px; flex: none;
+    display: flex; align-items: center; gap: 0;
+    padding: 0 10px;
+    background: var(--statusbar);
+    border-top: 1px solid var(--border);
+    font-size: 10.5px; color: var(--text2);
+    user-select: none;
+  }
+  .status-seg { height: 100%; display: inline-flex; align-items: center; gap: 6px; padding: 0 8px; }
+  .status-seg .logo { width: 11px; height: 11px; object-fit: contain; }
+  .status-seg .ver { color: var(--muted); opacity: 1; font-variant-numeric: tabular-nums; }
+  .status-right { margin-left: auto; display: flex; align-items: center; gap: 4px; color: var(--muted); }
+  .status-right .i { width: 11px; height: 11px; opacity: 0.8; }
+
+  :focus-visible { outline: 2px solid rgba(59, 111, 224, 0.55); outline-offset: 2px; border-radius: 4px; }
+  .recent-main:focus-visible { outline-offset: -2px; border-radius: var(--r2); }
+</style>
+</head>
+<body class="state-home">
+
+<!-- 设计稿控制条（不属于应用窗口） -->
+<header class="mock-head">
+  <div class="mock-title">
+    <b>AI Writer · 主页设计稿</b>
+    <span>返回主页 / 首次使用 两种状态 · 浅色主题 · 1440 × 900</span>
+  </div>
+  <div class="mock-switch">
+    <span class="hint">预览状态</span>
+    <div class="seg" role="group" aria-label="预览状态">
+      <button id="state-home" class="on" onclick="setState('home')">有最近项目</button>
+      <button id="state-first" onclick="setState('first')">首次使用</button>
+    </div>
+  </div>
+</header>
+
+<!-- ================= 应用窗口 ================= -->
+<div class="window">
+  <!-- 标题栏 -->
+  <header class="titlebar">
+    <span class="brand"><img src="../../../public/logo.svg" alt="AI Writer"></span>
+    <button class="icon-btn" title="主菜单" aria-label="主菜单"><svg class="i"><use href="#i-menu"/></svg></button>
+    <div class="tb-right">
+      <button class="zoom-menu" title="缩放">
+        100%
+        <svg class="i"><use href="#i-chev-down"/></svg>
+      </button>
+      <span class="tb-divider"></span>
+      <span class="win-controls">
+        <button class="icon-btn" title="最小化" aria-label="最小化"><svg class="i"><use href="#i-minus"/></svg></button>
+        <button class="icon-btn" title="最大化" aria-label="最大化"><svg class="i"><use href="#i-square"/></svg></button>
+        <button class="icon-btn close" title="关闭" aria-label="关闭"><svg class="i"><use href="#i-x"/></svg></button>
+      </span>
+    </div>
+  </header>
+
+  <div class="body">
+    <!-- 左侧导航：无项目时只保留项目与设置 -->
+    <nav class="rail" aria-label="主导航">
+      <button class="rail-item on" title="项目">
+        <svg class="i"><use href="#i-folder"/></svg>
+        <span class="rail-label">项目</span>
+      </button>
+      <span class="rail-sp"></span>
+      <div class="rail-div"></div>
+      <button class="rail-item" title="设置">
+        <svg class="i"><use href="#i-settings"/></svg>
+        <span class="rail-label">设置</span>
+      </button>
+    </nav>
+
+    <main class="canvas">
+      <div class="page">
+        <div class="page-inner">
+
+          <div class="cols">
+          <!-- ===== 有最近项目：继续写作 ===== -->
+          <section class="hero home-only" aria-labelledby="continue-title">
+            <div class="hero-top">
+              <span class="eyebrow"><span class="dot"></span>继续写作</span>
+              <span class="hero-when">1 小时前编辑</span>
+              <div class="hero-actions">
+                <button class="btn btn-ghost">章节目录</button>
+                <button class="btn btn-primary">继续写作 <svg class="i"><use href="#i-arrow-right"/></svg></button>
+              </div>
+            </div>
+            <h1 id="continue-title" class="book-title">掌管仙宗差点被推翻</h1>
+            <div class="hero-meta">
+              <span class="chapter-chip">第 47 章</span>
+              <span>玄天宗的对账夜</span>
+              <span class="sep"></span>
+              <span class="soft">12.4 万字</span>
+              <span class="sep"></span>
+              <span class="soft">全书 120 章</span>
+            </div>
+            <div class="hero-progress">
+              <span class="bar-caption">47 / 120 章</span>
+              <div class="bar"><span></span></div>
+              <span class="bar-caption">39%</span>
+            </div>
+            <div class="hero-excerpt">
+              <span class="excerpt-label">上次写到</span>
+              <p class="excerpt-text">玄天宗的山门在雨里亮了整夜。方玄把最后一页账册按在桌上，忽然听见殿外有人喊他的道号。</p>
+              <a class="link excerpt-more" href="#">打开该章 →</a>
+            </div>
+          </section>
+
+          <!-- ===== 首次使用：开场 ===== -->
+          <section class="intro first-only" aria-labelledby="intro-title">
+            <span class="eyebrow"><span class="dot"></span>新项目</span>
+            <h1 id="intro-title" class="intro-title">开始一部长篇</h1>
+            <p class="intro-sub">从设定到定稿都在本地完成。模型随时可以接入。</p>
+            <div class="intro-actions">
+              <button class="btn btn-primary btn-lg">新建项目 <svg class="i"><use href="#i-arrow-right"/></svg></button>
+              <button class="btn btn-outline btn-lg"><svg class="i"><use href="#i-folder"/></svg>打开已有项目</button>
+            </div>
+            <p class="intro-alt">或者 <a href="#">拆解一本参考小说</a>，先建立自己的文风与结构约束。</p>
+          </section>
+
+            <!-- 左栏：其他项目 / 空历史 -->
+            <section class="home-only col-left" aria-labelledby="others-title">
+              <div class="sec-head">
+                <span id="others-title" class="sec-title">其他项目</span>
+                <span class="sec-count">5</span>
+                <a class="link" href="#">全部项目 <span aria-hidden="true">→</span></a>
+              </div>
+              <div class="recent-list" role="list">
+                <div class="recent-row" role="listitem">
+                  <button class="recent-main" title="打开：你还有这本本事啊？">
+                    <span class="recent-ic"><svg class="i"><use href="#i-book-open"/></svg></span>
+                    <span class="recent-text">
+                      <span class="recent-name">你还有这本本事啊？</span>
+                      <span class="recent-meta">第 12 章 · 8.6 万字<span class="sep">·</span>novel_document</span>
+                    </span>
+                  </button>
+                  <span class="recent-time">3 小时前</span>
+                  <button class="more-btn" title="更多操作" aria-label="更多操作：你还有这本本事啊？"><svg class="i"><use href="#i-more"/></svg></button>
+                </div>
+                <div class="recent-row" role="listitem">
+                  <button class="recent-main" title="打开：雾城档案">
+                    <span class="recent-ic"><svg class="i"><use href="#i-book-open"/></svg></span>
+                    <span class="recent-text">
+                      <span class="recent-name">雾城档案</span>
+                      <span class="recent-meta">第 89 章 · 31.2 万字<span class="sep">·</span>novel_document</span>
+                    </span>
+                  </button>
+                  <span class="recent-time">昨天 14:32</span>
+                  <button class="more-btn" title="更多操作" aria-label="更多操作：雾城档案"><svg class="i"><use href="#i-more"/></svg></button>
+                </div>
+                <div class="recent-row" role="listitem">
+                  <button class="recent-main" title="打开：test">
+                    <span class="recent-ic"><svg class="i"><use href="#i-book-open"/></svg></span>
+                    <span class="recent-text">
+                      <span class="recent-name">test</span>
+                      <span class="recent-meta">第 1 章 · 2,340 字<span class="sep">·</span>scratch</span>
+                    </span>
+                  </button>
+                  <span class="recent-time">10月24日</span>
+                  <button class="more-btn" title="更多操作" aria-label="更多操作：test"><svg class="i"><use href="#i-more"/></svg></button>
+                </div>
+                <div class="recent-row" role="listitem">
+                  <button class="recent-main" title="打开：潮汐之下">
+                    <span class="recent-ic"><svg class="i"><use href="#i-book-open"/></svg></span>
+                    <span class="recent-text">
+                      <span class="recent-name">潮汐之下</span>
+                      <span class="recent-meta">第 22 章 · 15.8 万字<span class="sep">·</span>novel_document</span>
+                    </span>
+                  </button>
+                  <span class="recent-time">10月21日</span>
+                  <button class="more-btn" title="更多操作" aria-label="更多操作：潮汐之下"><svg class="i"><use href="#i-more"/></svg></button>
+                </div>
+                <div class="recent-row" role="listitem">
+                  <button class="recent-main" title="打开：旧日回声">
+                    <span class="recent-ic"><svg class="i"><use href="#i-book-open"/></svg></span>
+                    <span class="recent-text">
+                      <span class="recent-name">旧日回声</span>
+                      <span class="recent-meta">第 3 章 · 6,120 字<span class="sep">·</span>archive</span>
+                    </span>
+                  </button>
+                  <span class="recent-time">10月18日</span>
+                  <button class="more-btn" title="更多操作" aria-label="更多操作：旧日回声"><svg class="i"><use href="#i-more"/></svg></button>
+                </div>
+              </div>
+            </section>
+
+            <section class="start-panel" aria-labelledby="start-title">
+              <div class="sec-head">
+                <span id="start-title" class="sec-title">开始</span>
+              </div>
+
+              <button class="action home-only">
+                <span class="action-ic accent"><svg class="i"><use href="#i-plus"/></svg></span>
+                <span class="action-text">
+                  <span class="action-name">新建项目</span>
+                </span>
+                <kbd>Ctrl N</kbd>
+              </button>
+              <button class="action home-only">
+                <span class="action-ic"><svg class="i"><use href="#i-folder"/></svg></span>
+                <span class="action-text">
+                  <span class="action-name">打开项目</span>
+                </span>
+                <kbd>Ctrl O</kbd>
+              </button>
+              <button class="action">
+                <span class="action-ic"><svg class="i"><use href="#i-import"/></svg></span>
+                <span class="action-text">
+                  <span class="action-name">拆解仿写</span>
+                  <span class="action-desc">从参考小说提炼文风与结构</span>
+                </span>
+              </button>
+
+              <div class="panel-div"></div>
+
+              <div class="start-foot home-only">
+                <span class="status-dot ok"></span>
+                <span><b style="font-weight:600">模型已就绪</b></span>
+                <span class="model">deepseek-v4.1-flash</span>
+                <a class="link" href="#">更换</a>
+              </div>
+              <div class="start-foot first-only">
+                <span class="status-dot warn"></span>
+                <span><b style="font-weight:600">尚未配置模型</b></span>
+                <span class="model">接入后才能使用 AI 生成</span>
+                <a class="link" href="#">去设置</a>
+              </div>
+            </section>
+            <section class="first-only col-left" aria-labelledby="first-recent-title">
+              <div class="sec-head">
+                <span id="first-recent-title" class="sec-title">最近项目</span>
+              </div>
+              <div class="recent-empty">
+                <svg class="i"><use href="#i-book-open"/></svg>
+                <span>
+                  <b>最近打开的作品会显示在这里</b>
+                  <span>支持直接拖入项目文件夹打开。</span>
+                </span>
+              </div>
+            </section>
+
+            <!-- 右栏：开始与模型状态 -->
+          </div>
+
+        </div>
+      </div>
+
+      <!-- 底部面板（收起） -->
+      <div class="bottom-bar">
+        <button class="panel-tab"><svg class="i"><use href="#i-list"/></svg>任务</button>
+        <button class="panel-tab"><svg class="i"><use href="#i-file"/></svg>日志</button>
+        <button class="panel-tab"><svg class="i"><use href="#i-gauge"/></svg>模型调用</button>
+        <span class="spacer"></span>
+        <button class="panel-tab" title="展开面板" aria-label="展开面板"><svg class="i"><use href="#i-chev-up"/></svg></button>
+      </div>
+      <div class="statusbar">
+        <span class="status-seg">
+          <img class="logo" src="../../../public/logo.svg" alt="">
+          <span style="font-weight:500">AI Writer</span>
+          <span class="ver">v0.1.6</span>
+        </span>
+        <span class="status-seg" style="color:var(--muted)">本地库 · 5 个项目</span>
+        <span class="status-right"></span>
+      </div>
+    </main>
+  </div>
+</div>
+
+<footer class="mock-foot">
+  <span><b>设计要点</b>：继续写作优先 · 整行可点 · 更多操作悬停/聚焦可见 · 模型状态前置 · 空侧栏收起 · 结构化列表与焦点环</span>
+  <span>Noto Serif 只用于书名与首次开场标题</span>
+</footer>
+
+<!-- ================= 图标 ================= -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  <symbol id="i-chev-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-chev-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-square" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="1.5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-book-open" viewBox="0 0 24 24"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></symbol>
+  <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
+  <symbol id="i-import" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></symbol>
+  <symbol id="i-gauge" viewBox="0 0 24 24"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></symbol>
+</svg>
+
+<script>
+  function setState(state) {
+    document.body.classList.toggle('state-first', state === 'first')
+    document.getElementById('state-home').classList.toggle('on', state === 'home')
+    document.getElementById('state-first').classList.toggle('on', state === 'first')
+  }
+</script>
+</body>
+</html>

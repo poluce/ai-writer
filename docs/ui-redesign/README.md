@@ -6,6 +6,7 @@
 
 - [design-v2/](design-v2/) —— 浅色默认的界面重构方案：设计判断、七处改动、设计令牌、落地状态与实机截图
 - [design-v2/merge/](design-v2/merge/) —— 合并「首页」与「项目」的对照与能力搬家记录
+- [home-refresh/](home-refresh/) —— 启动页改版：继续写作为主结构、最近项目整行可点、空侧栏收起（含设计稿与实机截图）
 
 设计稿与实现的关系见 `design-v2/README.md` 的「落地状态」一节；实机截图在 `design-v2/impl/` 与 `design-v2/merge/impl/`（1440×900 @2x，CDP 强制视口抓取）。
 
