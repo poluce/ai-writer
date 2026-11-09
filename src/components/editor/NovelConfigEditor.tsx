@@ -14,7 +14,7 @@ import {
 import {
   resolveWritingLanguage,
   type WritingLanguage} from '../../shared/writing-language'
-import type { GeneratableField } from '../../services/workflows/commands/generate-field.command'
+import { generationFieldLabels, type GeneratableField } from '../../shared/novel-config-generation'
 import { Button } from '../ui/Button'
 import { confirm } from '../ui/Confirm'
 import { Input } from '../ui/Input'
@@ -109,14 +109,6 @@ function NovelConfigEditorSession({ projectKey }: { projectKey: string }) {
     </div>
   )
 
-  const FIELD_LABELS: Record<GeneratableField, { zhCN: string; enUS: string }> = {
-    coreOutline: { zhCN: '核心大纲', enUS: 'Core outline' },
-    worldSetting: { zhCN: '世界观设定', enUS: 'World setting' },
-    goldenFinger: { zhCN: '核心金手指', enUS: 'Golden finger' },
-    protagonistProfile: { zhCN: '主角设定', enUS: 'Protagonist profile' },
-    globalGuidance: { zhCN: '创作指导', enUS: 'Creative guidance' },
-    writingStyle: { zhCN: '写作风格', enUS: 'Writing style' }}
-
   /** 单字段 AI 原地快速生成 */
   const handleFieldGenerate = async (fieldKey: GeneratableField) => {
     const projectSession = captureProjectSession(currentProject)
@@ -131,8 +123,8 @@ function NovelConfigEditorSession({ projectKey }: { projectKey: string }) {
 
     setCollapsedSections(current => ({ ...current, [fieldKey]: false }))
     setGeneratingField(fieldKey)
-    const fieldInfo = FIELD_LABELS[fieldKey] ?? { zhCN: fieldKey, enUS: fieldKey }
-    const fieldName = text(fieldInfo.zhCN, fieldInfo.enUS)
+    const [fieldNameZh, fieldNameEn] = generationFieldLabels(fieldKey)
+    const fieldName = text(fieldNameZh, fieldNameEn)
 
     toast.info(text(`正在生成【${fieldName}】...`, `Generating "${fieldName}"...`))
     try {

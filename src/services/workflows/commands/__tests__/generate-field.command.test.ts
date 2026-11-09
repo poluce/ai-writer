@@ -99,7 +99,9 @@ describe('GenerateFieldCommand project identity', () => {
       callbacks,
     })
 
-    expect(observedPrompts.join('\n')).toContain(authorText)
+    expect(observedPrompts.join('\n')).toContain('Mystery')
+    // 严格阶梯：本字段的旧文本不回流到自己的生成上下文
+    expect(observedPrompts.join('\n')).not.toContain(authorText)
     expect(generateStream.mock.calls[0]?.[3]).toMatchObject({ submitTool: 'submit_field' })
     expect(useProjectStore.getState().currentProject?.novelConfig.worldSetting)
       .toBe(`${authorText}\n\n${addition}`)
@@ -138,10 +140,64 @@ describe('GenerateFieldCommand project identity', () => {
       submitTool: 'submit_field',
     })
     expect(`${systemPrompt}\n${prompt}`).not.toMatch(/[\u3400-\u9fff]/u)
-    expect(prompt).toContain(longOutline)
+    expect(String(prompt)).toContain(longOutline.trim())
     expect(String(prompt)).toContain(longOutline.slice(500))
     expect(String(prompt)).toContain('Story structure: Three-act')
     expect(String(prompt)).toContain('Point of view: Third-person limited')
+  })
+
+  it('walks the generation context down the field chain in order', async () => {
+    useProjectStore.setState({
+      currentProject: {
+        id: projectAPath,
+        name: '仙宗覆灭记',
+        path: projectAPath,
+        novelConfig: {
+          genre: '仙侠',
+          plotStructure: 'freeform',
+          narrativePOV: 'third_limited',
+          coreOutline: '方玄只剩百日寿元。',
+          worldSetting: '仙门以雷劫收割散修。',
+          goldenFinger: '万劫道鉴可吞噬天劫。',
+          protagonistProfile: '方玄隐忍伪装。',
+          globalGuidance: '保持因果推进。',
+          writingStyle: '冷峻简练。',
+        },
+      } as never,
+      updateNovelConfig: vi.fn(),
+      saveProject: vi.fn(async () => true),
+    })
+    const command = new GenerateFieldCommand('worldSetting')
+    const callLlm = vi.spyOn(
+      command as unknown as { callLLM: (...args: unknown[]) => Promise<string> },
+      'callLLM',
+    ).mockResolvedValue('世界观内容')
+
+    await command.execute({ step: {}, context, callbacks })
+
+    const worldPrompt = String(callLlm.mock.calls[0]![0])
+    expect(worldPrompt).toContain('作品名: 仙宗覆灭记')
+    expect(worldPrompt).toContain('类型: 仙侠')
+    expect(worldPrompt).toContain('故事结构: 自由结构')
+    expect(worldPrompt).toContain('叙事视角: 第三人称有限')
+    expect(worldPrompt).toContain('核心大纲: 方玄只剩百日寿元。')
+    // 本字段旧文本与后续字段都不进入上下文
+    expect(worldPrompt).not.toContain('仙门以雷劫收割散修')
+    expect(worldPrompt).not.toContain('万劫道鉴可吞噬天劫')
+    expect(worldPrompt).not.toContain('方玄隐忍伪装')
+
+    const goldenFingerCommand = new GenerateFieldCommand('goldenFinger')
+    const goldenFingerLlm = vi.spyOn(
+      goldenFingerCommand as unknown as { callLLM: (...args: unknown[]) => Promise<string> },
+      'callLLM',
+    ).mockResolvedValue('金手指内容')
+
+    await goldenFingerCommand.execute({ step: {}, context, callbacks })
+
+    const goldenPrompt = String(goldenFingerLlm.mock.calls[0]![0])
+    expect(goldenPrompt).toContain('核心大纲: 方玄只剩百日寿元。')
+    expect(goldenPrompt).toContain('世界观设定: 仙门以雷劫收割散修。')
+    expect(goldenPrompt).not.toContain('方玄隐忍伪装')
   })
 
   it('feeds the chosen story structure and point of view into the field prompt', async () => {
