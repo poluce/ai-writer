@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>作品设定 · C · 故事脊柱</title>
+<link rel="stylesheet" href="settings.css" />
+
+<style>
+  .variant-c .editor-scroll { padding: 24px 28px 30px; }
+  .variant-c .spine-row-summary { margin: -3px 0 18px; max-width: 62ch; font-size: 11.5px; line-height: 1.7; color: var(--muted); }
+  .variant-c .spine-row + .spine-row .spine-row-head { padding-top: 13px; }
+</style>
+</head>
+<body class="variant-c">
+<div class="mock-caption">C · 故事脊柱 / 清单优先</div>
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+  <symbol id="i-logo" viewBox="0 0 24 24"><path d="M6.5 17.5 17 7a2.1 2.1 0 0 1 3 3L9.5 20.5H6.5v-3z" fill="currentColor" stroke="none"/><path d="M5 21h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m20 20-4.2-4.2"/></symbol>
+  <symbol id="i-zoom-in" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m20 20-4.2-4.2M10.8 7.8v6M7.8 10.8h6"/></symbol>
+  <symbol id="i-zoom-out" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m20 20-4.2-4.2M7.8 10.8h6"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-square" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1.2"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h4l2 2h7A2.5 2.5 0 0 1 21 9.5v7A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5z"/></symbol>
+  <symbol id="i-folder-open" viewBox="0 0 24 24"><path d="M3 8V6.5A2.5 2.5 0 0 1 5.5 4h4l2 2h6.5A2.5 2.5 0 0 1 20.5 8.5V10"/><path d="M3.5 10h17l-2.1 7.2A2 2 0 0 1 16.5 19h-11A2 2 0 0 1 3.4 17.2z"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5z"/><path d="m3 12 9 5 9-5"/><path d="m3 16 9 5 9-5"/></symbol>
+  <symbol id="i-list-tree" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 4v14a2 2 0 0 0 2 2h1"/><path d="M7 9v1"/></symbol>
+  <symbol id="i-git-branch" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="6" cy="19" r="2"/><path d="M6 7v10M8 7h6a4 4 0 0 1 4 4v0"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c.4-3.4 2.6-5.4 5.5-5.4s5.1 2 5.5 5.4"/><circle cx="17" cy="9" r="2.4"/><path d="M16 14.6c2.4.2 4 1.9 4.4 4.4"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16.5H6.5A2.5 2.5 0 0 0 4 22z"/><path d="M4 5.5v14"/></symbol>
+  <symbol id="i-book-open" viewBox="0 0 24 24"><path d="M12 6.5C10.2 4.7 7.8 4 4.5 4v14c3.3 0 5.7.7 7.5 2.5 1.8-1.8 4.2-2.5 7.5-2.5V4c-3.3 0-5.7.7-7.5 2.5z"/><path d="M12 6.5v14"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M9.7 4.1a2.3 2.3 0 0 1 4.6 0 2.3 2.3 0 0 0 3.3 1.9 2.3 2.3 0 0 1 2.3 4 2.3 2.3 0 0 0 0 3.9 2.3 2.3 0 0 1-2.3 4 2.3 2.3 0 0 0-3.3 1.9 2.3 2.3 0 0 1-4.6 0 2.3 2.3 0 0 0-3.3-1.9 2.3 2.3 0 0 1-2.3-4 2.3 2.3 0 0 0 0-3.9 2.3 2.3 0 0 1 2.3-4 2.3 2.3 0 0 0 3.3-1.9z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></symbol>
+  <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+  <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-chevrons-left" viewBox="0 0 24 24"><path d="m11 17-5-5 5-5M18 17l-5-5 5-5"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.2" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.3 4.3L19 7"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-panel-right" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5M9 12h6M9 16h6"/></symbol>
+  <symbol id="i-pen" viewBox="0 0 24 24"><path d="m14.5 5.5 4 4L8 20H4v-4z"/><path d="m13 7 4 4"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 9a7 7 0 0 1 11.7-2.2L20 9M4 15l2.2 2.2A7 7 0 0 0 17.9 15"/></symbol>
+  <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-arrow-up-right" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></symbol>
+  <symbol id="i-task" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/><path d="m16 18 2 2 3-4"/></symbol>
+  <symbol id="i-log" viewBox="0 0 24 24"><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></symbol>
+  <symbol id="i-cpu" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></symbol>
+  <symbol id="i-message" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/></symbol>
+  <symbol id="i-arch" viewBox="0 0 24 24"><path d="M4 20V8l8-5 8 5v12"/><path d="M9 20v-6h6v6"/></symbol>
+  <symbol id="i-blueprint" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 9h18M9 9v11M15 9v6"/></symbol>
+  <symbol id="i-review" viewBox="0 0 24 24"><path d="M5 4h14v16H5z"/><path d="m8 12 2.4 2.4L16 9"/></symbol>
+  <symbol id="i-output" viewBox="0 0 24 24"><path d="M4 18V6h10l4 4v8z"/><path d="M14 6v4h4M8 14h8"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5M14 11v5"/></symbol>
+</svg>
+
+<div class="window">
+  <header class="titlebar">
+    <div class="brand"><svg><use href="#i-logo"/></svg></div>
+    <button class="icon-btn" aria-label="主菜单"><svg class="ic"><use href="#i-menu"/></svg></button>
+    <div class="title-context">
+      <span>当前项目</span><strong>掌管仙宗差点被推翻</strong>
+      <span class="save-state"><svg class="ic"><use href="#i-check"/></svg>已保存</span>
+    </div>
+    <div class="titlebar-right">
+      <button class="icon-btn" aria-label="搜索"><svg class="ic"><use href="#i-search"/></svg></button>
+      <button class="icon-btn" aria-label="缩小"><svg class="ic"><use href="#i-zoom-out"/></svg></button>
+      <span class="zoom-label">100%</span>
+      <button class="icon-btn" aria-label="放大"><svg class="ic"><use href="#i-zoom-in"/></svg></button>
+      <div class="win-controls">
+        <button aria-label="最小化"><svg class="ic"><use href="#i-minus"/></svg></button>
+        <button aria-label="最大化"><svg class="ic"><use href="#i-square"/></svg></button>
+        <button class="close" aria-label="关闭"><svg class="ic"><use href="#i-close"/></svg></button>
+      </div>
+    </div>
+  </header>
+  <div class="window-body">
+    <nav class="rail" aria-label="工具">
+      <a class="rail-item active" href="#"><svg class="ic"><use href="#i-folder-open"/></svg>项目</a>
+      <a class="rail-item" href="#"><svg class="ic"><use href="#i-layers"/></svg>架构</a>
+      <a class="rail-item" href="#"><svg class="ic"><use href="#i-list-tree"/></svg>情节</a>
+      <a class="rail-item" href="#"><svg class="ic"><use href="#i-blueprint"/></svg>蓝图</a>
+      <a class="rail-item" href="#"><svg class="ic"><use href="#i-git-branch"/></svg>剧情</a>
+      <a class="rail-item" href="#"><svg class="ic"><use href="#i-users"/></svg>人物</a>
+      <a class="rail-item" href="#"><svg class="ic"><use href="#i-book"/></svg>知识库</a>
+      <div class="rail-spacer"></div>
+      <div class="rail-divider"></div>
+      <a class="rail-item" href="#"><svg class="ic"><use href="#i-settings"/></svg>设置</a>
+    </nav>
+
+    <aside class="sidebar" aria-label="项目目录">
+      <div class="sidebar-head">
+        <span>项目结构</span>
+        <button class="icon-btn" aria-label="收起侧边栏"><svg class="ic"><use href="#i-chevrons-left"/></svg></button>
+      </div>
+      <div class="project-block">
+        <div class="project-block-main">
+          <span class="project-name">掌管仙宗差点被推翻</span>
+          <span class="project-meta">仙侠<span class="sep"></span>已填写 5 / 8</span>
+        </div>
+        <button class="project-more" aria-label="项目操作"><svg class="ic"><use href="#i-more"/></svg></button>
+      </div>
+      <div class="tree">
+        <div class="tree-group-label">设定</div>
+        <button class="tree-row active" aria-current="page">
+          <svg class="ic"><use href="#i-book-open"/></svg><span>作品设定</span><span class="count">5 / 8</span>
+        </button>
+        <button class="tree-row">
+          <svg class="ic"><use href="#i-layers"/></svg><span>故事架构</span><span class="count">0 / 4</span>
+        </button>
+        <button class="tree-row">
+          <svg class="ic"><use href="#i-git-branch"/></svg><span>伏笔与叙事线索</span><span class="count">3</span>
+        </button>
+        <div class="tree-group-label">写作</div>
+        <button class="tree-row">
+          <svg class="ic"><use href="#i-blueprint"/></svg><span>章节蓝图</span><span class="count">0 / 100</span>
+        </button>
+        <button class="tree-row">
+          <svg class="ic"><use href="#i-file"/></svg><span>草稿箱</span><span class="count">0</span>
+        </button>
+        <button class="tree-row">
+          <svg class="ic"><use href="#i-book"/></svg><span>正文章节</span><span class="count">0</span>
+        </button>
+      </div>
+    </aside>
+
+    <div class="workspace">
+      <div class="tabstrip">
+        <div class="tab">
+          <svg class="ic"><use href="#i-book-open"/></svg>
+          <span>作品设定</span>
+          <button class="tab-close" aria-label="关闭标签"><svg class="ic"><use href="#i-close"/></svg></button>
+        </div>
+        <div class="tabstrip-right">
+          <button class="icon-btn" aria-label="收起右侧面板"><svg class="ic"><use href="#i-panel-right"/></svg></button>
+        </div>
+      </div>
+
+      <div class="editor-scroll">
+        <div class="spine-page">
+          <div class="spine-head">
+            <div>
+              <h1 class="spine-title">作品设定</h1>
+              <p class="spine-sub">掌管仙宗差点被推翻<span class="sep-dot">·</span>已填写 5 / 8，还差世界观与两项写作纪律</p>
+            </div>
+            <button class="btn btn-primary">补齐下一项：世界观</button>
+          </div>
+
+          <div class="coord-row">
+            <span class="coord-pair">类型 <b>仙侠</b></span>
+            <span class="coord-pair">细分 <b>修仙</b></span>
+            <span class="coord-pair">受众 <b>男频</b></span>
+            <span class="coord-pair">结构 <b>自由结构</b></span>
+            <span class="coord-pair">视角 <b>第三人称有限</b></span>
+            <span class="coord-pair">篇幅 <b>100 × 3000</b></span>
+            <span class="coord-pair">语言 <b>简体中文</b></span>
+            <span class="coord-pair">金手指 <b>需要</b></span>
+          </div>
+
+          <div class="spine">
+            <div class="spine-row">
+              <span class="spine-marker done"></span>
+              <div class="spine-row-head">
+                <h2 class="spine-row-title">核心大纲</h2>
+                <span class="spine-row-meta">1,284 字 · 2 小时前更新</span>
+                <div class="spine-row-actions">
+                  <button class="doc-actions-btn"><svg class="ic ic-sm"><use href="#i-refresh"/></svg>重新生成</button>
+                  <button class="doc-actions-btn"><svg class="ic ic-sm"><use href="#i-pen"/></svg>编辑</button>
+                </div>
+              </div>
+              <div class="spine-row-body">
+                <div class="spine-prose">
+                  <p>散修李宣灵根劣等、寿元将尽，更沦为宗门暗中圈养的灵农血粮；危亡之际，他意外窥见此方天地的灵气早被上古仙尸污染，世人苦求的飞升，实则是化作旧仙复苏的畸变养料。</p>
+                  <p>李宣凭借体内觉醒的「逆命道鉴」，能够洗尽天地污秽、将死煞异变逆炼为至纯真力，自此立下破除伪仙骗局、重铸无垢仙途的宏图大愿。他自底层微末崛起，以精密算计周旋于宗门倾轧之间，夺灵脉、斩权贵，在层层道争中反制旧修仙门阀。</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="spine-row">
+              <span class="spine-marker pending"></span>
+              <div class="spine-row-head">
+                <h2 class="spine-row-title">世界观与规则</h2>
+                <span class="spine-row-meta">未填写</span>
+                <div class="spine-row-actions">
+                  <button class="doc-actions-btn"><svg class="ic ic-sm"><use href="#i-pen"/></svg>手动填写</button>
+                </div>
+              </div>
+              <div class="spine-row-body">
+                <p class="spine-empty-copy">时代、地点、灵气的运行方式、仙门与凡人的关系，都还没有落笔。可以从大纲里已经出现的仙尸污染与灵农制度开始。</p>
+                <div class="spine-empty-actions">
+                  <button class="btn btn-primary btn-sm">生成世界观</button>
+                  <button class="btn btn-ghost btn-sm">先写一句</button>
+                </div>
+                <p class="spine-empty-context">将参考：类型 · 目标受众 · 故事结构 · 叙事视角 · 核心大纲</p>
+              </div>
+            </div>
+
+            <div class="spine-row">
+              <span class="spine-marker done"></span>
+              <div class="spine-row-head">
+                <h2 class="spine-row-title">主角人设</h2>
+                <span class="spine-row-meta">326 字</span>
+                <div class="spine-row-actions">
+                  <button class="doc-actions-btn"><svg class="ic ic-sm"><use href="#i-pen"/></svg>编辑</button>
+                </div>
+              </div>
+              <div class="spine-row-body">
+                <p class="spine-row-summary">李宣出身寒微，灵根低劣，却极擅算计与忍耐；软肋是对同被圈养者无法袖手。</p>
+              </div>
+            </div>
+
+            <div class="spine-row">
+              <span class="spine-marker done"></span>
+              <div class="spine-row-head">
+                <h2 class="spine-row-title">金手指 / 核心卖点</h2>
+                <span class="spine-row-meta">184 字</span>
+                <div class="spine-row-actions">
+                  <button class="doc-actions-btn"><svg class="ic ic-sm"><use href="#i-pen"/></svg>编辑</button>
+                </div>
+              </div>
+              <div class="spine-row-body">
+                <p class="spine-row-summary">「逆命道鉴」：洗尽天地污秽，将死煞逆炼为纯阳真力；每次动用都以自身寿元与记忆为代价。</p>
+              </div>
+            </div>
+
+            <div class="spine-row">
+              <span class="spine-marker pending"></span>
+              <div class="spine-row-head">
+                <h2 class="spine-row-title">写作纪律</h2>
+                <span class="spine-row-meta">1 / 3 已填写</span>
+                <div class="spine-row-actions">
+                  <button class="doc-actions-btn"><svg class="ic ic-sm"><use href="#i-chevron-right"/></svg>展开</button>
+                </div>
+              </div>
+              <div class="spine-row-body">
+                <p class="spine-row-summary">全局写作要求已填；文风配置、参考作品待补。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="bottom-tabs">
+    <span class="tab-item"><svg class="ic"><use href="#i-task"/></svg>任务</span>
+    <span class="tab-item"><svg class="ic"><use href="#i-log"/></svg>日志</span>
+    <span class="tab-item active"><svg class="ic"><use href="#i-cpu"/></svg>模型调用</span>
+    <span class="spacer"></span>
+    <svg class="ic"><use href="#i-chevron-down"/></svg>
+  </div>
+  <div class="statusbar">
+    <span class="brand-mini"><svg class="ic"><use href="#i-logo"/></svg>AI Writer v0.1.6</span>
+    <span>掌管仙宗差点被推翻</span>
+    <span class="spacer"></span>
+    <span>简体中文</span>
+  </div>
+</div>
+</body>
+</html>
