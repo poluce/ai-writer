@@ -351,14 +351,20 @@ export default function TitleBar() {
           )}
         </div>
 
-        <span className="text-xs font-semibold opacity-90 whitespace-nowrap">{t('project.currentLabel')}</span>
-        <button
-          className="writer-command-button max-w-[280px]"
-          title={t('project.switch')}
-          onClick={handleOpenProject}
-        >
-          <span className="truncate">{currentProject?.name ?? t('project.none')}</span>
-        </button>
+        {currentProject && (
+          <>
+            <span className="text-xs font-semibold opacity-90 whitespace-nowrap">
+              {t('project.currentLabel')}
+            </span>
+            <button
+              className="writer-command-button max-w-[280px]"
+              title={t('project.switch')}
+              onClick={handleOpenProject}
+            >
+              <span className="truncate">{currentProject.name}</span>
+            </button>
+          </>
+        )}
 
         {hasTrackedEditors && (
           <span

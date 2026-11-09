@@ -3,7 +3,9 @@ import { createRoot, type Root } from 'react-dom/client'
 import { page } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import type { ProjectData } from '../../../shared/ipc-channels'
 import { useLocaleStore } from '../../../stores/locale-store'
+import { useProjectStore } from '../../../stores/project-store'
 import { useThemeStore } from '../../../stores/theme-store'
 import TitleBar from '../TitleBar'
 
@@ -13,10 +15,26 @@ let root: Root
 let container: HTMLDivElement
 const originalLocaleState = useLocaleStore.getState()
 const originalThemeState = useThemeStore.getState()
+const originalProjectState = useProjectStore.getState()
+
+const project: ProjectData = {
+  id: 'titlebar-menu-project',
+  name: '测试书',
+  path: 'C:\\novels\\titlebar-menu',
+  novelConfig: {
+    genre: '', subGenre: '', targetAudience: '', totalChapters: 3, wordsPerChapter: 2500,
+    plotStructure: 'three_act', narrativePOV: 'third_limited', coreOutline: 'Configured',
+    worldSetting: '', goldenFinger: '', protagonistProfile: '', globalGuidance: '',
+  },
+  characterStates: '',
+  createdAt: '',
+  updatedAt: '',
+}
 
 beforeEach(() => {
   useLocaleStore.setState({ locale: 'zh-CN' })
   useThemeStore.setState({ theme: 'light', resolvedTheme: 'light' })
+  useProjectStore.setState({ currentProject: null })
   Object.defineProperty(window, 'velaAPI', {
     configurable: true,
     value: {
@@ -39,6 +57,7 @@ afterEach(async () => {
   container.remove()
   useLocaleStore.setState(originalLocaleState)
   useThemeStore.setState(originalThemeState)
+  useProjectStore.setState(originalProjectState)
   Reflect.deleteProperty(window, 'velaAPI')
 })
 
@@ -101,5 +120,18 @@ describe('TitleBar menus', () => {
 
     await act(async () => mainMenu.getByRole('button', { name: 'English', exact: true }).click())
     await expect.poll(() => useLocaleStore.getState().locale).toBe('en-US')
+  })
+
+  it('shows the project switch only while a project is open', async () => {
+    await act(async () => root.render(<TitleBar />))
+
+    // 启动页没有项目：不显示「当前项目：未打开项目」
+    expect(page.getByText('当前项目：').query()).toBeNull()
+    expect(page.getByRole('button', { name: '未打开项目' }).query()).toBeNull()
+
+    await act(async () => useProjectStore.setState({ currentProject: project }))
+
+    await expect.element(page.getByText('当前项目：')).toBeVisible()
+    await expect.element(page.getByRole('button', { name: '测试书' })).toBeVisible()
   })
 })
