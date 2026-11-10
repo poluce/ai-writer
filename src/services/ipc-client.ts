@@ -63,6 +63,7 @@ function isProjectScopedChannel(channel: string): boolean {
     || channel.startsWith('kb:')
     || channel.startsWith('chapter:')
     || channel.startsWith('fs:')
+    || channel.startsWith('world-map:')
     || channel === 'skills:load-catalog'
     || channel === 'project:save'
     || channel === 'project:delete'

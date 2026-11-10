@@ -11,6 +11,7 @@ export const SUBMIT_TOOL_NAMES = [
   'submit_text',
   'submit_json',
   'submit_novel_config',
+  'submit_world_map',
 ] as const
 
 export type SubmitToolName = typeof SUBMIT_TOOL_NAMES[number]

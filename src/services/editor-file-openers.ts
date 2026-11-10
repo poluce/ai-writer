@@ -9,7 +9,7 @@ import { readActiveProject } from './active-project'
 export function openBuiltinEditor(
   id: string,
   name: string,
-  type: 'chapter-card' | 'character' | 'world-building' | 'synopsis' | 'narrative-thread',
+  type: 'chapter-card' | 'character' | 'world-building' | 'synopsis' | 'narrative-thread' | 'world-map',
   narrativeThreadView?: 'plot-tree' | 'plans',
   chapterNumber?: number,
 ): void {

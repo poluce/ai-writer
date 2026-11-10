@@ -12,6 +12,7 @@ import {
   submitJsonTool,
   submitStyleAnalysisTool,
   submitTextTool,
+  submitWorldMapTool,
   visibleTextFromSubmitArtifact,
 } from '../submit-tools'
 
@@ -27,6 +28,7 @@ describe('submit contract tools', () => {
     expect(submitStyleAnalysisTool().name).toBe('submit_style_analysis')
     expect(submitTextTool().name).toBe('submit_text')
     expect(submitJsonTool().name).toBe('submit_json')
+    expect(submitWorldMapTool().name).toBe('submit_world_map')
   })
 
   it('returns the submitted arguments as execute details', async () => {
@@ -47,6 +49,15 @@ describe('submit contract tools', () => {
   it('keeps the blueprint batch contract on the schema', () => {
     const schema = submitBlueprintTool().parameters as { properties?: Record<string, unknown> }
     expect(schema.properties).toHaveProperty('blueprints')
+  })
+
+  it('keeps the world-map artifact on the schema', () => {
+    const schema = submitWorldMapTool().parameters as { properties?: Record<string, unknown> }
+    expect(schema.properties).toHaveProperty('worldName')
+    expect(schema.properties).toHaveProperty('regions')
+    expect(schema.properties).toHaveProperty('factions')
+    expect(schema.properties).toHaveProperty('tiers')
+    expect(schema.properties).toHaveProperty('realms')
   })
 
   it('resolves submit_field by name', () => {

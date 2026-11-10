@@ -57,6 +57,11 @@ import type {
   NarrativeThreadView} from './narrative-thread'
 import type { PlotTreeSnapshot, PlotTreeSourceBundle } from './plot-tree'
 import type {
+  WorldMapData,
+  WorldMapLoadResult,
+  WorldMapSaveResult,
+} from './world-map'
+import type {
   UpdateActionResponse,
   UpdateCheckResponse,
   UpdatePreferences,
@@ -1115,7 +1120,20 @@ export interface MCPStreamEvents {
   'mcp:config-changed': Record<string, never>
 }
 
-export type AllInvokeChannels = WindowChannels & OfficialHomepageChannels & ModelProviderResourceChannels & ConfigChannels & UpdateChannels & SkinChannels & ProjectChannels & FileChannels & AppDataChannels & LLMChannels & DatabaseChannels & KnowledgeBaseChannels & ChapterLifecycleChannels & ImportChannels & MCPChannels & AgentChannels
+// ===== 世界地图 =====
+
+export interface WorldMapChannels {
+  'world-map:load': {
+    args: [expectedProjectPath: string]
+    return: WorldMapLoadResult
+  }
+  'world-map:save': {
+    args: [expectedProjectPath: string, data: WorldMapData]
+    return: WorldMapSaveResult
+  }
+}
+
+export type AllInvokeChannels = WindowChannels & OfficialHomepageChannels & ModelProviderResourceChannels & ConfigChannels & UpdateChannels & SkinChannels & ProjectChannels & FileChannels & AppDataChannels & LLMChannels & DatabaseChannels & KnowledgeBaseChannels & ChapterLifecycleChannels & ImportChannels & MCPChannels & AgentChannels & WorldMapChannels
 export type AllEventChannels = LLMStreamEvents & UpdateStateEvents & WindowEvents & AgentStreamEvents & MCPStreamEvents
 
 /** 提取 invoke 频道名 */

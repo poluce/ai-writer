@@ -16,6 +16,7 @@ import { registerFinalizationController } from './controllers/finalization-contr
 import { registerChapterLifecycleController } from './controllers/chapter-lifecycle-controller'
 import { registerExternalFileGrantController } from './controllers/external-file-grant-controller'
 import { registerAppDataController } from './controllers/app-data-controller'
+import { registerWorldMapController } from './controllers/world-map-controller'
 import { registerSkinController } from './controllers/skin-controller'
 import { registerAgentController } from './pi/agent-ipc'
 import { setProjectDatabaseClosingHandler } from './database'
@@ -46,6 +47,7 @@ export function registerIPCHandlers() {
   registerModelProviderResourceController()
   registerConfigController()
   registerAppDataController()
+  registerWorldMapController()
   registerProjectController()
   registerFSController()
   registerExternalFileGrantController()

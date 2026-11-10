@@ -7,6 +7,7 @@ import {
 import { Button } from '../ui/Button'
 import CodeMirrorEditor from '../editor/CodeMirrorEditor'
 import NovelConfigEditor from '../editor/NovelConfigEditor'
+import WorldMapEditor from '../editor/WorldMapEditor'
 import CharacterEditor from '../editor/CharacterEditor'
 import ChapterCardEditor from '../editor/ChapterCardEditor'
 import WorldBuildingEditor from '../editor/WorldBuildingEditor'
@@ -491,6 +492,7 @@ export default function EditorArea() {
     if (type === 'diff') return <ArrowLeftRight size={14} />
     if (type === 'chapter-card') return <BookOpen size={14} />
     if (type === 'world-building') return <Globe size={14} />
+    if (type === 'world-map') return <Map size={14} />
     if (type === 'synopsis') return <Map size={14} />
     if (type === 'version-history') return <History size={14} />
     if (type === 'review-report') return <ClipboardCheck size={14} />
@@ -698,6 +700,9 @@ export default function EditorArea() {
         )}
         {activeTab?.type === 'config' && activeTab.projectKey && (
           <NovelConfigEditor key={activeTab.id} projectKey={activeTab.projectKey} />
+        )}
+        {activeTab?.type === 'world-map' && activeTab.projectKey === currentProject.path && (
+          <WorldMapEditor key={`${activeTab.id}-${activeTab.projectKey}`} projectKey={activeTab.projectKey} />
         )}
         {activeTab?.type === 'outline' && (
           <div className="h-full overflow-y-auto p-6">

@@ -14,7 +14,7 @@ export interface EditorTabSaveSnapshot {
 export interface EditorTab {
   id: string
   name: string
-  type: 'chapter' | 'outline' | 'character' | 'config' | 'diff' | 'chapter-card' | 'world-building' | 'synopsis' | 'arch-file' | 'version-history' | 'review-report' | 'narrative-thread'
+  type: 'chapter' | 'outline' | 'character' | 'config' | 'diff' | 'chapter-card' | 'world-building' | 'synopsis' | 'arch-file' | 'version-history' | 'review-report' | 'narrative-thread' | 'world-map'
   filePath?: string
   content?: string
   /** 架构文档已持久化的基准内容，用于跨 Tab/项目切换后恢复脏状态。 */
@@ -117,6 +117,7 @@ const PROJECT_SCOPED_BUILTIN_TYPES = new Set<EditorTab['type']>([
   'config',
   'chapter-card',
   'world-building',
+  'world-map',
   'chapter',
   'review-report',
   'version-history',

@@ -161,6 +161,67 @@ function novelConfigSchema() {
   })
 }
 
+const WorldMapDirectionSchema = Type.Union([
+  Type.Literal('center'),
+  Type.Literal('north'),
+  Type.Literal('northeast'),
+  Type.Literal('east'),
+  Type.Literal('southeast'),
+  Type.Literal('south'),
+  Type.Literal('southwest'),
+  Type.Literal('west'),
+  Type.Literal('northwest'),
+])
+
+function worldMapSchema() {
+  return Type.Object({
+    worldName: Type.String({ description: '世界名称（短名，例如：九域）' }),
+    premise: Type.String({ description: '一句话世界前提，说明这个世界的核心矛盾' }),
+    tiers: Type.Array(Type.Object({
+      name: Type.String({ description: '势力等级名称，例如：超一流、一流、二流、三流' }),
+      order: Type.Optional(Type.Number({ description: '从 1 开始的等级顺序，1 为最高' })),
+    }), { description: '势力等级阶梯；2–10 档，按强弱排序' }),
+    realms: Type.Array(Type.Object({
+      name: Type.String({ description: '修行境界名称，例如：练气、筑基、金丹、元婴' }),
+      order: Type.Optional(Type.Number({ description: '从 1 开始的境界顺序' })),
+      note: Type.Optional(Type.String({ description: '该境界的一句说明，可为空' })),
+    }), { description: '修行境界阶梯；2–16 阶，按高低排序' }),
+    regions: Type.Array(Type.Object({
+      name: Type.String({ description: '区域名称，例如：北境' }),
+      continent: Type.String({ description: '所属大陆名称，例如：玄洲' }),
+      direction: WorldMapDirectionSchema,
+      terrain: Type.String({ description: '地形，例如：雪山、群岛、荒漠' }),
+      summary: Type.String({ description: '区域一句话设定' }),
+      adjacent: Type.Array(Type.String(), { description: '相邻区域名称；必须在本数组内存在' }),
+      controllingFaction: Type.Optional(Type.String({ description: '实际控制该区域的势力名称；必须在本数组内存在' })),
+    }), { description: '世界区域；2–24 个，覆盖大陆与海域' }),
+    factions: Type.Array(Type.Object({
+      name: Type.String({ description: '势力名称，例如：天枢宗' }),
+      kind: Type.Union([
+        Type.Literal('sect'),
+        Type.Literal('dynasty'),
+        Type.Literal('organization'),
+      ], { description: '势力类型：sect=宗门，dynasty=王朝，organization=其他组织' }),
+      region: Type.String({ description: '所在地区域名称，必须存在于 regions' }),
+      tier: Type.String({ description: '势力等级名称，必须存在于 tiers' }),
+      resource: Type.String({ description: '掌控的核心资源或权柄' }),
+      summary: Type.String({ description: '势力一句话定位' }),
+      leader: Type.Optional(Type.String({ description: '掌门/首领姓名' })),
+      realm: Type.Optional(Type.String({ description: '首领境界名称，必须存在于 realms' })),
+    }), { description: '势力；1–40 个，至少包含两个相互竞争的势力' }),
+    relations: Type.Array(Type.Object({
+      from: Type.String({ description: '起点势力名称' }),
+      to: Type.String({ description: '终点势力名称' }),
+      kind: Type.Union([
+        Type.Literal('ally'),
+        Type.Literal('enemy'),
+        Type.Literal('neutral'),
+      ], { description: '关系类型：ally=同盟，enemy=敌对，neutral=中立' }),
+      note: Type.Optional(Type.String({ description: '关系原因的一句话说明' })),
+    }), { description: '势力关系；0–60 条，只写会影响剧情的核心关系' }),
+  })
+}
+
 /** Open JSON document: the tool arguments are the artifact root. */
 function jsonSchema() {
   return Type.Unknown()
@@ -276,6 +337,16 @@ export function submitJsonTool(): AgentTool<ReturnType<typeof jsonSchema>> {
   )
 }
 
+/** 世界地图：世界名、区域、势力、双阶梯与关系。 */
+export function submitWorldMapTool(): AgentTool<ReturnType<typeof worldMapSchema>> {
+  return buildSubmitTool(
+    'submit_world_map',
+    'Submit World Map',
+    'Submit a complete world map artifact: world name, premise, regions, factions, tier ladder, realm ladder, and relations. Reference regions/factions/tiers/realms by name; the app resolves IDs.',
+    worldMapSchema(),
+  )
+}
+
 export function createSubmitTool(name: SubmitToolName): AnyAgentTool {
   switch (name) {
     case 'submit_draft': return submitDraftTool()
@@ -289,6 +360,7 @@ export function createSubmitTool(name: SubmitToolName): AnyAgentTool {
     case 'submit_text': return submitTextTool()
     case 'submit_json': return submitJsonTool()
     case 'submit_novel_config': return submitNovelConfigTool()
+    case 'submit_world_map': return submitWorldMapTool()
   }
 }
 

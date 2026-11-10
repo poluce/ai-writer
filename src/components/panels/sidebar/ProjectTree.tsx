@@ -366,6 +366,13 @@ export default function ProjectTree() {
       <WorldBuildingGroup archStatus={archStatus} archDone={archDone} onCleared={refreshAll} />
 
       <LeafItem
+        iconName="map"
+        label={text('世界地图', 'World map')}
+        desc={text('AI 生成的大陆、宗门位置与势力等级', 'AI-generated continents, sect locations, and faction tiers')}
+        onClick={() => openBuiltinEditor('world-map-editor', text('世界地图', 'World map'), 'world-map')}
+      />
+
+      <LeafItem
         iconName="git-branch"
         label={text('伏笔与叙事线索', 'Foreshadowing & narrative threads')}
         desc={text('规划埋设/回收章节，自动注入写作并提示逾期', 'Plan setup/payoff chapters, inject active threads, and flag overdue ones')}
