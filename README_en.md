@@ -5,7 +5,7 @@
 </div>
 
 <p align="center">
-  <img src="docs/assets/readme/ai-writer-logo-transparent.png" width="104" height="104" alt="AI Writer Logo" />
+  <img src="docs/assets/readme/ai-novel-writer-logo-transparent.png" width="104" height="104" alt="AI Writer Logo" />
 </p>
 
 <h1 align="center">AI Writer</h1>
@@ -15,16 +15,16 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/poluce/ai-writer/releases"><img src="https://badgen.net/github/tag/poluce/ai-writer?label=release" alt="Release" /></a>
-  <a href="https://github.com/poluce/ai-writer/blob/main/LICENSE"><img src="https://badgen.net/badge/license/GPL-3.0/blue" alt="GPL-3.0 License" /></a>
-  <a href="https://github.com/poluce/ai-writer/stargazers"><img src="https://badgen.net/github/stars/poluce/ai-writer" alt="GitHub stars" /></a>
+  <a href="https://github.com/poluce/ai-writer/releases">Releases</a> ·
+  <a href="https://github.com/poluce/ai-writer/blob/main/LICENSE">GPL-3.0</a> ·
+  <a href="https://github.com/poluce/ai-writer/stargazers">GitHub</a>
 </p>
 
 <p align="center">
   <a href="https://github.com/poluce/ai-writer/releases/latest">Download desktop (Windows x64)</a>
 </p>
 
-> **Interface screenshots are pending an update.** The old v0.8.5 screenshots no longer match the current 0.1.4 UI and have been removed; new screenshots will be added from the actual build.
+> **Interface screenshots are pending an update.** The old interface screenshots have been removed; updated screenshots will be added from the current build.
 
 > ## v0.1.6 — editable assistant prompt modules & delegated review alignment
 >
@@ -102,9 +102,6 @@ flowchart LR
   F --> G[Context for the next chapter]
 ```
 
-## Interface preview
-
-> Interface screenshots are pending an update: the old v0.8.5 screenshots no longer match the current 0.1.4 UI and have been removed. New screenshots will be added from the actual interface.
 
 ## Core capabilities
 

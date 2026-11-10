@@ -5,7 +5,7 @@
 </div>
 
 <p align="center">
-  <img src="docs/assets/readme/ai-writer-logo-transparent.png" width="104" height="104" alt="AI Writer Logo" />
+  <img src="docs/assets/readme/ai-novel-writer-logo-transparent.png" width="104" height="104" alt="AI Writer Logo" />
 </p>
 
 <h1 align="center">AI Writer</h1>
@@ -15,16 +15,16 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/poluce/ai-writer/releases"><img src="https://badgen.net/github/tag/poluce/ai-writer?label=release" alt="Release" /></a>
-  <a href="https://github.com/poluce/ai-writer/blob/main/LICENSE"><img src="https://badgen.net/badge/license/GPL-3.0/blue" alt="GPL-3.0 License" /></a>
-  <a href="https://github.com/poluce/ai-writer/stargazers"><img src="https://badgen.net/github/stars/poluce/ai-writer" alt="GitHub stars" /></a>
+  <a href="https://github.com/poluce/ai-writer/releases">发布版本</a> ·
+  <a href="https://github.com/poluce/ai-writer/blob/main/LICENSE">GPL-3.0</a> ·
+  <a href="https://github.com/poluce/ai-writer/stargazers">GitHub</a>
 </p>
 
 <p align="center">
   <a href="https://github.com/poluce/ai-writer/releases/latest">下载桌面版（Windows x64）</a>
 </p>
 
-> **界面截图待更新。** 此处此前使用 v0.8.5 的旧界面截图，与当前 0.1.4 的实际界面不一致，已撤下；更新后的截图会按实际构建补充。
+> **界面截图待更新。** 旧版界面截图已撤下，更新后的截图会按当前构建补充。
 
 > ## v0.1.6 · 助手提示词模块化与委派审稿对齐
 >
@@ -88,9 +88,6 @@ flowchart LR
   F --> G[下一章的项目上下文]
 ```
 
-## 界面预览
-
-> 界面截图待更新：旧版 v0.8.5 截图与当前 0.1.4 的实际界面不一致，已撤下。更新后的截图会按实际界面补充。
 
 ## 核心能力
 
