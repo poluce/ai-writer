@@ -85,6 +85,18 @@ describe('novel config as a document', () => {
     expect(page.getByRole('button', { name: '保存', exact: true }).query()).toBeNull()
   })
 
+  it('offers a generate action for an empty core outline', async () => {
+    const projectData = project()
+    projectData.novelConfig.coreOutline = ''
+    await mount(projectData)
+
+    await expect.element(page.getByRole('button', { name: '生成核心大纲', exact: true })).toBeVisible()
+    await expect.element(page.getByText('还没有核心大纲。', { exact: true })).toBeVisible()
+
+    await act(async () => page.getByRole('button', { name: '手动填写', exact: true }).first().click())
+    await expect.element(page.getByRole('button', { name: '生成核心大纲', exact: true })).toBeVisible()
+  })
+
   it('keeps project coordinates closed until the author asks for them', async () => {
     await mount(project())
 

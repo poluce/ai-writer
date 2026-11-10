@@ -734,7 +734,7 @@ function DocSection({
           : <h2 className="novel-settings-section-title">{title}</h2>}
         <span className="novel-settings-meta">{meta}</span>
         <div className="novel-settings-section-actions">
-          {hasContent && onGenerate && (
+          {(hasContent || editing) && onGenerate && (
             <button
               type="button"
               className="novel-settings-action"
@@ -744,7 +744,11 @@ function DocSection({
               {generating
                 ? <Loader2 size={12} className="animate-spin" />
                 : <RefreshCw size={12} />}
-              {generating ? text('生成中…', 'Generating…') : text('重新生成', 'Regenerate')}
+              {generating
+                ? text('生成中…', 'Generating…')
+                : hasContent
+                  ? text('重新生成', 'Regenerate')
+                  : (emptyGenerateLabel ?? text('生成', 'Generate'))}
             </button>
           )}
           <button type="button" className="novel-settings-action" onClick={editing ? onDone : onEdit}>
