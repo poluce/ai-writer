@@ -5,7 +5,7 @@
 </div>
 
 <p align="center">
-  <img src="docs/assets/readme/ai-novel-writer-logo-transparent.png" width="104" height="104" alt="AI Writer Logo" />
+  <img src="docs/assets/readme/ai-writer-logo.png" width="104" height="104" alt="AI Writer Logo" />
 </p>
 
 <h1 align="center">AI Writer</h1>
