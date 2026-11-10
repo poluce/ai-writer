@@ -24,8 +24,7 @@ describe('narrative thread AI candidate boundary', () => {
       execute: vi.fn(async (operation) => operation({
         session: {
           budget: {
-            maxAttempts: 1, maxRequestedOutputTokens: 4096,
-            maxRequestedOutputTokensPerAttempt: 4096, deadlineAt: Date.now() + 120_000,
+            maxAttempts: 1, deadlineAt: Date.now() + 120_000,
           },
           complete: vi.fn().mockResolvedValue({ ...outcome, receipt: {} }),
         },
@@ -134,8 +133,6 @@ describe('narrative thread AI candidate boundary', () => {
         session: {
           budget: {
             maxAttempts: 1,
-            maxRequestedOutputTokens: 4096,
-            maxRequestedOutputTokensPerAttempt: 4096,
             deadlineAt: Date.now() + 120_000,
           },
           complete: vi.fn(async (task: GenerationTask) => {
@@ -190,8 +187,7 @@ describe('narrative thread AI candidate boundary', () => {
       execute: vi.fn(async (operation) => operation({
         session: {
           budget: {
-            maxAttempts: 1, maxRequestedOutputTokens: 4096,
-            maxRequestedOutputTokensPerAttempt: 4096, deadlineAt: Date.now() + 120_000,
+            maxAttempts: 1, deadlineAt: Date.now() + 120_000,
           },
           complete: vi.fn(async (task: GenerationTask) => {
             observedTask = task

@@ -73,7 +73,6 @@ export interface StructuredBatchFailure {
     | 'malformed_output'
     | 'output_limit'
     | 'max_calls'
-    | 'max_requested_tokens'
     | 'invalid_limit'
   diagnostic?: {
     code: string
@@ -494,8 +493,6 @@ export function createStructuredBatchExecutor<TInput, TOutput>(dependencies: {
         } else if (error instanceof GenerationHarnessError) {
           if (error.code === 'ATTEMPT_BUDGET_EXHAUSTED') {
             failure = { code: 'limit_exceeded', reason: 'max_calls', message: error.message }
-          } else if (error.code === 'REQUESTED_TOKEN_BUDGET_EXHAUSTED') {
-            failure = { code: 'limit_exceeded', reason: 'max_requested_tokens', message: error.message }
           } else if (error.code === 'DEADLINE_EXHAUSTED') {
             failure = { code: 'deadline', reason: 'deadline', message: error.message }
           } else if (error.code === 'CANCELLED') {

@@ -135,8 +135,6 @@ function generationReceipt(
       maxAttempts: 20,
       requestedOutputTokens: 4096,
       cumulativeRequestedOutputTokens: attempt * 4096,
-      maxRequestedOutputTokens: 100_000,
-      maxRequestedOutputTokensPerAttempt: 4096,
       deadlineAt: Number.MAX_SAFE_INTEGER,
     }),
     finishReason,
@@ -149,8 +147,6 @@ function generationSession(
   return {
     budget: Object.freeze({
       maxAttempts: 20,
-      maxRequestedOutputTokens: 100_000,
-      maxRequestedOutputTokensPerAttempt: 4096,
       deadlineAt: Number.MAX_SAFE_INTEGER,
     }),
     complete,
@@ -626,8 +622,6 @@ describe('GenerateDirectoryCommand', () => {
     expect(createRuntime).toHaveBeenCalledWith({
       budget: {
         maxAttempts: 20,
-        maxRequestedOutputTokens: 81_920,
-        maxRequestedOutputTokensPerAttempt: 4_096,
         deadlineMs: 1_800_000,
       },
     })
@@ -669,8 +663,6 @@ describe('GenerateDirectoryCommand', () => {
     expect(createRuntime).toHaveBeenCalledWith({
       budget: {
         maxAttempts: 31,
-        maxRequestedOutputTokens: 126_976,
-        maxRequestedOutputTokensPerAttempt: 4_096,
         deadlineMs: 1_800_000,
       },
     })
@@ -843,8 +835,6 @@ describe('GenerateDirectoryCommand', () => {
     expect(createRuntime).toHaveBeenCalledWith({
       budget: {
         maxAttempts: 15,
-        maxRequestedOutputTokens: 61_440,
-        maxRequestedOutputTokensPerAttempt: 4_096,
         deadlineMs: 1_800_000,
       },
     })

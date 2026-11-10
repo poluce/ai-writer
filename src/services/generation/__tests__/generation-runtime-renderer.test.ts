@@ -92,8 +92,6 @@ describe('GenerationRuntime renderer adapter', () => {
     const runtime = await createGenerationRuntime({
       budget: {
         maxAttempts: 1,
-        maxRequestedOutputTokens: 4096,
-        maxRequestedOutputTokensPerAttempt: 4096,
         deadlineMs: 60_000,
       },
     })
@@ -124,8 +122,6 @@ describe('GenerationRuntime renderer adapter', () => {
     const runtime = await createGenerationRuntime({
       budget: {
         maxAttempts: 1,
-        maxRequestedOutputTokens: 4096,
-        maxRequestedOutputTokensPerAttempt: 4096,
         deadlineMs: 60_000,
       },
     })

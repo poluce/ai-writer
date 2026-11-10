@@ -22,7 +22,6 @@ import type {
 } from '../../../generation/generation-harness'
 import { EN_US_BUILTIN_PROMPTS } from '../../../prompt-language'
 import { BUILTIN_PROMPTS } from '../../../prompt-templates'
-import { WORKFLOW_GENERATION_BUDGETS } from '../base-command'
 import {
   DRAFT_GENERATION_BUDGET,
   GenerateDraftCommand,
@@ -103,12 +102,12 @@ ${repeated}`)
     expect(ending).toBe(completeEnding)
   })
 
-  it('keeps the same per-attempt output cap as other text workflows for long chapters', () => {
-    expect(DRAFT_GENERATION_BUDGET.maxRequestedOutputTokensPerAttempt)
-      .toBe(WORKFLOW_GENERATION_BUDGETS.text.maxRequestedOutputTokensPerAttempt)
-    expect(DRAFT_GENERATION_BUDGET.maxRequestedOutputTokensPerAttempt).toBe(8192)
+  it('does not apply a workflow token cap to long chapters', () => {
+    expect(DRAFT_GENERATION_BUDGET).toEqual({
+      maxAttempts: 8,
+      deadlineMs: 20 * 60_000,
+    })
     expect(countDraftUnits('字'.repeat(3000))).toBe(3000)
-    expect(3000).toBeLessThan(DRAFT_GENERATION_BUDGET.maxRequestedOutputTokensPerAttempt)
   })
 })
 
@@ -180,9 +179,6 @@ function attemptReceipt(
       attempt,
       maxAttempts: DRAFT_GENERATION_BUDGET.maxAttempts,
       requestedOutputTokens,
-      cumulativeRequestedOutputTokens: attempt * requestedOutputTokens,
-      maxRequestedOutputTokens: DRAFT_GENERATION_BUDGET.maxRequestedOutputTokens,
-      maxRequestedOutputTokensPerAttempt: DRAFT_GENERATION_BUDGET.maxRequestedOutputTokensPerAttempt,
       deadlineAt: Date.now() + DRAFT_GENERATION_BUDGET.deadlineMs,
     },
     finishReason,
@@ -217,8 +213,6 @@ function fakeRuntime(
     session: {
       budget: {
         maxAttempts: DRAFT_GENERATION_BUDGET.maxAttempts,
-        maxRequestedOutputTokens: DRAFT_GENERATION_BUDGET.maxRequestedOutputTokens,
-        maxRequestedOutputTokensPerAttempt: DRAFT_GENERATION_BUDGET.maxRequestedOutputTokensPerAttempt,
         deadlineAt: Date.now() + DRAFT_GENERATION_BUDGET.deadlineMs,
       },
       complete,

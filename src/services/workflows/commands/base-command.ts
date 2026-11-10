@@ -50,28 +50,22 @@ type WorkflowLLMOptions = {
 export type WorkflowGenerationIntent = 'structured' | 'text' | 'character-architecture'
 
 /**
- * Intent cost ceilings are product policy, never model profiles. The runtime
- * still plans every physical request from the frozen lease capability receipt.
+ * Intent retry/time limits are product policy, never model profiles. Physical
+ * output length is planned from the frozen model capability alone.
  */
 export const WORKFLOW_GENERATION_BUDGETS = Object.freeze({
   structured: Object.freeze({
     maxAttempts: 16,
-    maxRequestedOutputTokens: 131_072,
-    maxRequestedOutputTokensPerAttempt: 8192,
     deadlineMs: 10 * 60_000,
   }),
   text: Object.freeze({
     maxAttempts: 8,
-    maxRequestedOutputTokens: 65_536,
-    maxRequestedOutputTokensPerAttempt: 8192,
     deadlineMs: 20 * 60_000,
   }),
   'character-architecture': Object.freeze({
     // Worst recoverable path: manifest replacements, bounded detail batches,
     // and one syntax-only repair on a slow provider.
     maxAttempts: 12,
-    maxRequestedOutputTokens: 98_304,
-    maxRequestedOutputTokensPerAttempt: 8192,
     deadlineMs: 20 * 60_000,
   }),
 })
@@ -123,7 +117,7 @@ export abstract class BaseWorkflowCommand<TResult = string> {
   abstract execute(params: CommandExecuteParams): Promise<TResult>
 
   /**
-   * One command execute owns one immutable model lease, one attempt/token
+   * One command execute owns one immutable model lease, one attempt/time
    * budget and one cancellation signal. Nested helpers consume this scope and
    * cannot reopen or reselect a model.
    */

@@ -85,7 +85,7 @@ function taskPayload(task: GenerationTask): AttemptRequest {
 function attemptReceipt(
   attempt: number,
   requestedTokens: number,
-  cumulativeRequestedTokens: number,
+  _cumulativeRequestedTokens: number,
   finishReason: GenerationAttemptReceipt['finishReason'],
 ): GenerationAttemptReceipt {
   return {
@@ -110,9 +110,6 @@ function attemptReceipt(
       attempt,
       maxAttempts: 20,
       requestedOutputTokens: requestedTokens,
-      cumulativeRequestedOutputTokens: cumulativeRequestedTokens,
-      maxRequestedOutputTokens: 10_000,
-      maxRequestedOutputTokensPerAttempt: requestedTokens,
       deadlineAt: 10_000,
     },
     finishReason,
@@ -121,13 +118,11 @@ function attemptReceipt(
 
 function createSession(handler: AttemptHandler): Pick<GenerationSession, 'complete'> {
   let attempts = 0
-  let cumulativeRequestedTokens = 0
 
   return {
     async complete(task) {
       attempts += 1
       const attempt = await handler(taskPayload(task))
-      cumulativeRequestedTokens += attempt.requestedTokens
       if (attempt.status === 'failed') {
         throw new GenerationAttemptError(
           'PROVIDER_REQUEST_FAILED',
@@ -135,7 +130,7 @@ function createSession(handler: AttemptHandler): Pick<GenerationSession, 'comple
           attemptReceipt(
             attempts,
             attempt.requestedTokens,
-            cumulativeRequestedTokens,
+            0,
             'error',
           ),
         )
@@ -153,7 +148,7 @@ function createSession(handler: AttemptHandler): Pick<GenerationSession, 'comple
           receipt: attemptReceipt(
             attempts,
             attempt.requestedTokens,
-            cumulativeRequestedTokens,
+            0,
             finishReason,
           ),
         }
@@ -165,7 +160,7 @@ function createSession(handler: AttemptHandler): Pick<GenerationSession, 'comple
         receipt: attemptReceipt(
           attempts,
           attempt.requestedTokens,
-          cumulativeRequestedTokens,
+          0,
           'stop',
         ),
       }
@@ -292,8 +287,6 @@ describe('StructuredBatchExecutor seam', () => {
       completionPort: { complete: physicalComplete },
       policy: {
         maxAttempts: 2,
-        maxRequestedOutputTokens: 200,
-        maxRequestedOutputTokensPerAttempt: 100,
         deadlineMs: 60_000,
       },
       now: () => 0,
@@ -1089,8 +1082,6 @@ describe('StructuredBatchExecutor seam', () => {
       completionPort: { complete: physicalComplete },
       policy: {
         maxAttempts: 1,
-        maxRequestedOutputTokens: 100,
-        maxRequestedOutputTokensPerAttempt: 100,
         deadlineMs: 60_000,
       },
       now: () => 0,
@@ -1142,8 +1133,6 @@ describe('StructuredBatchExecutor seam', () => {
       completionPort: { complete: physicalRepair },
       policy: {
         maxAttempts: 1,
-        maxRequestedOutputTokens: 100,
-        maxRequestedOutputTokensPerAttempt: 100,
         deadlineMs: 60_000,
       },
       now: () => 0,

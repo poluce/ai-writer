@@ -80,8 +80,6 @@ export function createDraftGeneratingPlaceholder(
 
 export const DRAFT_GENERATION_BUDGET = Object.freeze({
   maxAttempts: 8,
-  maxRequestedOutputTokens: 32_768,
-  maxRequestedOutputTokensPerAttempt: 8192,
   deadlineMs: 20 * 60_000,
 })
 
@@ -186,12 +184,8 @@ export function logDraftAttempt(
 ): void {
   callbacks.log(workflowUiText(
     context,
-    `  ${phase.zhCN}：租约请求上限 ${receipt.budget.requestedOutputTokens} Tokens` +
-      `（单次上限 ${receipt.budget.maxRequestedOutputTokensPerAttempt}，` +
-      `累计 ${receipt.budget.cumulativeRequestedOutputTokens}/${receipt.budget.maxRequestedOutputTokens}）`,
-    `  ${phase.enUS}: lease request limit ${receipt.budget.requestedOutputTokens} tokens ` +
-      `(per-attempt limit ${receipt.budget.maxRequestedOutputTokensPerAttempt}, ` +
-      `cumulative ${receipt.budget.cumulativeRequestedOutputTokens}/${receipt.budget.maxRequestedOutputTokens})`,
+    `  ${phase.zhCN}：请求输出上限 ${receipt.budget.requestedOutputTokens} Tokens`,
+    `  ${phase.enUS}: request output limit ${receipt.budget.requestedOutputTokens} tokens`,
   ))
 }
 

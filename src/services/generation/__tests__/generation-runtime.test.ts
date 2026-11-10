@@ -32,8 +32,6 @@ function task(purpose: string) {
 function budget() {
   return {
     maxAttempts: 1,
-    maxRequestedOutputTokens: 4096,
-    maxRequestedOutputTokensPerAttempt: 4096,
     deadlineMs: 60_000,
   }
 }

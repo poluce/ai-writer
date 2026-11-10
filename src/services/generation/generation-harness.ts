@@ -89,20 +89,16 @@ export interface DefaultModelSource {
 
 export interface GenerationHarnessPolicy {
   maxAttempts: number
-  maxRequestedOutputTokens: number
-  /** Intent-level cost cap for one physical request; independent of model identity. */
-  maxRequestedOutputTokensPerAttempt: number
   deadlineMs: number
 }
 
 /**
- * Application-wide safety ceiling. Workflows may choose smaller intent budgets,
- * but no model capability or caller may enlarge one run beyond these bounds.
+ * Application-wide safety ceiling for retry count and wall-clock time. Output
+ * length is not budgeted here: every physical request uses the model's own
+ * maximum output capability.
  */
 export const GENERATION_ABSOLUTE_BUDGET_LIMITS = Object.freeze({
   maxAttempts: 32,
-  maxRequestedOutputTokens: 147_456,
-  maxRequestedOutputTokensPerAttempt: 32_768,
   deadlineMs: 60 * 60_000,
 })
 
@@ -170,9 +166,6 @@ export interface GenerationAttemptReceipt {
     attempt: number
     maxAttempts: number
     requestedOutputTokens: number
-    cumulativeRequestedOutputTokens: number
-    maxRequestedOutputTokens: number
-    maxRequestedOutputTokensPerAttempt: number
     deadlineAt: number
   }
   finishReason: LLMFinishReason
@@ -202,8 +195,6 @@ export interface GenerationExecutionOptions {
 
 export interface GenerationSessionBudget {
   maxAttempts: number
-  maxRequestedOutputTokens: number
-  maxRequestedOutputTokensPerAttempt: number
   deadlineAt: number
 }
 
@@ -224,8 +215,6 @@ export class GenerationHarnessError extends Error {
       | 'UNTRUSTED_CAPABILITY_EVIDENCE'
       | 'INVALID_POLICY'
       | 'ATTEMPT_BUDGET_EXHAUSTED'
-      | 'REQUESTED_TOKEN_BUDGET_EXHAUSTED'
-      | 'CONTEXT_BUDGET_EXHAUSTED'
       | 'PROMPT_BUDGET_EXHAUSTED'
       | 'DEADLINE_EXHAUSTED'
       | 'CANCELLED'
@@ -399,26 +388,6 @@ function logPromptBudgetReport(report: PromptBudgetReport): void {
   console.info('[GenerationPromptBudget]', report)
 }
 
-function contextBudgetExhaustedMessage(input: {
-  modelId: string
-  contextWindowTokens: number
-  estimatedInputTokens: number
-  sections?: readonly PromptBudgetSectionReport[]
-}): string {
-  const contributors = input.sections
-    ? [...input.sections]
-        .sort((left, right) => right.utf8Bytes - left.utf8Bytes)
-        .slice(0, 3)
-        .map(section => `${section.sectionName}=${section.utf8Bytes} UTF-8 bytes`)
-        .join(', ')
-    : 'prompt sections unavailable'
-  return '当前生成输入没有安全的输出空间。'
-    + `模型=${input.modelId}；上下文=${input.contextWindowTokens} tokens；`
-    + `估算输入=${input.estimatedInputTokens} tokens；`
-    + `安全保留=${CONTEXT_SAFETY_RESERVE_TOKENS} tokens；输出保留=0 tokens；`
-    + `主要区段=${contributors}。`
-}
-
 function positiveInteger(value: unknown): number | null {
   return typeof value === 'number' && Number.isSafeInteger(value) && value > 0
     ? value
@@ -428,20 +397,15 @@ function positiveInteger(value: unknown): number | null {
 export function assertGenerationHarnessPolicy(policy: GenerationHarnessPolicy): void {
   if (
     positiveInteger(policy.maxAttempts) === null
-    || positiveInteger(policy.maxRequestedOutputTokens) === null
-    || positiveInteger(policy.maxRequestedOutputTokensPerAttempt) === null
     || positiveInteger(policy.deadlineMs) === null
   ) {
-    throw new GenerationHarnessError('INVALID_POLICY', '生成会话预算必须是正整数。')
+    throw new GenerationHarnessError('INVALID_POLICY', '生成会话限制必须是正整数。')
   }
   if (
     policy.maxAttempts > GENERATION_ABSOLUTE_BUDGET_LIMITS.maxAttempts
-    || policy.maxRequestedOutputTokens > GENERATION_ABSOLUTE_BUDGET_LIMITS.maxRequestedOutputTokens
-    || policy.maxRequestedOutputTokensPerAttempt
-      > GENERATION_ABSOLUTE_BUDGET_LIMITS.maxRequestedOutputTokensPerAttempt
     || policy.deadlineMs > GENERATION_ABSOLUTE_BUDGET_LIMITS.deadlineMs
   ) {
-    throw new GenerationHarnessError('INVALID_POLICY', '生成会话预算超过应用安全上限。')
+    throw new GenerationHarnessError('INVALID_POLICY', '生成会话限制超过应用安全上限。')
   }
 }
 
@@ -555,12 +519,9 @@ export function createGenerationHarness(dependencies: {
         : resolveInitialCapabilities(frozenModel)
       const sessionBudget = Object.freeze({
         maxAttempts: policy.maxAttempts,
-        maxRequestedOutputTokens: policy.maxRequestedOutputTokens,
-        maxRequestedOutputTokensPerAttempt: policy.maxRequestedOutputTokensPerAttempt,
         deadlineAt: now() + policy.deadlineMs,
       })
       let attempts = 0
-      let cumulativeRequestedOutputTokens = 0
 
       const attemptReceipt = (
         purpose: string,
@@ -577,9 +538,6 @@ export function createGenerationHarness(dependencies: {
           attempt,
           maxAttempts: sessionBudget.maxAttempts,
           requestedOutputTokens,
-          cumulativeRequestedOutputTokens,
-          maxRequestedOutputTokens: sessionBudget.maxRequestedOutputTokens,
-          maxRequestedOutputTokensPerAttempt: sessionBudget.maxRequestedOutputTokensPerAttempt,
           deadlineAt: sessionBudget.deadlineAt,
         },
         finishReason,
@@ -603,35 +561,17 @@ export function createGenerationHarness(dependencies: {
             throw new GenerationHarnessError('ATTEMPT_BUDGET_EXHAUSTED', '生成会话已用尽请求次数。')
           }
 
-          const remainingRequestedTokens = sessionBudget.maxRequestedOutputTokens
-            - cumulativeRequestedOutputTokens
-          if (remainingRequestedTokens <= 0) {
-            throw new GenerationHarnessError(
-              'REQUESTED_TOKEN_BUDGET_EXHAUSTED',
-              '生成会话已用尽请求 Token 预算。',
-            )
-          }
-
           const estimatedInputTokens = estimateInputTokens(task.messages)
-          const intentOutputTokens = Math.min(
-            capabilities.maxOutputTokens,
-            remainingRequestedTokens,
-            sessionBudget.maxRequestedOutputTokensPerAttempt,
-          )
-          const contextAvailableOutputTokens = capabilities.contextWindowTokens === null
-            ? null
-            : capabilities.contextWindowTokens - estimatedInputTokens - CONTEXT_SAFETY_RESERVE_TOKENS
-          const safeReservedOutputTokens = Math.min(
-            intentOutputTokens,
-            Math.max(0, contextAvailableOutputTokens ?? intentOutputTokens),
-          )
+          // Single-turn requests are bounded by the model's own output capability,
+          // never by a workflow-level token budget or by leftover context.
+          const maxOutputTokens = capabilities.maxOutputTokens
           const promptBudgetCandidate = task.promptBudget
             ? createPromptBudgetReport({
                 messages: task.messages,
                 policy: task.promptBudget,
                 contextWindowTokens: capabilities.contextWindowTokens,
                 estimatedInputTokens,
-                reservedOutputTokens: safeReservedOutputTokens,
+                reservedOutputTokens: maxOutputTokens,
                 modelId: frozenIdentity.id,
               })
             : undefined
@@ -639,22 +579,6 @@ export function createGenerationHarness(dependencies: {
             logPromptBudgetReport(promptBudgetCandidate)
             throw new PromptBudgetExceededError(promptBudgetCandidate)
           }
-          if (contextAvailableOutputTokens !== null && contextAvailableOutputTokens <= 0) {
-            throw new GenerationHarnessError(
-              'CONTEXT_BUDGET_EXHAUSTED',
-              contextBudgetExhaustedMessage({
-                modelId: frozenIdentity.id,
-                contextWindowTokens: capabilities.contextWindowTokens!,
-                estimatedInputTokens,
-                sections: promptBudgetCandidate?.sections,
-              }),
-            )
-          }
-
-          const maxOutputTokens = Math.min(
-            intentOutputTokens,
-            contextAvailableOutputTokens ?? Number.POSITIVE_INFINITY,
-          )
           const promptBudget = promptBudgetCandidate
             ? Object.freeze({ ...promptBudgetCandidate, reservedOutputTokens: maxOutputTokens })
             : undefined
@@ -674,7 +598,6 @@ export function createGenerationHarness(dependencies: {
               : {}),
           })
           attempts = attempt
-          cumulativeRequestedOutputTokens += maxOutputTokens
 
           const controller = new AbortController()
           const remainingMs = Math.max(1, sessionBudget.deadlineAt - now())

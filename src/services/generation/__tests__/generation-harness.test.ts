@@ -49,8 +49,6 @@ describe('GenerationHarness', () => {
       completionPort: { complete },
       policy: {
         maxAttempts: 4,
-        maxRequestedOutputTokens: 20_000,
-        maxRequestedOutputTokensPerAttempt: 4096,
         deadlineMs: 60_000,
       },
     })
@@ -96,8 +94,6 @@ describe('GenerationHarness', () => {
       completionPort: { complete },
       policy: {
         maxAttempts: 8,
-        maxRequestedOutputTokens: 80_000,
-        maxRequestedOutputTokensPerAttempt: 4096,
         deadlineMs: 60_000,
       },
     })
@@ -162,8 +158,6 @@ describe('GenerationHarness', () => {
       completionPort: { complete },
       policy: {
         maxAttempts: 2,
-        maxRequestedOutputTokens: 10_000,
-        maxRequestedOutputTokensPerAttempt: 4096,
         deadlineMs: 60_000,
       },
     })
@@ -191,7 +185,7 @@ describe('GenerationHarness', () => {
     })
     expect(complete.mock.calls[0]?.[0].plan).toMatchObject({
       contextWindowTokens: null,
-      maxOutputTokens: 4096,
+      maxOutputTokens: 99_999,
     })
   })
 
@@ -218,8 +212,6 @@ describe('GenerationHarness', () => {
       completionPort: { complete: vi.fn() },
       policy: {
         maxAttempts: 1,
-        maxRequestedOutputTokens: 4096,
-        maxRequestedOutputTokensPerAttempt: 4096,
         deadlineMs: 60_000,
       },
     })
@@ -227,7 +219,7 @@ describe('GenerationHarness', () => {
     expect(() => harness.openSession()).not.toThrow()
   })
 
-  it('reserves a 16K intent budget across attempts even for a 384K-capable model', async () => {
+  it('uses the model maximum output for every physical request', async () => {
     const complete = vi.fn<CompletionPort['complete']>()
       .mockResolvedValueOnce({ content: 'first batch', finishReason: 'length' })
       .mockResolvedValueOnce({ content: 'continued batch', finishReason: 'stop' })
@@ -250,8 +242,6 @@ describe('GenerationHarness', () => {
       completionPort: { complete },
       policy: {
         maxAttempts: 4,
-        maxRequestedOutputTokens: 16_384,
-        maxRequestedOutputTokensPerAttempt: 4096,
         deadlineMs: 60_000,
       },
     })
@@ -271,20 +261,14 @@ describe('GenerationHarness', () => {
       receipt: {
         purpose: 'five-chapter-directory',
         budget: {
-          requestedOutputTokens: 4096,
-          cumulativeRequestedOutputTokens: 4096,
-          maxRequestedOutputTokens: 16_384,
-          maxRequestedOutputTokensPerAttempt: 4096,
+          requestedOutputTokens: 128_000,
         },
       },
     })
     expect(second.receipt.budget).toMatchObject({
-      requestedOutputTokens: 4096,
-      cumulativeRequestedOutputTokens: 8192,
-      maxRequestedOutputTokensPerAttempt: 4096,
+      requestedOutputTokens: 128_000,
     })
-    expect(complete.mock.calls.map(([request]) => request.plan.maxOutputTokens)).toEqual([4096, 4096])
-    expect(session.budget.maxRequestedOutputTokensPerAttempt).toBe(4096)
+    expect(complete.mock.calls.map(([request]) => request.plan.maxOutputTokens)).toEqual([128_000, 128_000])
   })
 
   it('counts a known mixed-language sample as UTF-8 bytes and rejects it before a fake provider attempt', async () => {
@@ -300,8 +284,6 @@ describe('GenerationHarness', () => {
       completionPort: { complete },
       policy: {
         maxAttempts: 2,
-        maxRequestedOutputTokens: 8192,
-        maxRequestedOutputTokensPerAttempt: 4096,
         deadlineMs: 60_000,
       },
     })
@@ -345,7 +327,7 @@ describe('GenerationHarness', () => {
     const recovered = await session.complete(task())
     expect(recovered.receipt.budget).toMatchObject({
       attempt: 1,
-      cumulativeRequestedOutputTokens: 4096,
+      requestedOutputTokens: 4096,
     })
     expect(complete).toHaveBeenCalledOnce()
     diagnostic.mockRestore()
@@ -371,8 +353,6 @@ describe('GenerationHarness', () => {
       completionPort: { complete },
       policy: {
         maxAttempts: 1,
-        maxRequestedOutputTokens: 4096,
-        maxRequestedOutputTokensPerAttempt: 4096,
         deadlineMs: 60_000,
       },
     })
@@ -422,7 +402,7 @@ describe('GenerationHarness', () => {
     expect(failure).not.toHaveProperty('receipt')
   })
 
-  it('reports a protected byte overflow before the generic context-window failure', async () => {
+  it('reports a protected byte overflow before any physical attempt', async () => {
     const complete = vi.fn<CompletionPort['complete']>().mockResolvedValue({
       content: 'recovered',
       finishReason: 'stop',
@@ -452,8 +432,6 @@ describe('GenerationHarness', () => {
       completionPort: { complete },
       policy: {
         maxAttempts: 2,
-        maxRequestedOutputTokens: 200,
-        maxRequestedOutputTokensPerAttempt: 100,
         deadlineMs: 60_000,
       },
     })
@@ -476,33 +454,24 @@ describe('GenerationHarness', () => {
         limitUtf8Bytes: 99,
         contextWindowTokens: 600,
         estimatedInputTokens: 35,
-        reservedOutputTokens: 53,
+        reservedOutputTokens: 100,
         sections: [{ sectionName: 'global-guidance', utf8Bytes: 100 }],
       },
     })
     expect(complete).not.toHaveBeenCalled()
 
-    const contextExceededText = 'x'.repeat(300)
-    await expect(session.complete({
-      purpose: 'context-only-overflow',
+    const contextOnlyText = 'x'.repeat(300)
+    const recovered = await session.complete({
+      purpose: 'after-byte-overflow',
       output: 'structured-data',
-      messages: [{ role: 'user', content: contextExceededText }],
+      messages: [{ role: 'user', content: contextOnlyText }],
       promptBudget: {
         limitUtf8Bytes: 500,
-        sections: [{ sectionName: 'global-guidance', messageIndex: 0, finalText: contextExceededText }],
+        sections: [{ sectionName: 'global-guidance', messageIndex: 0, finalText: contextOnlyText }],
       },
-    })).rejects.toMatchObject({
-      code: 'CONTEXT_BUDGET_EXHAUSTED',
-      message: expect.stringMatching(/model-a.*600 tokens.*105 tokens.*512 tokens.*0 tokens.*global-guidance=300/u),
     })
-    expect(complete).not.toHaveBeenCalled()
-
-    const recovered = await session.complete({
-      purpose: 'after-double-overflow',
-      output: 'visible-text',
-      messages: [{ role: 'user', content: 'x' }],
-    })
-    expect(recovered.receipt.budget).toMatchObject({ attempt: 1, cumulativeRequestedOutputTokens: 87 })
+    expect(recovered.receipt.budget).toMatchObject({ attempt: 1, requestedOutputTokens: 100 })
+    expect(complete).toHaveBeenCalledOnce()
     diagnostic.mockRestore()
   })
 
@@ -519,8 +488,6 @@ describe('GenerationHarness', () => {
       completionPort: { complete },
       policy: {
         maxAttempts: 1,
-        maxRequestedOutputTokens: 4096,
-        maxRequestedOutputTokensPerAttempt: 4096,
         deadlineMs: 60_000,
       },
     })
@@ -552,16 +519,14 @@ describe('GenerationHarness', () => {
     diagnostic.mockRestore()
   })
 
-  it('rejects an invalid per-attempt requested-token cap before opening a session', () => {
+  it('rejects an invalid attempt limit before opening a session', () => {
     expect(() => createGenerationHarness({
       modelSource: {
         snapshotDefaultModel: () => ({ revision: 'revision-a', model: model() }),
       },
       completionPort: { complete: vi.fn() },
       policy: {
-        maxAttempts: 2,
-        maxRequestedOutputTokens: 16_384,
-        maxRequestedOutputTokensPerAttempt: 0,
+        maxAttempts: 0,
         deadlineMs: 60_000,
       },
     })).toThrow(expect.objectContaining({ code: 'INVALID_POLICY' }))
@@ -578,8 +543,6 @@ describe('GenerationHarness', () => {
       completionPort: { complete },
       policy: {
         maxAttempts: 2,
-        maxRequestedOutputTokens: 10_000,
-        maxRequestedOutputTokensPerAttempt: 4096,
         deadlineMs: 60_000,
       },
     })
@@ -605,8 +568,6 @@ describe('GenerationHarness', () => {
       completionPort: { complete },
       policy: {
         maxAttempts: 2,
-        maxRequestedOutputTokens: 10_000,
-        maxRequestedOutputTokensPerAttempt: 4096,
         deadlineMs: 60_000,
       },
     })
@@ -624,7 +585,7 @@ describe('GenerationHarness', () => {
     expect(Object.isFrozen(complete.mock.calls[0]?.[0].plan)).toBe(true)
   })
 
-  it('charges failed physical requests to the global session budget and exposes a redacted attempt receipt', async () => {
+  it('counts failed physical requests against the attempt limit and exposes a redacted attempt receipt', async () => {
     const complete = vi.fn<CompletionPort['complete']>()
       .mockRejectedValueOnce(new Error('provider unavailable: test-only-key'))
       .mockResolvedValueOnce({ content: 'complete', finishReason: 'stop' })
@@ -635,8 +596,6 @@ describe('GenerationHarness', () => {
       completionPort: { complete },
       policy: {
         maxAttempts: 2,
-        maxRequestedOutputTokens: 5000,
-        maxRequestedOutputTokensPerAttempt: 4096,
         deadlineMs: 60_000,
       },
     })
@@ -656,9 +615,6 @@ describe('GenerationHarness', () => {
         budget: {
           attempt: 1,
           requestedOutputTokens: 4096,
-          cumulativeRequestedOutputTokens: 4096,
-          maxRequestedOutputTokens: 5000,
-          maxRequestedOutputTokensPerAttempt: 4096,
         },
       },
     })
@@ -668,14 +624,13 @@ describe('GenerationHarness', () => {
     const recovered = await session.complete(task())
     expect(recovered.receipt.budget).toMatchObject({
       attempt: 2,
-      requestedOutputTokens: 904,
-      cumulativeRequestedOutputTokens: 5000,
+      requestedOutputTokens: 4096,
     })
-    expect(complete.mock.calls[1]?.[0].plan.maxOutputTokens).toBe(904)
+    expect(complete.mock.calls[1]?.[0].plan.maxOutputTokens).toBe(4096)
     expect(JSON.stringify(recovered.receipt)).not.toContain('test-only-key')
   })
 
-  it('freezes the global attempt, requested-token, and deadline budget against caller mutation', async () => {
+  it('freezes the global attempt and deadline limits against caller mutation', async () => {
     let currentTime = 1000
     const complete = vi.fn<CompletionPort['complete']>().mockResolvedValue({
       content: 'complete',
@@ -683,8 +638,6 @@ describe('GenerationHarness', () => {
     })
     const policy = {
       maxAttempts: 2,
-      maxRequestedOutputTokens: 5000,
-      maxRequestedOutputTokensPerAttempt: 4096,
       deadlineMs: 60_000,
     }
     const harness = createGenerationHarness({
@@ -698,18 +651,13 @@ describe('GenerationHarness', () => {
     const session = harness.openSession()
 
     policy.maxAttempts = 99
-    policy.maxRequestedOutputTokens = 99_999
-    policy.maxRequestedOutputTokensPerAttempt = 99_999
     policy.deadlineMs = 999_999
 
     await session.complete(task())
     const second = await session.complete(task())
     expect(second.receipt.budget).toMatchObject({
       maxAttempts: 2,
-      requestedOutputTokens: 904,
-      cumulativeRequestedOutputTokens: 5000,
-      maxRequestedOutputTokens: 5000,
-      maxRequestedOutputTokensPerAttempt: 4096,
+      requestedOutputTokens: 4096,
       deadlineAt: 61_000,
     })
     await expect(session.complete(task())).rejects.toMatchObject({
@@ -739,8 +687,6 @@ describe('GenerationHarness', () => {
       completionPort: { complete },
       policy: {
         maxAttempts: 2,
-        maxRequestedOutputTokens: 10_000,
-        maxRequestedOutputTokensPerAttempt: 4096,
         deadlineMs: 60_000,
       },
     })
@@ -757,7 +703,6 @@ describe('GenerationHarness', () => {
         budget: {
           attempt: 1,
           requestedOutputTokens: 4096,
-          cumulativeRequestedOutputTokens: 4096,
         },
       },
     })
@@ -773,8 +718,6 @@ describe('GenerationHarness', () => {
       completionPort: { complete },
       policy: {
         maxAttempts: 2,
-        maxRequestedOutputTokens: 10_000,
-        maxRequestedOutputTokensPerAttempt: 4096,
         deadlineMs: 60_000,
       },
     })
@@ -803,8 +746,6 @@ describe('GenerationHarness', () => {
       completionPort: { complete },
       policy: {
         maxAttempts: 1,
-        maxRequestedOutputTokens: 4096,
-        maxRequestedOutputTokensPerAttempt: 4096,
         deadlineMs: 60_000,
       },
     })
@@ -846,8 +787,6 @@ describe('GenerationHarness', () => {
       completionPort: { complete },
       policy: {
         maxAttempts: 2,
-        maxRequestedOutputTokens: 8192,
-        maxRequestedOutputTokensPerAttempt: 4096,
         deadlineMs: 60_000,
       },
     })
