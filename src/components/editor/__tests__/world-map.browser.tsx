@@ -124,6 +124,18 @@ describe('world map page', () => {
     await expect.element(page.getByRole('button', { name: /取消/ })).toBeVisible()
   })
 
+  it('switches between the flat atlas and the interactive globe', async () => {
+    vi.mocked(loadWorldMap).mockResolvedValue({ success: true, data: sampleWorldMap() })
+    await mount()
+
+    await page.getByRole('button', { name: '球体' }).click()
+    await expect.element(page.getByRole('img', { name: '九域世界地图 · 球体' })).toBeVisible()
+    await expect.element(page.getByText('总览 · 球体')).toBeVisible()
+
+    await page.getByRole('button', { name: '平面' }).click()
+    await expect.element(page.getByRole('img', { name: '九域世界地图' })).toBeVisible()
+  })
+
   it('opens the faction proofreading panel without touching the saved map first', async () => {
     vi.mocked(loadWorldMap).mockResolvedValue({ success: true, data: sampleWorldMap() })
     await mount()

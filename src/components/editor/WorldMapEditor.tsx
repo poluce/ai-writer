@@ -30,6 +30,7 @@ import type {
 } from '../../shared/world-map'
 import { resolveWritingLanguage } from '../../shared/writing-language'
 import WorldMapCanvas from './world-map/WorldMapCanvas'
+import WorldMapGlobe from './world-map/WorldMapGlobe'
 import { factionTierColor } from './world-map/world-map-layout'
 
 type PageStatus = 'loading' | 'empty' | 'ready' | 'generating' | 'preview' | 'error'
@@ -77,6 +78,7 @@ export default function WorldMapEditor({ projectKey }: { projectKey: string }) {
   const [editingFactionId, setEditingFactionId] = useState<string | null>(null)
   const [worldSettingsOpen, setWorldSettingsOpen] = useState(false)
   const [editMode, setEditMode] = useState(false)
+  const [mapView, setMapView] = useState<'atlas' | 'globe'>('atlas')
   const [saving, setSaving] = useState(false)
   const mountedRef = useRef(true)
   const generationContextRef = useRef<WorkflowContext | null>(null)
@@ -477,8 +479,32 @@ export default function WorldMapEditor({ projectKey }: { projectKey: string }) {
               <span>
                 {status === 'preview'
                   ? text('生成预览 · 尚未应用', 'Preview · not applied')
-                  : text('总览 · 关系线', 'Overview · relations')}
+                  : mapView === 'globe'
+                    ? text('总览 · 球体', 'Overview · globe')
+                    : text('总览 · 关系线', 'Overview · relations')}
               </span>
+              <div
+                className="world-map-view-toggle"
+                role="group"
+                aria-label={text('地图视图', 'Map view')}
+              >
+                <button
+                  type="button"
+                  className={mapView === 'atlas' ? 'active' : ''}
+                  aria-pressed={mapView === 'atlas'}
+                  onClick={() => setMapView('atlas')}
+                >
+                  {text('平面', 'Flat')}
+                </button>
+                <button
+                  type="button"
+                  className={mapView === 'globe' ? 'active' : ''}
+                  aria-pressed={mapView === 'globe'}
+                  onClick={() => setMapView('globe')}
+                >
+                  {text('球体', 'Globe')}
+                </button>
+              </div>
               <span className="world-map-plate-meta">
                 {displayData.regions.length} {text('域', 'regions')}
                 <span>·</span>
@@ -495,13 +521,23 @@ export default function WorldMapEditor({ projectKey }: { projectKey: string }) {
               </span>
             </div>
             <div className="world-map-canvas-wrap">
-              <WorldMapCanvas
-                data={displayData}
-                selectedFactionId={effectiveSelectedFactionId}
-                onSelectFaction={selectFaction}
-                className="world-map-canvas"
-                text={text}
-              />
+              {mapView === 'globe' ? (
+                <WorldMapGlobe
+                  data={displayData}
+                  selectedFactionId={effectiveSelectedFactionId}
+                  onSelectFaction={selectFaction}
+                  className="world-map-canvas"
+                  text={text}
+                />
+              ) : (
+                <WorldMapCanvas
+                  data={displayData}
+                  selectedFactionId={effectiveSelectedFactionId}
+                  onSelectFaction={selectFaction}
+                  className="world-map-canvas"
+                  text={text}
+                />
+              )}
             </div>
             <WorldMapDetail
               data={displayData}
