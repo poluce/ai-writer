@@ -44,30 +44,36 @@ import {
 import { ConnectionTestResultBanner, ModelTestStatusButton } from './GenerationModelTestStatus'
 import { FetchModelsModal } from './GenerationModelFetchModal'
 
-/** 用户以 K / M 为单位配置上下文与输出；内部仍保存精确 Token 数。 */
-type TokenUnit = 'K' | 'M'
-const TOKEN_UNIT_FACTOR: Record<TokenUnit, number> = {
-  K: 1024,
-  M: 1024 * 1024,
+/** DSH 风格容量文本：数字 + 可选 K/M 后缀，空值表示使用默认。 */
+const CAPACITY_PATTERN = /^(\d+(?:\.\d+)?)([km])?$/i
+/** 与 DSH 一致使用十进制容量：1M = 1000K = 1,000,000。 */
+const CAPACITY_SCALE = { k: 1_000, m: 1_000_000 } as const
+
+function parseCapacity(raw: string): number | undefined {
+  const trimmed = raw.trim()
+  if (trimmed.length === 0) return undefined
+  const match = CAPACITY_PATTERN.exec(trimmed)
+  if (match === null) return Number.NaN
+  const suffix = match[2]?.toLowerCase() as 'k' | 'm' | undefined
+  const scale = suffix ? CAPACITY_SCALE[suffix] : 1
+  const scaled = Number(match[1]) * scale
+  const rounded = Math.round(scaled)
+  return Math.abs(scaled - rounded) < 1e-6 ? rounded : scaled
 }
 
-function defaultContextUnit(tokens: number | null | undefined): TokenUnit {
-  return tokens !== null && tokens !== undefined && tokens >= 1_000_000 ? 'M' : 'K'
+function formatCapacity(value: number | null | undefined): string {
+  if (value === null || value === undefined || !Number.isInteger(value) || value <= 0) {
+    return value === null || value === undefined ? '' : String(value)
+  }
+  if (value % CAPACITY_SCALE.m === 0) return `${String(value / CAPACITY_SCALE.m)}M`
+  if (value % CAPACITY_SCALE.k === 0) return `${String(value / CAPACITY_SCALE.k)}K`
+  return String(value)
 }
 
-function formatTokensAsUnit(tokens: number | null | undefined, unit: TokenUnit): string {
-  if (tokens === null || tokens === undefined || !Number.isFinite(tokens)) return ''
-  const value = tokens / TOKEN_UNIT_FACTOR[unit]
-  if (Number.isInteger(value)) return String(value)
-  if (value >= 100) return String(Math.round(value))
-  if (value >= 10) return value.toFixed(1).replace(/\.0$/, '')
-  return value.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')
-}
-
-function parseUnitToTokens(raw: string, unit: TokenUnit, fallback: number | null): number | null {
-  const value = Number.parseFloat(raw)
-  if (!Number.isFinite(value) || value <= 0) return fallback
-  return Math.max(1, Math.round(value * TOKEN_UNIT_FACTOR[unit]))
+function capacityDraftInvalid(raw: string | undefined): boolean {
+  if (raw === undefined || raw.trim() === '') return false
+  const parsed = parseCapacity(raw)
+  return parsed === undefined || Number.isNaN(parsed) || !Number.isInteger(parsed) || parsed <= 0
 }
 
 /** 模型编辑表单 */
@@ -90,7 +96,6 @@ export function ModelForm({
   const text = useLocaleStore(s => s.text)
   const locale = useLocaleStore(s => s.locale)
   const [showKey, setShowKey] = useState(false)
-  const [contextUnits, setContextUnits] = useState<Record<string, TokenUnit>>({})
   const [showDiscoveryModal, setShowDiscoveryModal] = useState(false)
 
   const initialChannelProfiles = useMemo(() => {
@@ -144,6 +149,9 @@ export function ModelForm({
   ))
 
   const [expandedModelId, setExpandedModelId] = useState<string | null>(null)
+  const hasInvalidCapacityDraft = channelModels.some(row => (
+    capacityDraftInvalid(row.contextWindowDraft) || capacityDraftInvalid(row.maxOutputDraft)
+  ))
 
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ success: boolean, error?: string } | null>(null)
@@ -674,38 +682,43 @@ export function ModelForm({
                   <div className="mt-2.5 pt-2.5 border-t border-[var(--color-border)] space-y-2.5" data-model-advanced-settings>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                       <div>
-                        <Label className="text-[0.72rem] mb-1">{text('上下文窗口 (K/M)', 'Context Window (K/M)')}</Label>
-                        <div className="flex items-center gap-1.5">
-                          <Input
-                            aria-label={text('上下文窗口 (K/M)', 'Context Window (K/M)')}
-                            type="number"
-                            min={0}
-                            step="any"
-                            value={formatTokensAsUnit(
-                              item.contextWindowTokens,
-                              contextUnits[item.id] ?? defaultContextUnit(item.contextWindowTokens),
-                            )}
-                            placeholder={text('可选 (K/M)', 'Optional (K/M)')}
-                            className="text-xs h-7"
-                            onChange={(e) => {
-                              const unit = contextUnits[item.id] ?? defaultContextUnit(item.contextWindowTokens)
-                              const val = parseUnitToTokens(e.target.value, unit, null)
-                              setChannelModels(prev => prev.map((m, i) => i === index ? { ...m, contextWindowTokens: val } : m))
-                            }}
-                          />
-                          <NativeSelect
-                            aria-label={text('上下文窗口单位', 'Context window unit')}
-                            className="h-7 w-14 shrink-0 px-1 text-xs"
-                            value={contextUnits[item.id] ?? defaultContextUnit(item.contextWindowTokens)}
-                            onChange={(e) => {
-                              const unit = e.target.value as TokenUnit
-                              setContextUnits(prev => ({ ...prev, [item.id]: unit }))
-                            }}
-                          >
-                            <option value="K">K</option>
-                            <option value="M">M</option>
-                          </NativeSelect>
-                        </div>
+                        <Label className="text-[0.72rem] mb-1">{text('上下文窗口', 'Context window')}</Label>
+                        <Input
+                          aria-label={text('上下文窗口', 'Context window')}
+                          type="text"
+                          inputMode="numeric"
+                          value={item.contextWindowDraft ?? formatCapacity(item.contextWindowTokens)}
+                          placeholder={text('如 256K 或 1M', 'e.g. 256K or 1M')}
+                          className="text-xs h-7"
+                          onChange={(e) => {
+                            const raw = e.target.value
+                            const parsed = parseCapacity(raw)
+                            setChannelModels(prev => prev.map((m, i) => i === index ? {
+                              ...m,
+                              contextWindowDraft: raw,
+                              ...(parsed === undefined
+                                ? { contextWindowTokens: null }
+                                : !Number.isNaN(parsed) ? { contextWindowTokens: parsed } : {}),
+                            } : m))
+                          }}
+                          onBlur={() => {
+                            const raw = item.contextWindowDraft
+                            if (raw === undefined) return
+                            const parsed = parseCapacity(raw)
+                            if (parsed === undefined || (!Number.isNaN(parsed) && Number.isInteger(parsed) && parsed > 0)) {
+                              setChannelModels(prev => prev.map((m, i) => i === index ? {
+                                ...m,
+                                contextWindowDraft: undefined,
+                                contextWindowTokens: parsed ?? null,
+                              } : m))
+                            }
+                          }}
+                        />
+                        {capacityDraftInvalid(item.contextWindowDraft) ? (
+                          <p role="alert" className="mt-1 text-[0.68rem]" style={{ color: 'var(--color-error-text)' }}>
+                            {text('容量需为数字，可加 K 或 M 后缀，如 256K、1M。', 'Capacity must be a number, optionally suffixed K or M, e.g. 256K or 1M.')}
+                          </p>
+                        ) : null}
                       </div>
                       <div>
                         <Label className="text-[0.72rem] mb-1">{text('温度', 'Temperature')}</Label>
@@ -730,19 +743,43 @@ export function ModelForm({
                         />
                       </div>
                       <div>
-                        <Label className="text-[0.72rem] mb-1">{text('最大输出 Token (K)', 'Max output tokens (K)')}</Label>
+                        <Label className="text-[0.72rem] mb-1">{text('最大输出 Token', 'Max output tokens')}</Label>
                         <Input
-                          aria-label={text('最大输出 Token (K)', 'Max output tokens (K)')}
-                          type="number"
-                          min={0}
-                          step="any"
-                          value={formatTokensAsUnit(item.maxOutputTokens ?? 4096, 'K')}
+                          aria-label={text('最大输出 Token', 'Max output tokens')}
+                          type="text"
+                          inputMode="numeric"
+                          value={item.maxOutputDraft ?? formatCapacity(item.maxOutputTokens ?? 4096)}
+                          placeholder={text('如 64K', 'e.g. 64K')}
                           className="text-xs h-7"
                           onChange={(e) => {
-                            const val = parseUnitToTokens(e.target.value, 'K', 4096)
-                            setChannelModels(prev => prev.map((m, i) => i === index ? { ...m, maxOutputTokens: val ?? 4096 } : m))
+                            const raw = e.target.value
+                            const parsed = parseCapacity(raw)
+                            setChannelModels(prev => prev.map((m, i) => i === index ? {
+                              ...m,
+                              maxOutputDraft: raw,
+                              ...(parsed === undefined
+                                ? { maxOutputTokens: undefined }
+                                : !Number.isNaN(parsed) ? { maxOutputTokens: parsed } : {}),
+                            } : m))
+                          }}
+                          onBlur={() => {
+                            const raw = item.maxOutputDraft
+                            if (raw === undefined) return
+                            const parsed = parseCapacity(raw)
+                            if (parsed === undefined || (!Number.isNaN(parsed) && Number.isInteger(parsed) && parsed > 0)) {
+                              setChannelModels(prev => prev.map((m, i) => i === index ? {
+                                ...m,
+                                maxOutputDraft: undefined,
+                                ...(parsed === undefined ? { maxOutputTokens: undefined } : { maxOutputTokens: parsed }),
+                              } : m))
+                            }
                           }}
                         />
+                        {capacityDraftInvalid(item.maxOutputDraft) ? (
+                          <p role="alert" className="mt-1 text-[0.68rem]" style={{ color: 'var(--color-error-text)' }}>
+                            {text('容量需为数字，可加 K 或 M 后缀，如 8192、64K。', 'Capacity must be a number, optionally suffixed K or M, e.g. 8192 or 64K.')}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
 
@@ -827,6 +864,10 @@ export function ModelForm({
         <Button
           className="flex-1"
           onClick={() => {
+            if (hasInvalidCapacityDraft) {
+              toast.error(text('容量需为数字，可加 K 或 M 后缀。', 'Capacity must be a number, optionally suffixed K or M.'))
+              return
+            }
             const validModels = channelModels.filter(m => (m.modelName ?? '').trim() !== '')
             const isMultiModelChannel = validModels.length > 1 || Boolean(model.channelName)
             let finalChannelName: string | undefined

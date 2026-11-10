@@ -37,6 +37,9 @@ export type ChannelModelRow = {
   temperature?: number
   contextWindowTokens?: number | null
   maxOutputTokens?: number
+  /** 输入框里尚未提交的容量文本；保存时统一校验。 */
+  contextWindowDraft?: string
+  maxOutputDraft?: string
 }
 
 export function channelModelRowFromProfile(

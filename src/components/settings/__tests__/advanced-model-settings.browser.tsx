@@ -96,19 +96,19 @@ describe('advanced model settings', () => {
     await clickEdit()
 
     expect(document.querySelector('[aria-label="温度"]')).toBeNull()
-    expect(document.querySelector('[aria-label="最大输出 Token (K)"]')).toBeNull()
+    expect(document.querySelector('[aria-label="最大输出 Token"]')).toBeNull()
     await act(async () => page.getByRole('button', { name: '高级设置', exact: true }).click())
 
     const temperature = page.getByLabelText('温度')
-    const maxOutputTokens = page.getByLabelText('最大输出 Token (K)')
+    const maxOutputTokens = page.getByLabelText('最大输出 Token')
     await expect.element(temperature).toHaveValue(0.35)
-    await expect.element(maxOutputTokens).toHaveValue(5.86)
+    await expect.element(maxOutputTokens).toHaveValue('6K')
     // 业务阶段策略已移出模型高级设置
     expect(document.querySelector('[aria-label="模型推理覆盖"]')).toBeNull()
 
     await act(async () => {
       await temperature.fill('0.9')
-      await maxOutputTokens.fill('7')
+      await maxOutputTokens.fill('64K')
       await page.getByRole('button', { name: '保存配置', exact: true }).click()
     })
     await vi.waitFor(() => expect(saveModel).toHaveBeenCalledTimes(1))
@@ -117,7 +117,7 @@ describe('advanced model settings', () => {
     await clickEdit()
     await act(async () => page.getByRole('button', { name: '高级设置', exact: true }).click())
     await expect.element(page.getByLabelText('温度')).toHaveValue(0.9)
-    await expect.element(page.getByLabelText('最大输出 Token (K)')).toHaveValue(7)
+    await expect.element(page.getByLabelText('最大输出 Token')).toHaveValue('64K')
   })
 
   it('exposes the advanced entry and effective reasoning state in English', async () => {
@@ -127,7 +127,7 @@ describe('advanced model settings', () => {
     expect(document.querySelector('[aria-label="Temperature"]')).toBeNull()
     await act(async () => page.getByRole('button', { name: 'Advanced settings', exact: true }).click())
     await expect.element(page.getByLabelText('Temperature')).toBeVisible()
-    await expect.element(page.getByLabelText('Max output tokens (K)')).toBeVisible()
+    await expect.element(page.getByLabelText('Max output tokens')).toBeVisible()
     expect(document.querySelector('[aria-label="Model reasoning override"]')).toBeNull()
   })
 
@@ -136,14 +136,13 @@ describe('advanced model settings', () => {
     await clickEdit('Edit')
     await act(async () => {
       await page.getByRole('button', { name: 'Advanced settings', exact: true }).click()
-      await page.getByLabelText('Context window unit').selectOptions('M')
-      await page.getByLabelText('Context Window (K/M)').fill('1')
+      await page.getByLabelText('Context window').fill('1M')
       await page.getByRole('button', { name: 'Save configuration', exact: true }).click()
     })
 
     await vi.waitFor(() => expect(saveModel).toHaveBeenCalledTimes(1))
     const saved = saveModel.mock.calls[0]?.[0]
-    expect(saved?.capabilities?.contextWindowTokens).toBe(1024 * 1024)
+    expect(saved?.capabilities?.contextWindowTokens).toBe(1_000_000)
   })
 
   it('warns when the configured output consumes the context window without blocking save', async () => {
@@ -151,8 +150,8 @@ describe('advanced model settings', () => {
     await clickEdit('Edit')
     await act(async () => {
       await page.getByRole('button', { name: 'Advanced settings', exact: true }).click()
-      await page.getByLabelText('Context Window (K/M)').fill('8')
-      await page.getByLabelText('Max output tokens (K)').fill('8')
+      await page.getByLabelText('Context window').fill('8192')
+      await page.getByLabelText('Max output tokens').fill('8192')
     })
 
     await expect.element(page.getByRole('status')).toHaveTextContent(
@@ -161,5 +160,20 @@ describe('advanced model settings', () => {
 
     await act(async () => page.getByRole('button', { name: 'Save configuration', exact: true }).click())
     await vi.waitFor(() => expect(saveModel).toHaveBeenCalledTimes(1))
+  })
+
+  it('keeps an invalid capacity string visible and blocks save', async () => {
+    const { saveModel } = await renderSettings('en-US')
+    await clickEdit('Edit')
+    await act(async () => {
+      await page.getByRole('button', { name: 'Advanced settings', exact: true }).click()
+      await page.getByLabelText('Context window').fill('64KB')
+    })
+
+    await expect.element(page.getByRole('alert')).toHaveTextContent(
+      'Capacity must be a number, optionally suffixed K or M',
+    )
+    await act(async () => page.getByRole('button', { name: 'Save configuration', exact: true }).click())
+    expect(saveModel).not.toHaveBeenCalled()
   })
 })

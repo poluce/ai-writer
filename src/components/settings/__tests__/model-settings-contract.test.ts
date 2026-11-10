@@ -26,14 +26,14 @@ describe('model settings contract', () => {
       ['模型列表', 'Models'],
       ['base_url', 'base_url'],
       ['API Key', 'API Key'],
-      ["上下文窗口 (K/M)", 'Context Window (K/M)'],
+      ['上下文窗口', 'Context window'],
     ]) {
       expect(settingsModal).toContain(`text('${field[0]}', '${field[1]}')`)
     }
 
     expect(settingsModal).toContain("text('高级设置', 'Advanced settings')")
     expect(settingsModal).toContain("text('温度', 'Temperature')")
-    expect(settingsModal).toContain("text('最大输出 Token (K)', 'Max output tokens (K)')")
+    expect(settingsModal).toContain("text('最大输出 Token', 'Max output tokens')")
 
     for (const provider of ['xai', 'siliconflow']) {
       expect(settingsModal).toContain(`value="${provider}"`)
