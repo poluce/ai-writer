@@ -44,6 +44,32 @@ import {
 import { ConnectionTestResultBanner, ModelTestStatusButton } from './GenerationModelTestStatus'
 import { FetchModelsModal } from './GenerationModelFetchModal'
 
+/** 用户以 K / M 为单位配置上下文与输出；内部仍保存精确 Token 数。 */
+type TokenUnit = 'K' | 'M'
+const TOKEN_UNIT_FACTOR: Record<TokenUnit, number> = {
+  K: 1024,
+  M: 1024 * 1024,
+}
+
+function defaultContextUnit(tokens: number | null | undefined): TokenUnit {
+  return tokens !== null && tokens !== undefined && tokens >= 1_000_000 ? 'M' : 'K'
+}
+
+function formatTokensAsUnit(tokens: number | null | undefined, unit: TokenUnit): string {
+  if (tokens === null || tokens === undefined || !Number.isFinite(tokens)) return ''
+  const value = tokens / TOKEN_UNIT_FACTOR[unit]
+  if (Number.isInteger(value)) return String(value)
+  if (value >= 100) return String(Math.round(value))
+  if (value >= 10) return value.toFixed(1).replace(/\.0$/, '')
+  return value.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')
+}
+
+function parseUnitToTokens(raw: string, unit: TokenUnit, fallback: number | null): number | null {
+  const value = Number.parseFloat(raw)
+  if (!Number.isFinite(value) || value <= 0) return fallback
+  return Math.max(1, Math.round(value * TOKEN_UNIT_FACTOR[unit]))
+}
+
 /** 模型编辑表单 */
 export function ModelForm({
   model, onChange, onSave, onCancel, saving, presets, existingModels, onAddModels,
@@ -64,6 +90,7 @@ export function ModelForm({
   const text = useLocaleStore(s => s.text)
   const locale = useLocaleStore(s => s.locale)
   const [showKey, setShowKey] = useState(false)
+  const [contextUnits, setContextUnits] = useState<Record<string, TokenUnit>>({})
   const [showDiscoveryModal, setShowDiscoveryModal] = useState(false)
 
   const initialChannelProfiles = useMemo(() => {
@@ -647,19 +674,38 @@ export function ModelForm({
                   <div className="mt-2.5 pt-2.5 border-t border-[var(--color-border)] space-y-2.5" data-model-advanced-settings>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                       <div>
-                        <Label className="text-[0.72rem] mb-1">{text('上下文窗口', 'Context Window')}</Label>
-                        <Input
-                          aria-label={text('上下文窗口', 'Context Window')}
-                          type="number"
-                          min={0}
-                          value={item.contextWindowTokens ?? ''}
-                          placeholder={text('可选 (Tokens)', 'Optional (Tokens)')}
-                          className="text-xs h-7"
-                          onChange={(e) => {
-                            const val = e.target.value === '' ? null : parseInt(e.target.value) || null
-                            setChannelModels(prev => prev.map((m, i) => i === index ? { ...m, contextWindowTokens: val } : m))
-                          }}
-                        />
+                        <Label className="text-[0.72rem] mb-1">{text('上下文窗口 (K/M)', 'Context Window (K/M)')}</Label>
+                        <div className="flex items-center gap-1.5">
+                          <Input
+                            aria-label={text('上下文窗口 (K/M)', 'Context Window (K/M)')}
+                            type="number"
+                            min={0}
+                            step="any"
+                            value={formatTokensAsUnit(
+                              item.contextWindowTokens,
+                              contextUnits[item.id] ?? defaultContextUnit(item.contextWindowTokens),
+                            )}
+                            placeholder={text('可选 (K/M)', 'Optional (K/M)')}
+                            className="text-xs h-7"
+                            onChange={(e) => {
+                              const unit = contextUnits[item.id] ?? defaultContextUnit(item.contextWindowTokens)
+                              const val = parseUnitToTokens(e.target.value, unit, null)
+                              setChannelModels(prev => prev.map((m, i) => i === index ? { ...m, contextWindowTokens: val } : m))
+                            }}
+                          />
+                          <NativeSelect
+                            aria-label={text('上下文窗口单位', 'Context window unit')}
+                            className="h-7 w-14 shrink-0 px-1 text-xs"
+                            value={contextUnits[item.id] ?? defaultContextUnit(item.contextWindowTokens)}
+                            onChange={(e) => {
+                              const unit = e.target.value as TokenUnit
+                              setContextUnits(prev => ({ ...prev, [item.id]: unit }))
+                            }}
+                          >
+                            <option value="K">K</option>
+                            <option value="M">M</option>
+                          </NativeSelect>
+                        </div>
                       </div>
                       <div>
                         <Label className="text-[0.72rem] mb-1">{text('温度', 'Temperature')}</Label>
@@ -684,16 +730,17 @@ export function ModelForm({
                         />
                       </div>
                       <div>
-                        <Label className="text-[0.72rem] mb-1">{text('最大输出 Token', 'Max output tokens')}</Label>
+                        <Label className="text-[0.72rem] mb-1">{text('最大输出 Token (K)', 'Max output tokens (K)')}</Label>
                         <Input
-                          aria-label={text('最大输出 Token', 'Max output tokens')}
+                          aria-label={text('最大输出 Token (K)', 'Max output tokens (K)')}
                           type="number"
                           min={0}
-                          value={item.maxOutputTokens ?? 4096}
+                          step="any"
+                          value={formatTokensAsUnit(item.maxOutputTokens ?? 4096, 'K')}
                           className="text-xs h-7"
                           onChange={(e) => {
-                            const val = e.target.value === '' ? 4096 : parseInt(e.target.value) || 4096
-                            setChannelModels(prev => prev.map((m, i) => i === index ? { ...m, maxOutputTokens: val } : m))
+                            const val = parseUnitToTokens(e.target.value, 'K', 4096)
+                            setChannelModels(prev => prev.map((m, i) => i === index ? { ...m, maxOutputTokens: val ?? 4096 } : m))
                           }}
                         />
                       </div>
