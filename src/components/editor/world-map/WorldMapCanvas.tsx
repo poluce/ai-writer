@@ -44,8 +44,8 @@ export default function WorldMapCanvas({
           <path d="M38 0H0V38" fill="none" stroke="rgba(96, 110, 126, 0.10)" strokeWidth="1" />
         </pattern>
         <radialGradient id="world-map-sea" cx="45%" cy="38%" r="75%">
-          <stop offset="0%" stopColor="#F2F5F4" />
-          <stop offset="100%" stopColor="#E6EDEF" />
+          <stop offset="0%" stopColor="#F1F4F8" />
+          <stop offset="100%" stopColor="#E3E8EF" />
         </radialGradient>
       </defs>
 
@@ -54,7 +54,7 @@ export default function WorldMapCanvas({
 
       {layout.continents.map(continent => (
         <g key={continent.name} className="world-map-continent">
-          <path d={continent.path} fill="#F8F5EC" stroke="#B9B1A1" strokeWidth={1.15} opacity={0.88} />
+          <path d={continent.path} fill="#F7F9FC" stroke="#C2CBD6" strokeWidth={1.15} opacity={0.88} />
         </g>
       ))}
 
@@ -63,7 +63,7 @@ export default function WorldMapCanvas({
           <path
             d={shape.path}
             fill={shape.fill}
-            stroke="#BDB5A5"
+            stroke="#B6C0CC"
             strokeWidth={1}
             strokeDasharray="4 4"
             opacity={0.96}
@@ -131,7 +131,7 @@ export default function WorldMapCanvas({
             }}
           >
             {selected && <circle r={17} fill={color} opacity={0.1} />}
-            <circle r={selected ? 9 : 6.5} fill="#FFFDF7" stroke={color} strokeWidth={selected ? 2 : 1.5} />
+            <circle r={selected ? 9 : 6.5} fill="#F9FAFC" stroke={color} strokeWidth={selected ? 2 : 1.5} />
             <circle r={selected ? 3.2 : 2.3} fill={color} />
             {showLabel ? (
               <text
@@ -148,8 +148,8 @@ export default function WorldMapCanvas({
       })}
 
       <g transform={`translate(${WORLD_MAP_VIEWBOX.width - 54} ${WORLD_MAP_VIEWBOX.height - 62})`} className="world-map-compass">
-        <circle r={15} fill="none" stroke="#9B917D" strokeWidth={1} opacity={0.8} />
-        <path d="M0-10 4 5 0 2-4 5Z" fill="#8B8171" stroke="none" />
+        <circle r={15} fill="none" stroke="#77808D" strokeWidth={1} opacity={0.8} />
+        <path d="M0-10 4 5 0 2-4 5Z" fill="#66707D" stroke="none" />
         <text x={0} y={-21} textAnchor="middle" className="world-map-compass-label">{text('北', 'N')}</text>
       </g>
 

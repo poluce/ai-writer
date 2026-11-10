@@ -26,7 +26,7 @@ const DIRECTION_ANGLES: Record<WorldDirection, number | null> = {
   northwest: (-3 * Math.PI) / 4,
 }
 
-const REGION_FILLS = ['#EEF2E6', '#F3EADF', '#E7F0EE', '#EDEBF2', '#F1EEE3', '#E8EEF3'] as const
+const REGION_FILLS = ['#E8EDF3', '#EBEFF5', '#E5EDF1', '#EBEAF3', '#EDF0F3', '#E6EDF5'] as const
 
 export interface MapPoint {
   x: number
