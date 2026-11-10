@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>世界地图 · 世界一页</title>
+<link rel="stylesheet" href="../novel-settings/settings.css" />
+<link rel="stylesheet" href="map.css" />
+</head>
+<body class="variant-map">
+<div class="mock-caption">A · 世界一页 / 全幅地图 + 双阶梯</div>
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+  <symbol id="i-logo" viewBox="0 0 24 24"><path d="M6.5 17.5 17 7a2.1 2.1 0 0 1 3 3L9.5 20.5H6.5v-3z" fill="currentColor" stroke="none"/><path d="M5 21h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m20 20-4.2-4.2"/></symbol>
+  <symbol id="i-zoom-in" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m20 20-4.2-4.2M10.8 7.8v6M7.8 10.8h6"/></symbol>
+  <symbol id="i-zoom-out" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m20 20-4.2-4.2M7.8 10.8h6"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-square" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1.2"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h4l2 2h7A2.5 2.5 0 0 1 21 9.5v7A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5z"/></symbol>
+  <symbol id="i-folder-open" viewBox="0 0 24 24"><path d="M3 8V6.5A2.5 2.5 0 0 1 5.5 4h4l2 2h6.5A2.5 2.5 0 0 1 20.5 8.5V10"/><path d="M3.5 10h17l-2.1 7.2A2 2 0 0 1 16.5 19h-11A2 2 0 0 1 3.4 17.2z"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5z"/><path d="m3 12 9 5 9-5"/><path d="m3 16 9 5 9-5"/></symbol>
+  <symbol id="i-list-tree" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 4v14a2 2 0 0 0 2 2h1"/><path d="M7 9v1"/></symbol>
+  <symbol id="i-git-branch" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="6" cy="19" r="2"/><path d="M6 7v10M8 7h6a4 4 0 0 1 4 4v0"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c.4-3.4 2.6-5.4 5.5-5.4s5.1 2 5.5 5.4"/><circle cx="17" cy="9" r="2.4"/><path d="M16 14.6c2.4.2 4 1.9 4.4 4.4"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16.5H6.5A2.5 2.5 0 0 0 4 22z"/><path d="M4 5.5v14"/></symbol>
+  <symbol id="i-book-open" viewBox="0 0 24 24"><path d="M12 6.5C10.2 4.7 7.8 4 4.5 4v14c3.3 0 5.7.7 7.5 2.5 1.8-1.8 4.2-2.5 7.5-2.5V4c-3.3 0-5.7.7-7.5 2.5z"/><path d="M12 6.5v14"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M9.7 4.1a2.3 2.3 0 0 1 4.6 0 2.3 2.3 0 0 0 3.3 1.9 2.3 2.3 0 0 1 2.3 4 2.3 2.3 0 0 0 0 3.9 2.3 2.3 0 0 1-2.3 4 2.3 2.3 0 0 0-3.3 1.9 2.3 2.3 0 0 1-4.6 0 2.3 2.3 0 0 0-3.3-1.9 2.3 2.3 0 0 1-2.3-4 2.3 2.3 0 0 0 0-3.9 2.3 2.3 0 0 1 2.3-4 2.3 2.3 0 0 0 3.3-1.9z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></symbol>
+  <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+  <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-chevrons-left" viewBox="0 0 24 24"><path d="m11 17-5-5 5-5M18 17l-5-5 5-5"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.2" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.3 4.3L19 7"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-panel-right" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5M9 12h6M9 16h6"/></symbol>
+  <symbol id="i-pen" viewBox="0 0 24 24"><path d="m14.5 5.5 4 4L8 20H4v-4z"/><path d="m13 7 4 4"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 9a7 7 0 0 1 11.7-2.2L20 9M4 15l2.2 2.2A7 7 0 0 0 17.9 15"/></symbol>
+  <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-arrow-up-right" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></symbol>
+  <symbol id="i-task" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/><path d="m16 18 2 2 3-4"/></symbol>
+  <symbol id="i-log" viewBox="0 0 24 24"><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></symbol>
+  <symbol id="i-cpu" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></symbol>
+  <symbol id="i-message" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/></symbol>
+  <symbol id="i-arch" viewBox="0 0 24 24"><path d="M4 20V8l8-5 8 5v12"/><path d="M9 20v-6h6v6"/></symbol>
+  <symbol id="i-blueprint" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 9h18M9 9v11M15 9v6"/></symbol>
+  <symbol id="i-review" viewBox="0 0 24 24"><path d="M5 4h14v16H5z"/><path d="m8 12 2.4 2.4L16 9"/></symbol>
+  <symbol id="i-output" viewBox="0 0 24 24"><path d="M4 18V6h10l4 4v8z"/><path d="M14 6v4h4M8 14h8"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5M14 11v5"/></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></symbol>
+  <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m15.2 8.8-1.8 4.6-4.6 1.8 1.8-4.6z"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M9.5 14.5 14.5 9.5"/><path d="M7.8 16.2a4 4 0 0 1 0-5.6l2.4-2.4a4 4 0 0 1 5.6 5.6"/><path d="M16.2 7.8a4 4 0 0 1 0 5.6l-2.4 2.4a4 4 0 0 1-5.6-5.6"/></symbol>
+  <symbol id="i-maximize" viewBox="0 0 24 24"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></symbol>
+  <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+</svg>
+
+<div class="window">
+  <header class="titlebar">
+    <div class="brand"><svg><use href="#i-logo"/></svg></div>
+    <button class="icon-btn" aria-label="主菜单"><svg class="ic"><use href="#i-menu"/></svg></button>
+    <div class="title-context">
+      <span>当前项目</span><strong>掌管仙宗差点被推翻</strong>
+      <span class="save-state"><svg class="ic"><use href="#i-check"/></svg>已保存</span>
+    </div>
+    <div class="titlebar-right">
+      <button class="icon-btn" aria-label="搜索"><svg class="ic"><use href="#i-search"/></svg></button>
+      <button class="icon-btn" aria-label="缩小"><svg class="ic"><use href="#i-zoom-out"/></svg></button>
+      <span class="zoom-label">100%</span>
+      <button class="icon-btn" aria-label="放大"><svg class="ic"><use href="#i-zoom-in"/></svg></button>
+      <div class="win-controls">
+        <button aria-label="最小化"><svg class="ic"><use href="#i-minus"/></svg></button>
+        <button aria-label="最大化"><svg class="ic"><use href="#i-square"/></svg></button>
+        <button class="close" aria-label="关闭"><svg class="ic"><use href="#i-close"/></svg></button>
+      </div>
+    </div>
+  </header>
+
+  <div class="window-body">
+    <nav class="rail" aria-label="工具">
+      <a class="rail-item active" href="#"><svg class="ic"><use href="#i-folder-open"/></svg>项目</a>
+      <a class="rail-item" href="#"><svg class="ic"><use href="#i-layers"/></svg>架构</a>
+      <a class="rail-item" href="#"><svg class="ic"><use href="#i-list-tree"/></svg>情节</a>
+      <a class="rail-item" href="#"><svg class="ic"><use href="#i-blueprint"/></svg>蓝图</a>
+      <a class="rail-item" href="#"><svg class="ic"><use href="#i-git-branch"/></svg>剧情</a>
+      <a class="rail-item" href="#"><svg class="ic"><use href="#i-users"/></svg>人物</a>
+      <a class="rail-item" href="#"><svg class="ic"><use href="#i-book"/></svg>知识库</a>
+      <div class="rail-spacer"></div>
+      <div class="rail-divider"></div>
+      <a class="rail-item" href="#"><svg class="ic"><use href="#i-settings"/></svg>设置</a>
+    </nav>
+
+    <aside class="sidebar" aria-label="项目目录">
+      <div class="sidebar-head">
+        <span>项目结构</span>
+        <button class="icon-btn" aria-label="收起侧边栏"><svg class="ic"><use href="#i-chevrons-left"/></svg></button>
+      </div>
+      <div class="project-block">
+        <div class="project-block-main">
+          <span class="project-name">掌管仙宗差点被推翻</span>
+          <span class="project-meta">仙侠<span class="sep"></span>计划 100 章</span>
+        </div>
+        <button class="project-more" aria-label="项目操作"><svg class="ic"><use href="#i-more"/></svg></button>
+      </div>
+      <div class="tree">
+        <div class="tree-group-label">设定</div>
+        <button class="tree-row">
+          <svg class="ic"><use href="#i-book-open"/></svg><span>作品设定</span><span class="count">5 / 7</span>
+        </button>
+        <button class="tree-row">
+          <svg class="ic"><use href="#i-layers"/></svg><span>故事架构</span><span class="count">0 / 4</span>
+        </button>
+        <button class="tree-row active" aria-current="page">
+          <svg class="ic"><use href="#i-map"/></svg><span>世界地图</span><span class="count">5 域</span>
+        </button>
+        <button class="tree-row">
+          <svg class="ic"><use href="#i-git-branch"/></svg><span>伏笔与叙事线索</span><span class="count">3</span>
+        </button>
+        <div class="tree-group-label">写作</div>
+        <button class="tree-row">
+          <svg class="ic"><use href="#i-blueprint"/></svg><span>章节蓝图</span><span class="count">0 / 100</span>
+        </button>
+        <button class="tree-row">
+          <svg class="ic"><use href="#i-file"/></svg><span>草稿箱</span><span class="count">0</span>
+        </button>
+        <button class="tree-row">
+          <svg class="ic"><use href="#i-book"/></svg><span>正文章节</span><span class="count">0</span>
+        </button>
+      </div>
+    </aside>
+
+    <div class="workspace">
+      <div class="tabstrip">
+        <div class="tab inactive">
+          <svg class="ic"><use href="#i-book-open"/></svg>
+          <span>作品设定</span>
+        </div>
+        <div class="tab">
+          <svg class="ic"><use href="#i-map"/></svg>
+          <span>世界地图</span>
+          <button class="tab-close" aria-label="关闭标签"><svg class="ic"><use href="#i-close"/></svg></button>
+        </div>
+        <div class="tabstrip-right">
+          <button class="icon-btn" aria-label="收起右侧面板"><svg class="ic"><use href="#i-panel-right"/></svg></button>
+        </div>
+      </div>
+
+      <div class="atlas-page">
+        <header class="atlas-head">
+          <div class="atlas-heading">
+            <div class="atlas-eyebrow"><svg class="ic"><use href="#i-map"/></svg>设定<span>/</span>世界地图</div>
+            <h1 class="atlas-title">九域</h1>
+            <p class="atlas-sub">灵气自天裂涌入，五域以灵脉为界；人人求飞升，而飞升是旧仙的回收场。</p>
+          </div>
+          <div class="atlas-head-right">
+            <div class="atlas-meta">
+              <span class="ai-chip"><span class="dot"></span>AI 初稿 · 待校对 2 处</span>
+              <span class="sep">·</span>
+              <span>5 域 · 9 宗</span>
+            </div>
+            <div class="atlas-actions">
+              <button class="btn btn-outline"><svg class="ic"><use href="#i-refresh"/></svg>重新生成</button>
+              <button class="btn btn-primary"><svg class="ic"><use href="#i-pen"/></svg>校对世界</button>
+            </div>
+          </div>
+        </header>
+
+        <div class="atlas-body">
+          <main class="map-panel">
+            <div class="map-canvas">
+              <svg viewBox="0 0 760 590" role="img" aria-label="九域地图总览">
+                <defs>
+                  <pattern id="map-grid" width="38" height="38" patternUnits="userSpaceOnUse">
+                    <path d="M38 0H0V38" fill="none" stroke="rgba(107,118,134,.12)" stroke-width="1"/>
+                  </pattern>
+                  <clipPath id="mainland-clip">
+                    <path d="M232,100 C292,68 382,62 452,86 C518,110 556,170 554,232 C552,296 526,350 482,392 C436,436 356,452 298,428 C240,404 200,356 188,296 C176,238 194,162 232,100 Z"/>
+                  </clipPath>
+                  <clipPath id="wild-clip">
+                    <path d="M64,306 C84,260 130,236 174,252 C208,264 226,300 222,342 C218,386 188,424 144,434 C100,444 62,416 50,376 C40,344 48,324 64,306 Z"/>
+                  </clipPath>
+                </defs>
+
+                <rect width="760" height="590" fill="#EDF1F2"/>
+                <rect width="760" height="590" fill="url(#map-grid)"/>
+                <path d="M0 452 C120 430 220 470 320 448 C440 422 540 462 760 426" fill="none" stroke="rgba(111,143,156,.18)" stroke-width="18"/>
+                <path d="M0 472 C120 450 220 490 320 468 C440 442 540 482 760 446" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="1"/>
+
+                <!-- 荒洲 -->
+                <path d="M64,306 C84,260 130,236 174,252 C208,264 226,300 222,342 C218,386 188,424 144,434 C100,444 62,416 50,376 C40,344 48,324 64,306 Z" fill="#F3EBDD" stroke="#C7BEAC" stroke-width="1.2"/>
+                <g clip-path="url(#wild-clip)">
+                  <path d="M40 260 C100 230 220 250 250 320" fill="none" stroke="#D8CEBC" stroke-width="1"/>
+                  <path d="M42 356 C100 326 196 336 238 390" fill="none" stroke="#D8CEBC" stroke-width="1" stroke-dasharray="3 4"/>
+                  <path d="M94 346 q10-8 20 0 M112 360 q10-8 20 0 M86 374 q10-8 20 0" fill="none" stroke="#C3B294" stroke-width="1.1" opacity=".65"/>
+                  <path d="M150 310 l5-8 5 8 M162 315 l4-7 4 7" fill="none" stroke="#B3A48A" stroke-width="1" opacity=".65"/>
+                </g>
+
+                <!-- 玄洲 -->
+                <path d="M232,100 C292,68 382,62 452,86 C518,110 556,170 554,232 C552,296 526,350 482,392 C436,436 356,452 298,428 C240,404 200,356 188,296 C176,238 194,162 232,100 Z" fill="#FAF7EF" stroke="#C7BEAC" stroke-width="1.2"/>
+                <g clip-path="url(#mainland-clip)">
+                  <!-- 北境 -->
+                  <path d="M232,100 C286,70 360,64 422,84 L444,166 C410,202 330,210 258,186 L238,140 Z" fill="#E9F0F4"/>
+                  <!-- 中原 -->
+                  <path d="M258,186 C330,210 410,202 444,166 L472,250 C474,306 438,346 380,358 C322,370 272,346 250,302 C238,262 244,218 258,186 Z" fill="#F5EFE1"/>
+                  <!-- 东海 -->
+                  <path d="M472,250 C504,228 538,238 552,270 C566,302 550,338 520,356 C494,372 470,362 456,338 C444,306 450,274 472,250 Z" fill="#E6F0EC"/>
+                  <!-- 南疆 -->
+                  <path d="M380,358 C430,352 466,380 478,420 C470,450 436,468 396,464 C356,460 324,438 312,406 C324,378 350,360 380,358 Z" fill="#EDF1E5"/>
+
+                  <!-- 地形：山、林、水 -->
+                  <g fill="none" stroke="#9A8F7B" stroke-width="1" opacity=".72">
+                    <path d="M292 122 l8-13 8 13 M310 124 l7-11 7 11 M328 119 l6-9 6 9 M346 126 l7-11 7 11"/>
+                    <path d="M270 146 l6-9 6 9 M286 149 l5-8 5 8"/>
+                  </g>
+                  <g fill="#7D8E6A" opacity=".45">
+                    <circle cx="350" cy="404" r="2"/><circle cx="357" cy="410" r="1.6"/><circle cx="343" cy="412" r="1.6"/>
+                    <circle cx="370" cy="420" r="2"/><circle cx="378" cy="415" r="1.6"/><circle cx="384" cy="424" r="1.6"/>
+                    <circle cx="400" cy="432" r="1.8"/><circle cx="408" cy="426" r="1.5"/><circle cx="414" cy="437" r="1.5"/>
+                    <circle cx="332" cy="426" r="1.7"/><circle cx="326" cy="416" r="1.4"/>
+                  </g>
+                  <g fill="none" stroke="#9EB7C3" stroke-width="1.2" opacity=".62">
+                    <path d="M300 452 q6-4 12 0 t12 0 M320 462 q6-4 12 0 t12 0 M300 470 q6-4 12 0 t12 0"/>
+                  </g>
+                  <g fill="none" stroke="#B5A88F" stroke-width="1" opacity=".7">
+                    <path d="M104 326 q10-8 20 0 M120 340 q10-8 20 0 M104 354 q10-8 20 0"/>
+                  </g>
+
+                  <!-- 河流 -->
+                  <g fill="none" stroke="#AFC5D1" stroke-width="1.5" opacity=".7">
+                    <path d="M310 116 C300 166 318 204 330 238 C342 274 360 302 392 324"/>
+                    <path d="M382 104 C376 166 392 212 416 248 C436 278 470 300 506 314"/>
+                  </g>
+
+                  <!-- 云梦泽 -->
+                  <ellipse cx="288" cy="248" rx="13" ry="6" fill="#D9E6E9" stroke="#AFC5D1" stroke-width="1" opacity=".9"/>
+                  <text x="288" y="238" fill="#7E8C94" font-size="7.5" letter-spacing="1.5" font-family="'Noto Serif SC',serif" text-anchor="middle" opacity=".8">云梦泽</text>
+                  <text x="326" y="104" fill="#8E8473" font-size="7.5" letter-spacing="1.4" font-family="'Noto Serif SC',serif" text-anchor="middle" opacity=".75">苍梧山脉</text>
+
+                  <!-- 区界 -->
+                  <g fill="none" stroke="#BEB5A4" stroke-width="1" stroke-dasharray="4 4" opacity=".72">
+                    <path d="M232 100 C286 70 360 64 422 84 L444 166 C410 202 330 210 258 186 L238 140 Z"/>
+                    <path d="M258 186 C330 210 410 202 444 166 L472 250 C474 306 438 346 380 358 C322 370 272 346 250 302 C238 262 244 218 258 186 Z"/>
+                    <path d="M472 250 C504 228 538 238 552 270 C566 302 550 338 520 356 C494 372 470 362 456 338 C444 306 450 274 472 250 Z"/>
+                    <path d="M380 358 C430 352 466 380 478 420 C470 450 436 468 396 464 C356 460 324 438 312 406 C324 378 350 360 380 358 Z"/>
+                  </g>
+                </g>
+
+                <!-- 海岛 -->
+                <path d="M586,302 C604,288 626,294 634,312 C642,332 628,350 608,354 C588,358 572,342 574,324 Z" fill="#EDF1E5" stroke="#C7BEAC" stroke-width="1.1"/>
+                <path d="M526,432 C540,422 554,428 558,442 C562,456 550,466 536,464 C522,462 514,448 518,438 Z" fill="#EDF1E5" stroke="#C7BEAC" stroke-width="1.1"/>
+                <path d="M548,282 C556,276 566,280 568,288 C570,296 562,302 554,300 C546,298 542,288 548,282 Z" fill="#F3EBDD" stroke="#C7BEAC" stroke-width="1"/>
+
+                <!-- 海岸线 -->
+                <path d="M232,100 C292,68 382,62 452,86 C518,110 556,170 554,232 C552,296 526,350 482,392 C436,436 356,452 298,428 C240,404 200,356 188,296 C176,238 194,162 232,100 Z" fill="none" stroke="#AFA594" stroke-width="1.6"/>
+                <path d="M64,306 C84,260 130,236 174,252 C208,264 226,300 222,342 C218,386 188,424 144,434 C100,444 62,416 50,376 C40,344 48,324 64,306 Z" fill="none" stroke="#AFA594" stroke-width="1.6"/>
+                <g fill="none" stroke="#C9C0AE" stroke-width="1" opacity=".7">
+                  <path d="M224 106 C286 72 380 68 450 92 C512 114 548 170 548 232 C548 292 524 344 480 386 C436 428 358 444 300 420 C244 396 206 350 194 292 C182 236 198 164 224 106 Z" transform="translate(3 4)"/>
+                  <path d="M58 302 C80 258 128 234 170 250 C204 262 222 298 218 340 C214 384 184 420 142 430 C98 440 60 412 48 372 C38 342 46 322 58 302 Z" transform="translate(2 3)"/>
+                </g>
+                <path d="M584 404 C592 394 606 396 612 406 C618 416 610 428 598 430 C586 432 578 420 584 404 Z" fill="#EDF1E5" stroke="#C7BEAC" stroke-width="1"/>
+                <path d="M470 520 C478 512 490 514 494 522 C498 530 490 540 480 540 C470 540 464 530 470 520 Z" fill="#F3EBDD" stroke="#C7BEAC" stroke-width="1"/>
+
+                <!-- 大陆名 -->
+                <text x="306" y="68" fill="#9B917D" font-size="8.5" letter-spacing="3.2" font-family="'Noto Serif SC',serif" opacity=".8">玄洲</text>
+                <text x="82" y="474" fill="#9B917D" font-size="8.5" letter-spacing="3.2" font-family="'Noto Serif SC',serif" opacity=".8">荒洲</text>
+
+                <!-- 区域名 -->
+                <g font-family="'Noto Serif SC',serif" font-size="16" letter-spacing="2" fill="#4F4A40" text-anchor="middle" paint-order="stroke" stroke="#F7F4EC" stroke-width="3.2" stroke-linejoin="round">
+                  <text x="394" y="124">北境</text>
+                  <text x="294" y="344">中原</text>
+                  <text x="490" y="350">东海</text>
+                  <text x="344" y="408">南疆</text>
+                  <text x="180" y="306">西荒</text>
+                </g>
+
+                <!-- 势力关系 -->
+                <g fill="none" stroke-linecap="round">
+                  <path id="rel-enemy" d="M344 280 C392 258 458 276 500 308" stroke="#A45A45" stroke-width="1.25" stroke-dasharray="4 5" opacity=".85"/>
+                  <path id="rel-ally" d="M332 294 C350 348 370 396 386 424" stroke="#6E8662" stroke-width="1.25" opacity=".85"/>
+                </g>
+                <g font-size="9" font-family="'Inter','Noto Sans SC',sans-serif" text-anchor="middle" paint-order="stroke" stroke="#F7F4EC" stroke-width="2.6" stroke-linejoin="round">
+                  <text x="424" y="270" fill="#A45A45">敌对</text>
+                  <text x="350" y="370" fill="#667C5B">同盟</text>
+                </g>
+
+                <!-- 势力标记 -->
+                <g class="sect-marker supreme selected" transform="translate(332 282)">
+                  <circle r="19" fill="#8C3B2E" opacity=".08"/>
+                  <circle r="11.5" fill="none" stroke="#8C3B2E" stroke-width="1" opacity=".28"/>
+                  <circle class="ring" r="7" fill="#FFFDF7" stroke="#8C3B2E" stroke-width="1.8"/>
+                  <circle class="core" r="2.6" fill="#8C3B2E"/>
+                  <text x="0" y="-17" class="label">天枢宗</text>
+                </g>
+                <g class="sect-marker supreme" transform="translate(512 318)">
+                  <circle class="ring" r="6.5" fill="#FFFDF7" stroke="#8C3B2E" stroke-width="1.6"/>
+                  <circle class="core" r="2.4" fill="#8C3B2E"/>
+                  <text x="0" y="-13" class="label">太一宫</text>
+                </g>
+                <g class="sect-marker first" transform="translate(128 346)">
+                  <circle class="ring" r="6.5" fill="#FFFDF7" stroke="#3B6FE0" stroke-width="1.6"/>
+                  <circle class="core" r="2.4" fill="#3B6FE0"/>
+                  <text x="0" y="-13" class="label">玄阴教</text>
+                </g>
+                <g class="sect-marker first" transform="translate(392 438)">
+                  <circle class="ring" r="6.5" fill="#FFFDF7" stroke="#3B6FE0" stroke-width="1.6"/>
+                  <circle class="core" r="2.4" fill="#3B6FE0"/>
+                  <text x="0" y="-13" class="label">赤霄门</text>
+                </g>
+                <g class="sect-marker second" transform="translate(318 156)">
+                  <circle class="ring" r="5.5" fill="#FFFDF7" stroke="#5F7A52" stroke-width="1.4"/>
+                  <circle class="core" r="2" fill="#5F7A52"/>
+                  <text x="0" y="-11" class="label small">北冥剑阁</text>
+                </g>
+                <g class="sect-marker second" transform="translate(262 226)">
+                  <circle class="ring" r="5.5" fill="#FFFDF7" stroke="#5F7A52" stroke-width="1.4"/>
+                  <circle class="core" r="2" fill="#5F7A52"/>
+
+                </g>
+                <g class="sect-marker second" transform="translate(536 344)">
+                  <circle class="ring" r="5.5" fill="#FFFDF7" stroke="#5F7A52" stroke-width="1.4"/>
+                  <circle class="core" r="2" fill="#5F7A52"/>
+
+                </g>
+                <g class="sect-marker third" transform="translate(452 446)">
+                  <circle class="ring" r="4.8" fill="#FFFDF7" stroke="#8A6A3B" stroke-width="1.3"/>
+                  <circle class="core" r="1.8" fill="#8A6A3B"/>
+
+                </g>
+                <g class="sect-marker third" transform="translate(158 398)">
+                  <circle class="ring" r="4.8" fill="#FFFDF7" stroke="#8A6A3B" stroke-width="1.3"/>
+                  <circle class="core" r="1.8" fill="#8A6A3B"/>
+
+                </g>
+
+                <!-- 指北针 -->
+                <g transform="translate(704 500)" fill="none" stroke="#9B917D" stroke-width="1" opacity=".8">
+                  <circle r="14"/>
+                  <path d="M0-9 4 5 0 2-4 5Z" fill="#8B8171" stroke="none"/>
+                  <text x="0" y="-19" fill="#8B8171" stroke="none" font-size="8" text-anchor="middle">北</text>
+                </g>
+              </svg>
+
+              <div class="map-floating">
+                <svg class="ic"><use href="#i-compass"/></svg>世界总览
+                <span class="sep">·</span>
+                <span>关系线已开</span>
+              </div>
+              <div class="map-tools" aria-label="地图缩放">
+                <button aria-label="放大"><svg class="ic"><use href="#i-plus"/></svg></button>
+                <button aria-label="缩小"><svg class="ic"><use href="#i-minus"/></svg></button>
+                <button aria-label="适应窗口"><svg class="ic"><use href="#i-maximize"/></svg></button>
+              </div>
+              <div class="map-legend">
+                <div class="legend-row">
+                  <span class="legend-label">势力</span>
+                  <span class="legend-item" style="color:#8C3B2E"><span class="legend-tier filled"></span>超一流</span>
+                  <span class="legend-item" style="color:#3B6FE0"><span class="legend-tier filled"></span>一流</span>
+                  <span class="legend-item" style="color:#5F7A52"><span class="legend-tier filled"></span>二流</span>
+                  <span class="legend-item" style="color:#8A6A3B"><span class="legend-tier filled"></span>三流</span>
+                </div>
+                <div class="legend-row">
+                  <span class="legend-label">关系</span>
+                  <span class="legend-item" style="color:#A45A45"><span class="legend-line dashed"></span>敌对</span>
+                  <span class="legend-item" style="color:#6E8662"><span class="legend-line"></span>同盟</span>
+                  <span class="legend-label">点选宗门查看档案</span>
+                </div>
+              </div>
+              <div class="map-scale">示意图 · 不以比例尺为准</div>
+            </div>
+
+            <div class="sect-detail">
+              <div class="sect-seal">天</div>
+              <div class="sect-main">
+                <div class="sect-title">天枢宗<span class="sect-badge">超一流</span></div>
+                <div class="sect-sub">中原 · 天枢山 · 掌门 陆沉舟</div>
+              </div>
+              <div class="sect-facts">
+                <span><span class="key">境界</span> 元婴</span>
+                <span><span class="key">掌控</span> 中州灵脉</span>
+                <span class="enemy"><span class="key">敌对</span> 太一宫</span>
+                <span class="ally"><span class="key">同盟</span> 赤霄门</span>
+              </div>
+              <div class="sect-actions">
+                <button class="btn btn-ghost">查看档案<svg class="ic"><use href="#i-arrow-right"/></svg></button>
+                <button class="btn btn-outline">校对<svg class="ic"><use href="#i-pen"/></svg></button>
+              </div>
+            </div>
+          </main>
+
+          <aside class="atlas-rail" aria-label="世界等级">
+            <section class="rank-card">
+              <div class="card-head">
+                <h2 class="card-title">势力等级</h2>
+                <span class="card-meta">9 宗</span>
+                <span class="card-meta right">按等级</span>
+              </div>
+              <div class="tier-list">
+                <div class="tier-group">
+                  <div class="tier-label"><span class="tier-swatch supreme"></span>超一流</div>
+                  <div class="tier-rows">
+                    <button class="faction-row selected"><span class="faction-dot supreme"></span><span class="faction-name">天枢宗</span><span class="faction-region">中原</span></button>
+                    <button class="faction-row"><span class="faction-dot supreme"></span><span class="faction-name">太一宫</span><span class="faction-region">东海</span></button>
+                  </div>
+                </div>
+                <div class="tier-group">
+                  <div class="tier-label"><span class="tier-swatch first"></span>一流</div>
+                  <div class="tier-rows">
+                    <button class="faction-row"><span class="faction-dot first"></span><span class="faction-name">玄阴教</span><span class="faction-region">西荒</span></button>
+                    <button class="faction-row"><span class="faction-dot first"></span><span class="faction-name">赤霄门</span><span class="faction-region">南疆</span></button>
+                  </div>
+                </div>
+                <div class="tier-group">
+                  <div class="tier-label"><span class="tier-swatch second"></span>二流</div>
+                  <div class="tier-rows">
+                    <button class="faction-row"><span class="faction-dot second"></span><span class="faction-name">北冥剑阁</span><span class="faction-region">北境</span></button>
+                    <button class="faction-row"><span class="faction-dot second"></span><span class="faction-name">无涯书院</span><span class="faction-region">中原</span></button>
+                    <button class="faction-row"><span class="faction-dot second"></span><span class="faction-name">落霞宗</span><span class="faction-region">东海</span></button>
+                  </div>
+                </div>
+                <div class="tier-group">
+                  <div class="tier-label"><span class="tier-swatch third"></span>三流</div>
+                  <div class="tier-rows">
+                    <button class="faction-row"><span class="faction-dot third"></span><span class="faction-name">青萝谷</span><span class="faction-region">南疆</span></button>
+                    <button class="faction-row"><span class="faction-dot third"></span><span class="faction-name">乌桓部</span><span class="faction-region">西荒</span></button>
+                  </div>
+                </div>
+              </div>
+              <div class="rank-extra">
+                <div class="rank-extra-title">当前格局</div>
+                <div class="relation-row"><span class="relation-mark enemy"></span>天枢宗 ↔ 太一宫<span class="relation-target">飞升名额</span><span class="relation-note">敌对</span></div>
+                <div class="relation-row"><span class="relation-mark ally"></span>天枢宗 ↔ 赤霄门<span class="relation-target">灵脉盟约</span><span class="relation-note">同盟</span></div>
+                <div class="inference">
+                  <div class="inference-title">AI 推断<span>2 处待校对</span></div>
+                  <p>飞升名额之争使天枢宗与太一宫敌对；东海是否独立外海，待校对。</p>
+                </div>
+                <div class="rank-source">AI 依据 · 核心大纲 · 世界观 · 主角 · 金手指</div>
+              </div>
+            </section>
+
+            <section class="realm-card">
+              <div class="card-head">
+                <h2 class="card-title">境界体系</h2>
+                <span class="card-meta">当世最高 · 元婴</span>
+              </div>
+              <div class="realm-track">
+                <div class="realm-step"><span class="realm-dot reached"></span><span class="realm-label">练气</span></div>
+                <div class="realm-step"><span class="realm-dot reached"></span><span class="realm-label">筑基</span></div>
+                <div class="realm-step"><span class="realm-dot reached"></span><span class="realm-label">金丹</span></div>
+                <div class="realm-step current"><span class="realm-dot current"></span><span class="realm-label">元婴</span></div>
+                <div class="realm-step"><span class="realm-dot"></span><span class="realm-label">化神</span></div>
+                <div class="realm-step"><span class="realm-dot"></span><span class="realm-label">渡劫</span></div>
+              </div>
+              <div class="realm-note"><span class="dot"></span><span>当世最高：<strong>元婴</strong> · 天枢宗 陆沉舟</span></div>
+              <p class="realm-foot">化神以上只存在于旧仙记载；渡劫从未被证实。</p>
+            </section>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-tabs">
+    <span class="tab-item"><svg class="ic"><use href="#i-task"/></svg>任务</span>
+    <span class="tab-item"><svg class="ic"><use href="#i-log"/></svg>日志</span>
+    <span class="tab-item active"><svg class="ic"><use href="#i-cpu"/></svg>模型调用</span>
+    <span class="spacer"></span>
+    <svg class="ic"><use href="#i-chevron-down"/></svg>
+  </div>
+  <div class="statusbar">
+    <span class="brand-mini"><svg class="ic"><use href="#i-logo"/></svg>AI Writer v0.1.6</span>
+    <span>掌管仙宗差点被推翻</span>
+    <span class="spacer"></span>
+    <span>简体中文</span>
+  </div>
+</div>
+
+</body>
+</html>
