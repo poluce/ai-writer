@@ -47,7 +47,7 @@ describe('worktree hygiene ignore contract', () => {
       'src/components/panels/EditorArea.tsx',
       'docs/adr/architecture/0001-core-tech-stack-and-local-first.md',
       'README.md',
-      'docs/assets/readme/hero-zh-v2.png',
+      'docs/assets/readme/ai-writer-logo.png',
       '.github/workflows/windows-cloud-build-test.yml',
       'scripts/generate-cloud-build-manifest.mjs',
     ]

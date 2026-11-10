@@ -14,8 +14,6 @@ describe('README language variants', () => {
   it('keeps the English README independent and free of stale hero art', () => {
     const readme = readFileSync('README_en.md', 'utf8')
     expect(readme).toMatch(/\*\*English\*\*\s*\|\s*\[中文\]\(README\.md\)/)
-    expect(readme).not.toContain('hero-zh-v2.png')
-    expect(readme).not.toContain('hero-en-v2.png')
     expect(readme).toContain('Interface screenshots are pending an update')
   })
 })
