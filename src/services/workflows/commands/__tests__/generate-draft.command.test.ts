@@ -23,7 +23,6 @@ import type {
 import { EN_US_BUILTIN_PROMPTS } from '../../../prompt-language'
 import { BUILTIN_PROMPTS } from '../../../prompt-templates'
 import {
-  DRAFT_GENERATION_BUDGET,
   GenerateDraftCommand,
   countDraftUnits,
   previousChapterEnding,
@@ -102,16 +101,6 @@ ${repeated}`)
     expect(ending).toBe(completeEnding)
   })
 
-  it('does not apply a workflow token cap to long chapters', () => {
-    expect(DRAFT_GENERATION_BUDGET).toEqual({
-      maxAttempts: 8,
-      deadlineMs: 20 * 60_000,
-    })
-    expect(countDraftUnits('字'.repeat(3000))).toBe(3000)
-  })
-})
-
-describe('built-in author-guidance prompt boundaries', () => {
   it('keeps global guidance compact and out of the chapter-outline role in both languages', () => {
     const zh = BUILTIN_PROMPTS.find(template => template.key === 'generate_global_config')
     const zhField = BUILTIN_PROMPTS.find(template => template.key === 'generate_novel_config_field')
@@ -153,7 +142,7 @@ describe('built-in author-guidance prompt boundaries', () => {
 
 function attemptReceipt(
   finishReason: LLMFinishReason,
-  attempt = 1,
+  _attempt = 1,
   reasoning = false,
 ): GenerationAttemptReceipt {
   const requestedOutputTokens = 4096
@@ -175,12 +164,7 @@ function attemptReceipt(
         featureFlags: 'unknown',
       },
     },
-    budget: {
-      attempt,
-      maxAttempts: DRAFT_GENERATION_BUDGET.maxAttempts,
-      requestedOutputTokens,
-      deadlineAt: Date.now() + DRAFT_GENERATION_BUDGET.deadlineMs,
-    },
+    requestedOutputTokens,
     finishReason,
   }
 }
@@ -210,13 +194,7 @@ function fakeRuntime(
     return completeAttempt(attempt, task, options)
   })
   const execute = vi.fn(async (operation: (scope: GenerationRuntimeScope) => Promise<unknown>) => operation({
-    session: {
-      budget: {
-        maxAttempts: DRAFT_GENERATION_BUDGET.maxAttempts,
-        deadlineAt: Date.now() + DRAFT_GENERATION_BUDGET.deadlineMs,
-      },
-      complete,
-    },
+    session: { complete },
   }))
   const close = vi.fn().mockResolvedValue(undefined)
   const runtime = { execute, close } as unknown as GenerationRuntime
@@ -884,7 +862,7 @@ describe('GenerateDraftCommand generation runtime boundary', () => {
       8192,
       8192,
     ])
-    expect(createRuntime).toHaveBeenCalledWith({ budget: DRAFT_GENERATION_BUDGET })
+    expect(createRuntime).toHaveBeenCalledWith({})
     expect(invoke).toHaveBeenCalledWith(
       'db:draft-create',
       expect.objectContaining({ content: expect.stringContaining('续') }),
@@ -900,10 +878,7 @@ describe('GenerateDraftCommand generation runtime boundary', () => {
 
     await expect(command.execute({ step: {}, context, callbacks })).resolves.toContain('正文')
 
-    expect(runtime.createRuntime).toHaveBeenCalledWith({
-      budget: DRAFT_GENERATION_BUDGET,
-      modelId: 'grok-selected-model',
-    })
+    expect(runtime.createRuntime).toHaveBeenCalledWith({ modelId: 'grok-selected-model' })
   })
 
   it('injects verbatim finalized excerpts without promoting mixed fact indexes to manuscript truth', async () => {

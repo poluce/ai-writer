@@ -42,7 +42,7 @@ export class GenerateFieldCommand extends BaseWorkflowCommand<string> {
   }
 
   async execute(params: CommandExecuteParams): Promise<string> {
-    return this.executeWithGenerationRuntime('text', params, () => this.executeWithinGeneration(params))
+    return this.executeWithGenerationRuntime(params, () => this.executeWithinGeneration(params))
   }
 
   private async executeWithinGeneration({ context, callbacks }: CommandExecuteParams): Promise<string> {
@@ -122,9 +122,7 @@ export class GenerateFieldCommand extends BaseWorkflowCommand<string> {
           'Field generation failed. Please try again.',
         )
         if (error instanceof GenerationAttemptError) {
-          const code = error.code === 'CANCELLED'
-            || error.code === 'DEADLINE_EXHAUSTED'
-            || error.code === 'PROVIDER_REQUEST_FAILED'
+          const code = error.code === 'CANCELLED' || error.code === 'PROVIDER_REQUEST_FAILED'
             ? error.code
             : 'PROVIDER_REQUEST_FAILED'
           throw new GenerationAttemptError(code, safeMessage, error.receipt)

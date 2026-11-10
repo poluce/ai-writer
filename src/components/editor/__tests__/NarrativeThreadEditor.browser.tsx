@@ -444,10 +444,6 @@ describe('NarrativeThreadEditor', () => {
 
   it.each([
     [
-      'DEADLINE_EXHAUSTED',
-      'Plot-tree generation exceeded the session deadline; the previous snapshot remains unchanged. Try again later.',
-    ],
-    [
       'PROVIDER_REQUEST_FAILED',
       'The plot-tree model request failed; the previous snapshot remains unchanged. Check the model connection and try again.',
     ],
@@ -481,7 +477,7 @@ describe('NarrativeThreadEditor', () => {
     const requestGate = new Promise<void>((resolve) => { finishRequest = resolve })
     const plotTreeGenerator = vi.fn(async () => {
       await requestGate
-      throw new PlotTreeGenerationError('DEADLINE_EXHAUSTED')
+      throw new PlotTreeGenerationError('PROVIDER_REQUEST_FAILED')
     })
 
     await act(async () => root?.render(
@@ -500,8 +496,7 @@ describe('NarrativeThreadEditor', () => {
     await act(async () => finishRequest?.())
 
     await vi.waitFor(() => expect(container?.textContent)
-      .toContain('Plot-tree generation exceeded the session deadline'))
-    expect(container?.textContent).not.toContain('剧情树生成超过会话截止时间')
+      .toContain('The plot-tree model request failed; the previous snapshot remains unchanged'))
   })
 
   it('shows known snapshot and save failures in English', async () => {

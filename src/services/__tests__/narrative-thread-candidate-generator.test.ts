@@ -4,7 +4,6 @@ import type { GenerationTask } from '../generation/generation-harness'
 
 import {
   createNarrativeThreadCandidateGenerator,
-  NARRATIVE_THREAD_CANDIDATE_BUDGET,
   parseNarrativeThreadEventCandidates,
   parseNarrativeThreadPlanCandidates,
 } from '../narrative-thread-candidate-generator'
@@ -23,9 +22,6 @@ describe('narrative thread AI candidate boundary', () => {
     const runtime = {
       execute: vi.fn(async (operation) => operation({
         session: {
-          budget: {
-            maxAttempts: 1, deadlineAt: Date.now() + 120_000,
-          },
           complete: vi.fn().mockResolvedValue({ ...outcome, receipt: {} }),
         },
       })),
@@ -131,10 +127,6 @@ describe('narrative thread AI candidate boundary', () => {
     const runtime = {
       execute: vi.fn(async (operation) => operation({
         session: {
-          budget: {
-            maxAttempts: 1,
-            deadlineAt: Date.now() + 120_000,
-          },
           complete: vi.fn(async (task: GenerationTask) => {
             observedTask = task
             return {
@@ -167,7 +159,6 @@ describe('narrative thread AI candidate boundary', () => {
     })).resolves.toHaveLength(1)
 
     expect(createRuntime).toHaveBeenCalledWith({
-      budget: NARRATIVE_THREAD_CANDIDATE_BUDGET,
       modelId: 'grok-frozen',
     })
     expect(observedTask).toMatchObject({
@@ -186,9 +177,6 @@ describe('narrative thread AI candidate boundary', () => {
     const runtime = {
       execute: vi.fn(async (operation) => operation({
         session: {
-          budget: {
-            maxAttempts: 1, deadlineAt: Date.now() + 120_000,
-          },
           complete: vi.fn(async (task: GenerationTask) => {
             observedTask = task
             return {
@@ -225,7 +213,6 @@ describe('narrative thread AI candidate boundary', () => {
     }])
 
     expect(createRuntime).toHaveBeenCalledWith({
-      budget: NARRATIVE_THREAD_CANDIDATE_BUDGET,
       modelId: 'glm-frozen',
     })
     expect(observedTask).toMatchObject({

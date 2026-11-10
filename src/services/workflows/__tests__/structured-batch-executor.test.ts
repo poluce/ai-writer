@@ -83,7 +83,7 @@ function taskPayload(task: GenerationTask): AttemptRequest {
 }
 
 function attemptReceipt(
-  attempt: number,
+  _attempt: number,
   requestedTokens: number,
   _cumulativeRequestedTokens: number,
   finishReason: GenerationAttemptReceipt['finishReason'],
@@ -106,12 +106,7 @@ function attemptReceipt(
         featureFlags: 'verified-provider-preset',
       },
     },
-    budget: {
-      attempt,
-      maxAttempts: 20,
-      requestedOutputTokens: requestedTokens,
-      deadlineAt: 10_000,
-    },
+    requestedOutputTokens: requestedTokens,
     finishReason,
   }
 }
@@ -237,8 +232,6 @@ describe('StructuredBatchExecutor seam', () => {
         }),
       },
       completionPort: { complete: physicalComplete },
-      policy: planBlueprintGenerationCost(11).runtimeBudget,
-      now: () => 0,
     })
     const executor = createStructuredBatchExecutor({
       contract: blueprintContract,
@@ -259,54 +252,6 @@ describe('StructuredBatchExecutor seam', () => {
       receipt: { calls: 20, requestedTokens: 81_920 },
     })
     expect(physicalComplete).toHaveBeenCalledTimes(20)
-  })
-
-  it('uses GenerationSession as the sole billable budget gate before another physical attempt starts', async () => {
-    const physicalComplete = vi.fn(async () => ({
-      content: '{"blueprints":[',
-      finishReason: 'length' as const,
-    }))
-    const harness = createGenerationHarness({
-      modelSource: {
-        snapshotDefaultModel: () => ({
-          revision: 'revision-budget-owner',
-          model: {
-            id: 'model-budget-owner',
-            name: 'Budget owner',
-            provider: 'custom',
-            protocol: 'openai',
-            modelName: 'budget-owner',
-            apiKey: 'test-only',
-            baseUrl: 'https://example.invalid/v1',
-            temperature: 0.7,
-            maxTokens: 100,
-            purposes: ['generation'],
-          },
-        }),
-      },
-      completionPort: { complete: physicalComplete },
-      policy: {
-        maxAttempts: 2,
-        deadlineMs: 60_000,
-      },
-      now: () => 0,
-    })
-    const executor = createStructuredBatchExecutor({
-      contract: blueprintContract,
-      session: harness.openSession(),
-    })
-
-    const result = await executor.execute({
-      items: [1, 2, 3, 4, 5],
-      limits: { maxBatchItems: 5 },
-    })
-
-    expect(result).toMatchObject({
-      ok: false,
-      failure: { code: 'limit_exceeded', reason: 'max_calls' },
-      receipt: { calls: 2, requestedTokens: 200 },
-    })
-    expect(physicalComplete).toHaveBeenCalledTimes(2)
   })
 
   it('partitions a logical range by the contract batch limit and keeps one validated prefix across chunks', async () => {
@@ -424,9 +369,9 @@ describe('StructuredBatchExecutor seam', () => {
         splitCount: 1,
         requestedTokens: 300,
         attempts: [
-          { finishReason: 'length', budget: { attempt: 1, requestedOutputTokens: 100 } },
-          { finishReason: 'stop', budget: { attempt: 2, requestedOutputTokens: 100 } },
-          { finishReason: 'stop', budget: { attempt: 3, requestedOutputTokens: 100 } },
+          { finishReason: 'length', requestedOutputTokens: 100 },
+          { finishReason: 'stop', requestedOutputTokens: 100 },
+          { finishReason: 'stop', requestedOutputTokens: 100 },
         ],
       },
     })
@@ -711,8 +656,8 @@ describe('StructuredBatchExecutor seam', () => {
         calls: 2,
         requestedTokens: 200,
         attempts: [
-          { finishReason: 'stop', budget: { attempt: 1 } },
-          { finishReason: 'stop', budget: { attempt: 2 } },
+          { finishReason: 'stop', requestedOutputTokens: 100 },
+          { finishReason: 'stop', requestedOutputTokens: 100 },
         ],
       },
     })
@@ -1056,52 +1001,6 @@ describe('StructuredBatchExecutor seam', () => {
     })
   })
 
-  it('lets GenerationSession reject syntax repair before a second billable call when the global attempt budget is exhausted', async () => {
-    const physicalComplete = vi.fn(async () => ({
-      content: '{"blueprints":[',
-      finishReason: 'stop' as const,
-    }))
-    const harness = createGenerationHarness({
-      modelSource: {
-        snapshotDefaultModel: () => ({
-          revision: 'repair-budget-revision',
-          model: {
-            id: 'repair-budget-model',
-            name: 'Repair budget model',
-            provider: 'custom',
-            protocol: 'openai',
-            modelName: 'repair-budget-model',
-            apiKey: 'test-only',
-            baseUrl: 'https://example.invalid/v1',
-            temperature: 0.7,
-            maxTokens: 100,
-            purposes: ['generation'],
-          },
-        }),
-      },
-      completionPort: { complete: physicalComplete },
-      policy: {
-        maxAttempts: 1,
-        deadlineMs: 60_000,
-      },
-      now: () => 0,
-    })
-    const executor = createStructuredBatchExecutor({
-      contract: blueprintContract,
-      session: harness.openSession(),
-    })
-
-    const result = await executor.execute({ items: [1], limits: { maxBatchItems: 5 } })
-
-    expect(result).toMatchObject({
-      ok: false,
-      failure: { code: 'limit_exceeded', reason: 'max_calls' },
-      receipt: { calls: 1, requestedTokens: 100 },
-    })
-    expect(result).not.toHaveProperty('items')
-    expect(physicalComplete).toHaveBeenCalledTimes(1)
-  })
-
   it.each([
     ['candidate', false],
     ['contract', true],
@@ -1131,11 +1030,6 @@ describe('StructuredBatchExecutor seam', () => {
         }),
       },
       completionPort: { complete: physicalRepair },
-      policy: {
-        maxAttempts: 1,
-        deadlineMs: 60_000,
-      },
-      now: () => 0,
     })
     const repairSession = repairHarness.openSession()
     let initial = true
@@ -1184,7 +1078,7 @@ describe('StructuredBatchExecutor seam', () => {
       output: 'visible-text',
       messages: [{ role: 'user', content: 'recover' }],
     })
-    expect(recovered.receipt.budget.attempt).toBe(1)
+    expect(recovered.receipt.requestedOutputTokens).toBe(100)
     diagnostic.mockRestore()
   })
 

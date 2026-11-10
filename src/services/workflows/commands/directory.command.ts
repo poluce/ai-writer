@@ -138,13 +138,13 @@ function directoryGenerationFailureSummary(
   attempts: readonly {
     purpose?: string
     finishReason: string
-    budget: { requestedOutputTokens: number }
+    requestedOutputTokens?: number
   }[],
 ): string {
   if (attempts.length === 0) return 'generationAttempts=none'
   return attempts.map((attempt, index) => (
     `attempt=${index + 1} purpose=${attempt.purpose ?? 'unknown'} `
-    + `finishReason=${attempt.finishReason} requestedTokens=${attempt.budget.requestedOutputTokens}`
+    + `finishReason=${attempt.finishReason} requestedTokens=${attempt.requestedOutputTokens ?? 'unknown'}`
   )).join('; ')
 }
 
@@ -554,7 +554,6 @@ export class GenerateDirectoryCommand extends BaseWorkflowCommand<ChapterBluepri
     let runtime: GenerationRuntime | null = null
     try {
       runtime = await this.createRuntime({
-        budget: costPlan.runtimeBudget,
       })
       const batchResult = await runtime.execute(async ({ session }) => {
         const executor = createStructuredBatchExecutor({

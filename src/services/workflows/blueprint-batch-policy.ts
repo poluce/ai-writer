@@ -5,9 +5,6 @@ export const DEFAULT_BLUEPRINT_GENERATION_COUNT = MAX_BLUEPRINT_ITEMS_PER_BATCH
 const DIRECTORY_MAX_ATTEMPTS_HARD_LIMIT = 32
 const DIRECTORY_SYNTAX_REPAIR_RESERVE_CALLS = 1
 export const MAX_BLUEPRINT_CHAPTERS_PER_TASK = 50
-const DIRECTORY_MIN_DEADLINE_MS = 10 * 60_000
-const DIRECTORY_MAX_DEADLINE_MS = 30 * 60_000
-const DIRECTORY_DEADLINE_PER_ATTEMPT_MS = 2 * 60_000
 
 export interface BlueprintGenerationCostPlan {
   chapterCount: number
@@ -19,10 +16,6 @@ export interface BlueprintGenerationCostPlan {
   maxCompactSingleFallbacks: number
   /** True means the logical scope must be split into separate workflow runs. */
   exceedsHardLimit: boolean
-  runtimeBudget: {
-    maxAttempts: number
-    deadlineMs: number
-  }
 }
 
 /**
@@ -55,16 +48,6 @@ export function planBlueprintGenerationCost(chapterCount: number): BlueprintGene
     maxCalls,
     maxCompactSingleFallbacks,
     exceedsHardLimit: normalizedChapterCount > MAX_BLUEPRINT_CHAPTERS_PER_TASK,
-    runtimeBudget: {
-      maxAttempts: maxCalls,
-      deadlineMs: Math.min(
-        DIRECTORY_MAX_DEADLINE_MS,
-        Math.max(
-          DIRECTORY_MIN_DEADLINE_MS,
-          maxCalls * DIRECTORY_DEADLINE_PER_ATTEMPT_MS,
-        ),
-      ),
-    },
   }
 }
 

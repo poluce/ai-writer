@@ -47,7 +47,6 @@ import {
   ACTIVE_THREAD_CONTEXT_MAX_CHARS,
   ACTIVE_THREAD_CONTEXT_MAX_ITEMS,
   CONTINUE_PROMPT_MAX_CHARS,
-  DRAFT_GENERATION_BUDGET,
   type GenerateDraftCommandDependencies,
   type GenerateDraftCommandOptions,
   MAX_AUTO_CONTINUE_ROUNDS,
@@ -71,7 +70,6 @@ import {
 } from './generate-draft-support'
 
 export {
-  DRAFT_GENERATION_BUDGET,
   type GenerateDraftCommandDependencies,
   type GenerateDraftCommandOptions,
   appendVisibleDraftContinuation,
@@ -374,7 +372,6 @@ export class GenerateDraftCommand extends BaseWorkflowCommand {
       try {
         const generationModelId = workflowGenerationModelId(context)
         runtime = await this.dependencies.createRuntime({
-          budget: DRAFT_GENERATION_BUDGET,
           ...(generationModelId ? { modelId: generationModelId } : {}),
         })
         cleanDraftText = await runtime.execute(async ({ session }) => {

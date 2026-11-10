@@ -33,7 +33,7 @@ export class GenerateWorldMapCommand extends BaseWorkflowCommand<WorldMapData> {
   }
 
   async execute(params: CommandExecuteParams): Promise<WorldMapData> {
-    return this.executeWithGenerationRuntime('structured', params, () => this.executeWithinGeneration(params))
+    return this.executeWithGenerationRuntime(params, () => this.executeWithinGeneration(params))
   }
 
   private async executeWithinGeneration({ context, callbacks }: CommandExecuteParams): Promise<WorldMapData> {
@@ -84,9 +84,7 @@ export class GenerateWorldMapCommand extends BaseWorkflowCommand<WorldMapData> {
         if (error instanceof BoundedCompletionFailure) throw error
         if (error instanceof GenerationAttemptError) {
           throw new GenerationAttemptError(
-            error.code === 'CANCELLED' || error.code === 'DEADLINE_EXHAUSTED'
-              ? error.code
-              : 'PROVIDER_REQUEST_FAILED',
+            error.code === 'CANCELLED' ? error.code : 'PROVIDER_REQUEST_FAILED',
             text('世界地图生成失败，请重试。', 'World-map generation failed. Please try again.'),
             error.receipt,
           )

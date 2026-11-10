@@ -44,9 +44,7 @@ export class RefineFromReviewCommand extends BaseWorkflowCommand<string> {
 
   async execute(params: CommandExecuteParams): Promise<string> {
     const confirmedReview = await this.requireConfirmedReview(params)
-    return this.executeWithGenerationRuntime(
-      'text',
-      params,
+    return this.executeWithGenerationRuntime(params,
       () => this.executeWithinGeneration(params, confirmedReview.snapshot, confirmedReview.reviewSourceId),
     )
   }

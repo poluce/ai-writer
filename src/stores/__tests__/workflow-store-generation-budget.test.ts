@@ -45,7 +45,7 @@ class BudgetedGenerationCommand extends BaseWorkflowCommand {
   }
 
   execute(params: CommandExecuteParams): Promise<string> {
-    return this.executeWithGenerationRuntime('structured', params, async () => {
+    return this.executeWithGenerationRuntime(params, async () => {
       let content = ''
       for (let attempt = 0; attempt < this.attempts; attempt += 1) {
         content = await this.callLLM(

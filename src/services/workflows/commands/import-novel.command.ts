@@ -276,7 +276,7 @@ export class InferGlobalSettingsCommand extends BaseWorkflowCommand<void> {
   }
 
   async execute(params: CommandExecuteParams): Promise<void> {
-    return this.executeWithGenerationRuntime('structured', params, () => this.executeWithinGeneration(params))
+    return this.executeWithGenerationRuntime(params, () => this.executeWithinGeneration(params))
   }
 
   private async decodeImportInferenceWithEndpointRecovery(
@@ -648,7 +648,7 @@ export class InferBlueprintsPerChapterCommand extends BaseWorkflowCommand<void> 
   }
 
   async execute(params: CommandExecuteParams): Promise<void> {
-    return this.executeWithGenerationRuntime('structured', params, () => this.executeWithinGeneration(params))
+    return this.executeWithGenerationRuntime(params, () => this.executeWithinGeneration(params))
   }
 
   private async executeWithinGeneration({ context, callbacks }: CommandExecuteParams): Promise<void> {

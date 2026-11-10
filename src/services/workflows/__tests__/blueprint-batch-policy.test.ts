@@ -17,10 +17,6 @@ describe('blueprint batch policy', () => {
     expect(planBlueprintGenerationCost(4)).toMatchObject({
       maxCalls: 12,
       maxCompactSingleFallbacks: 4,
-      runtimeBudget: {
-        maxAttempts: 12,
-        deadlineMs: 1_440_000,
-      },
     })
     expect(planBlueprintGenerationCost(5)).toEqual({
       chapterCount: 5,
@@ -29,10 +25,6 @@ describe('blueprint batch policy', () => {
       maxCalls: 15,
       maxCompactSingleFallbacks: 5,
       exceedsHardLimit: false,
-      runtimeBudget: {
-        maxAttempts: 15,
-        deadlineMs: 1_800_000,
-      },
     })
     expect(planBlueprintGenerationCost(11)).toMatchObject({
       semanticBatchCount: 3,
@@ -40,9 +32,6 @@ describe('blueprint batch policy', () => {
       maxCalls: 31,
       maxCompactSingleFallbacks: 11,
       exceedsHardLimit: false,
-      runtimeBudget: {
-        maxAttempts: 31,
-      },
     })
     expect(planBlueprintGenerationCost(50)).toMatchObject({
       semanticBatchCount: 10,
@@ -50,10 +39,6 @@ describe('blueprint batch policy', () => {
       maxCalls: 32,
       maxCompactSingleFallbacks: 50,
       exceedsHardLimit: false,
-      runtimeBudget: {
-        maxAttempts: 32,
-        deadlineMs: 1_800_000,
-      },
     })
     expect(planBlueprintGenerationCost(51)).toMatchObject({
       semanticBatchCount: 11,
@@ -61,7 +46,6 @@ describe('blueprint batch policy', () => {
       maxCalls: 32,
       maxCompactSingleFallbacks: 51,
       exceedsHardLimit: true,
-      runtimeBudget: { maxAttempts: 32 },
     })
   })
 

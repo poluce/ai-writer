@@ -19,7 +19,6 @@ import { createStructuredBatchExecutor, type StructuredBatchContract } from '../
 import { requireWorkflowProjectSession, workflowUiText, workflowWritingLanguage } from '../workflow-project-session'
 import {
   BaseWorkflowCommand,
-  WORKFLOW_GENERATION_BUDGETS,
   type CommandExecuteParams,
   type WorkflowGenerationRuntimeDependencies,
 } from './base-command'
@@ -256,7 +255,7 @@ export class ExtractPlanningMaterialCharactersCommand extends BaseWorkflowComman
   }
 
   async execute(params: CommandExecuteParams): Promise<string> {
-    return this.executeWithGenerationRuntime('structured', params, () => this.executeWithinGeneration(params))
+    return this.executeWithGenerationRuntime(params, () => this.executeWithinGeneration(params))
   }
 
   private async executeWithinGeneration({ context, callbacks }: CommandExecuteParams): Promise<string> {
@@ -272,14 +271,6 @@ export class ExtractPlanningMaterialCharactersCommand extends BaseWorkflowComman
     if (chunks.length === 0) {
       context.data[PLANNING_MATERIAL_CHARACTER_CANDIDATES] = []
       return formatCandidatePreview([], context)
-    }
-    const minimumCalls = Math.ceil(chunks.length / MATERIAL_EXTRACTION_BATCH_SIZE)
-    const callCap = WORKFLOW_GENERATION_BUDGETS.structured.maxAttempts
-    if (minimumCalls > callCap) {
-      throw new Error(text(
-        `所选资料会生成 ${chunks.length} 个分块，按每批 ${MATERIAL_EXTRACTION_BATCH_SIZE} 块至少需要 ${minimumCalls} 次模型调用，超过本次上限 ${callCap} 次。尚未发送任何资料；请减少本次选择后分批提取。`,
-        `The selected material produces ${chunks.length} chunks and needs at least ${minimumCalls} model calls at ${MATERIAL_EXTRACTION_BATCH_SIZE} chunks per batch, exceeding this run's ${callCap}-call limit. No material was sent; reduce the selection and extract it in separate runs.`,
-      ))
     }
     callbacks.log(text('正在从创作资料中提取角色卡...', 'Extracting character cards from the planning material...'))
 

@@ -47,10 +47,6 @@ describe('GenerationHarness', () => {
     const harness = createGenerationHarness({
       modelSource: { snapshotDefaultModel: () => current },
       completionPort: { complete },
-      policy: {
-        maxAttempts: 4,
-        deadlineMs: 60_000,
-      },
     })
     const session = harness.openSession()
 
@@ -92,10 +88,6 @@ describe('GenerationHarness', () => {
     const harness = createGenerationHarness({
       modelSource: { snapshotDefaultModel: () => current },
       completionPort: { complete },
-      policy: {
-        maxAttempts: 8,
-        deadlineMs: 60_000,
-      },
     })
 
     const official = await harness.openSession().complete(task())
@@ -156,10 +148,6 @@ describe('GenerationHarness', () => {
         }),
       },
       completionPort: { complete },
-      policy: {
-        maxAttempts: 2,
-        deadlineMs: 60_000,
-      },
     })
 
     const outcome = await harness.openSession().complete({
@@ -210,10 +198,6 @@ describe('GenerationHarness', () => {
         }),
       },
       completionPort: { complete: vi.fn() },
-      policy: {
-        maxAttempts: 1,
-        deadlineMs: 60_000,
-      },
     })
 
     expect(() => harness.openSession()).not.toThrow()
@@ -240,10 +224,6 @@ describe('GenerationHarness', () => {
         }),
       },
       completionPort: { complete },
-      policy: {
-        maxAttempts: 4,
-        deadlineMs: 60_000,
-      },
     })
     const session = harness.openSession()
     const fiveChapterDirectoryTask = {
@@ -260,14 +240,10 @@ describe('GenerationHarness', () => {
       finishReason: 'length',
       receipt: {
         purpose: 'five-chapter-directory',
-        budget: {
-          requestedOutputTokens: 128_000,
-        },
+        requestedOutputTokens: 128_000,
       },
     })
-    expect(second.receipt.budget).toMatchObject({
-      requestedOutputTokens: 128_000,
-    })
+    expect(second.receipt.requestedOutputTokens).toBe(128_000)
     expect(complete.mock.calls.map(([request]) => request.plan.maxOutputTokens)).toEqual([128_000, 128_000])
   })
 
@@ -282,10 +258,6 @@ describe('GenerationHarness', () => {
         snapshotDefaultModel: () => ({ revision: 'revision-a', model: model() }),
       },
       completionPort: { complete },
-      policy: {
-        maxAttempts: 2,
-        deadlineMs: 60_000,
-      },
     })
     const session = harness.openSession()
     const mixedText = 'A中🙂'
@@ -325,10 +297,7 @@ describe('GenerationHarness', () => {
     })
 
     const recovered = await session.complete(task())
-    expect(recovered.receipt.budget).toMatchObject({
-      attempt: 1,
-      requestedOutputTokens: 4096,
-    })
+    expect(recovered.receipt.requestedOutputTokens).toBe(4096)
     expect(complete).toHaveBeenCalledOnce()
     diagnostic.mockRestore()
   })
@@ -351,10 +320,6 @@ describe('GenerationHarness', () => {
         snapshotDefaultModel: () => ({ revision: 'section-limit', model: model() }),
       },
       completionPort: { complete },
-      policy: {
-        maxAttempts: 1,
-        deadlineMs: 60_000,
-      },
     })
     const userMessage = `${repairContract}\n${repairCandidate}`
 
@@ -430,10 +395,6 @@ describe('GenerationHarness', () => {
         }),
       },
       completionPort: { complete },
-      policy: {
-        maxAttempts: 2,
-        deadlineMs: 60_000,
-      },
     })
     const session = harness.openSession()
     const oversized = 'x'.repeat(100)
@@ -470,7 +431,7 @@ describe('GenerationHarness', () => {
         sections: [{ sectionName: 'global-guidance', messageIndex: 0, finalText: contextOnlyText }],
       },
     })
-    expect(recovered.receipt.budget).toMatchObject({ attempt: 1, requestedOutputTokens: 100 })
+    expect(recovered.receipt.requestedOutputTokens).toBe(100)
     expect(complete).toHaveBeenCalledOnce()
     diagnostic.mockRestore()
   })
@@ -486,10 +447,6 @@ describe('GenerationHarness', () => {
         snapshotDefaultModel: () => ({ revision: 'revision-a', model: model() }),
       },
       completionPort: { complete },
-      policy: {
-        maxAttempts: 1,
-        deadlineMs: 60_000,
-      },
     })
     const authorGuidance = 'Keep this 完整 guidance unchanged.'
 
@@ -519,19 +476,6 @@ describe('GenerationHarness', () => {
     diagnostic.mockRestore()
   })
 
-  it('rejects an invalid attempt limit before opening a session', () => {
-    expect(() => createGenerationHarness({
-      modelSource: {
-        snapshotDefaultModel: () => ({ revision: 'revision-a', model: model() }),
-      },
-      completionPort: { complete: vi.fn() },
-      policy: {
-        maxAttempts: 0,
-        deadlineMs: 60_000,
-      },
-    })).toThrow(expect.objectContaining({ code: 'INVALID_POLICY' }))
-  })
-
   it('does not classify a creative response without finishReason as completed', async () => {
     const complete = vi.fn<CompletionPort['complete']>().mockResolvedValue({
       content: 'looks complete but has no provider terminal evidence',
@@ -541,10 +485,6 @@ describe('GenerationHarness', () => {
         snapshotDefaultModel: () => ({ revision: 'revision-a', model: model() }),
       },
       completionPort: { complete },
-      policy: {
-        maxAttempts: 2,
-        deadlineMs: 60_000,
-      },
     })
 
     const outcome = await harness.openSession().complete(task())
@@ -566,10 +506,6 @@ describe('GenerationHarness', () => {
         snapshotDefaultModel: () => ({ revision: 'revision-a', model: model() }),
       },
       completionPort: { complete },
-      policy: {
-        maxAttempts: 2,
-        deadlineMs: 60_000,
-      },
     })
     const taskWithPhysicalOverride = {
       ...task(),
@@ -585,7 +521,7 @@ describe('GenerationHarness', () => {
     expect(Object.isFrozen(complete.mock.calls[0]?.[0].plan)).toBe(true)
   })
 
-  it('counts failed physical requests against the attempt limit and exposes a redacted attempt receipt', async () => {
+  it('exposes a redacted attempt receipt for failed physical requests', async () => {
     const complete = vi.fn<CompletionPort['complete']>()
       .mockRejectedValueOnce(new Error('provider unavailable: test-only-key'))
       .mockResolvedValueOnce({ content: 'complete', finishReason: 'stop' })
@@ -594,10 +530,6 @@ describe('GenerationHarness', () => {
         snapshotDefaultModel: () => ({ revision: 'revision-a', model: model() }),
       },
       completionPort: { complete },
-      policy: {
-        maxAttempts: 2,
-        deadlineMs: 60_000,
-      },
     })
     const session = harness.openSession()
 
@@ -612,64 +544,16 @@ describe('GenerationHarness', () => {
       code: 'PROVIDER_REQUEST_FAILED',
       receipt: {
         finishReason: 'error',
-        budget: {
-          attempt: 1,
-          requestedOutputTokens: 4096,
-        },
+        requestedOutputTokens: 4096,
       },
     })
     expect((failure as Error).cause).toBeUndefined()
     expect(String(failure)).not.toContain('test-only-key')
 
     const recovered = await session.complete(task())
-    expect(recovered.receipt.budget).toMatchObject({
-      attempt: 2,
-      requestedOutputTokens: 4096,
-    })
+    expect(recovered.receipt.requestedOutputTokens).toBe(4096)
     expect(complete.mock.calls[1]?.[0].plan.maxOutputTokens).toBe(4096)
     expect(JSON.stringify(recovered.receipt)).not.toContain('test-only-key')
-  })
-
-  it('freezes the global attempt and deadline limits against caller mutation', async () => {
-    let currentTime = 1000
-    const complete = vi.fn<CompletionPort['complete']>().mockResolvedValue({
-      content: 'complete',
-      finishReason: 'stop',
-    })
-    const policy = {
-      maxAttempts: 2,
-      deadlineMs: 60_000,
-    }
-    const harness = createGenerationHarness({
-      modelSource: {
-        snapshotDefaultModel: () => ({ revision: 'revision-a', model: model() }),
-      },
-      completionPort: { complete },
-      policy,
-      now: () => currentTime,
-    })
-    const session = harness.openSession()
-
-    policy.maxAttempts = 99
-    policy.deadlineMs = 999_999
-
-    await session.complete(task())
-    const second = await session.complete(task())
-    expect(second.receipt.budget).toMatchObject({
-      maxAttempts: 2,
-      requestedOutputTokens: 4096,
-      deadlineAt: 61_000,
-    })
-    await expect(session.complete(task())).rejects.toMatchObject({
-      code: 'ATTEMPT_BUDGET_EXHAUSTED',
-    })
-
-    const expired = harness.openSession()
-    currentTime = 61_001
-    await expect(expired.complete(task())).rejects.toMatchObject({
-      code: 'DEADLINE_EXHAUSTED',
-    })
-    expect(complete).toHaveBeenCalledTimes(2)
   })
 
   it('cancels an in-flight physical request while preserving its charged attempt receipt', async () => {
@@ -685,10 +569,6 @@ describe('GenerationHarness', () => {
         snapshotDefaultModel: () => ({ revision: 'revision-a', model: model() }),
       },
       completionPort: { complete },
-      policy: {
-        maxAttempts: 2,
-        deadlineMs: 60_000,
-      },
     })
     const cancellation = new AbortController()
 
@@ -700,10 +580,7 @@ describe('GenerationHarness', () => {
       code: 'CANCELLED',
       receipt: {
         finishReason: 'cancelled',
-        budget: {
-          attempt: 1,
-          requestedOutputTokens: 4096,
-        },
+        requestedOutputTokens: 4096,
       },
     })
     expect(providerSignal?.aborted).toBe(true)
@@ -716,10 +593,6 @@ describe('GenerationHarness', () => {
         snapshotDefaultModel: () => ({ revision: 'revision-a', model: model() }),
       },
       completionPort: { complete },
-      policy: {
-        maxAttempts: 2,
-        deadlineMs: 60_000,
-      },
     })
     const cancellation = new AbortController()
     cancellation.abort()
@@ -744,10 +617,6 @@ describe('GenerationHarness', () => {
         }),
       },
       completionPort: { complete },
-      policy: {
-        maxAttempts: 1,
-        deadlineMs: 60_000,
-      },
     })
 
     const outcome = await harness.openSession().complete(task())
@@ -785,10 +654,6 @@ describe('GenerationHarness', () => {
         }),
       },
       completionPort: { complete },
-      policy: {
-        maxAttempts: 2,
-        deadlineMs: 60_000,
-      },
     })
     const session = harness.openSession()
     // A 42KB prompt that would historically exceed the 32KB client-side limit

@@ -209,7 +209,7 @@ export class RepairLegacyCharacterRosterCommand extends BaseWorkflowCommand<stri
   }
 
   async execute(params: CommandExecuteParams): Promise<string> {
-    return this.executeWithGenerationRuntime('structured', params, () => this.executeWithinGeneration(params))
+    return this.executeWithGenerationRuntime(params, () => this.executeWithinGeneration(params))
   }
 
   private async executeWithinGeneration({ context, callbacks }: CommandExecuteParams): Promise<string> {

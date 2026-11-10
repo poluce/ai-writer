@@ -9,28 +9,22 @@ import {
 } from '../../../generation/generation-runtime'
 import {
   BaseWorkflowCommand,
-  WORKFLOW_GENERATION_BUDGETS,
   type CommandExecuteParams,
-  type WorkflowGenerationIntent,
   type WorkflowGenerationRuntimeDependencies,
 } from '../base-command'
 
 type ProbeStep =
   | { kind: 'single' }
   | { kind: 'bounded'; contaminateOptions?: boolean }
-  | { kind: 'exhaust'; commit: () => void }
 
 class CompletionProbeCommand extends BaseWorkflowCommand<string> {
-  constructor(
-    dependencies: WorkflowGenerationRuntimeDependencies,
-    private readonly intent: WorkflowGenerationIntent = 'structured',
-  ) {
+  constructor(dependencies: WorkflowGenerationRuntimeDependencies) {
     super(dependencies)
   }
 
   async execute(params: CommandExecuteParams): Promise<string> {
     const step = params.step as ProbeStep
-    return this.executeWithGenerationRuntime(this.intent, params, async () => {
+    return this.executeWithGenerationRuntime(params, async () => {
       if (step.kind === 'single') {
         return this.callLLM(
           '普通 JSON 工作流',
@@ -58,16 +52,6 @@ class CompletionProbeCommand extends BaseWorkflowCommand<string> {
         )
       }
 
-      for (let index = 0; index <= WORKFLOW_GENERATION_BUDGETS.structured.maxAttempts; index += 1) {
-        await this.callLLM(
-          `structured request ${index}`,
-          'system',
-          params.callbacks,
-          { responseFormat: { type: 'json_object' } },
-          params.context,
-        )
-      }
-      step.commit()
       return 'committed'
     })
   }
@@ -141,17 +125,13 @@ describe('BaseWorkflowCommand completion boundary', () => {
       complete,
     }
 
-    await new CompletionProbeCommand(dependenciesFor(environment), 'character-architecture').execute({
+    await new CompletionProbeCommand(dependenciesFor(environment)).execute({
       step: { kind: 'single' } satisfies ProbeStep,
       context,
       callbacks,
     })
 
     expect(complete.mock.calls[0]?.[0].plan.maxOutputTokens).toBe(expectedRequest)
-    expect(WORKFLOW_GENERATION_BUDGETS['character-architecture']).toEqual({
-      maxAttempts: 12,
-      deadlineMs: 20 * 60_000,
-    })
   })
 
   it('keeps ordinary generation single-shot and fail-closed while an unknown model uses its leased cap', async () => {
@@ -274,26 +254,5 @@ describe('BaseWorkflowCommand completion boundary', () => {
     }
   })
 
-  it('exhausts the shared command budget before the domain commit callback', async () => {
-    const commit = vi.fn()
-    const complete = vi.fn<GenerationRuntimeEnvironment['complete']>()
-      .mockResolvedValue({ content: '{"ok":true}', finishReason: 'stop' })
-    const environment: GenerationRuntimeEnvironment = {
-      snapshotModel: (modelId: string) => ({
-        id: modelId, name: modelId, provider: 'custom' as const, protocol: 'openai' as const,
-        modelName: modelId, baseUrl: 'https://example.invalid', apiKey: '', maxTokens: 8192,
-      } as never),
-      snapshotDefaultModelId: () => 'model-a',
-      complete,
-    }
 
-    await expect(new CompletionProbeCommand(dependenciesFor(environment)).execute({
-      step: { kind: 'exhaust', commit } satisfies ProbeStep,
-      context,
-      callbacks,
-    })).rejects.toMatchObject({ code: 'ATTEMPT_BUDGET_EXHAUSTED' })
-
-    expect(complete).toHaveBeenCalledTimes(WORKFLOW_GENERATION_BUDGETS.structured.maxAttempts)
-    expect(commit).not.toHaveBeenCalled()
-  })
 })

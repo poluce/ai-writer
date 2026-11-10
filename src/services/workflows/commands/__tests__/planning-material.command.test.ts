@@ -559,21 +559,6 @@ describe('planning material character extraction', () => {
     expect(observedSourceIds.at(-1)).toBe('32:1')
   })
 
-  it('rejects the 17-call minimum boundary before sending any material', async () => {
-    const generateStream = vi.fn()
-    useLLMStore.setState({ defaultModelId: 'model-1', generateStream })
-    const materials = Array.from({ length: 33 }, (_, index) => ({
-      fileName: `资料-${index + 1}.md`,
-      text: `第 ${index + 1} 份资料没有角色。`,
-    }))
-
-    await expect(new ExtractPlanningMaterialCharactersCommand(materials)
-      .execute({ step: {}, context, callbacks })).rejects.toThrow('至少需要 17 次模型调用')
-
-    expect(generateStream).not.toHaveBeenCalled()
-    expect(context.data).not.toHaveProperty('planningMaterialCharacterCandidates')
-  })
-
   it('does not carry a cancelled extraction candidate into a reopened run', async () => {
     const generateStream = vi.fn(async (_messages, streamCallbacks) => {
       streamCallbacks.onDone?.(JSON.stringify({

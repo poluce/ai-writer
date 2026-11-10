@@ -90,10 +90,6 @@ describe('GenerationRuntime renderer adapter', () => {
 
   it('forwards the current model id and project session on generate-stream', async () => {
     const runtime = await createGenerationRuntime({
-      budget: {
-        maxAttempts: 1,
-        deadlineMs: 60_000,
-      },
     })
     const content = await runtime.execute(async ({ session }) => (
       (await session.complete({
@@ -120,10 +116,6 @@ describe('GenerationRuntime renderer adapter', () => {
   it('fails when the selected model is missing from the renderer catalog', async () => {
     useLLMStore.setState({ defaultModelId: 'deleted-model', models: [] })
     const runtime = await createGenerationRuntime({
-      budget: {
-        maxAttempts: 1,
-        deadlineMs: 60_000,
-      },
     })
     await expect(runtime.execute(async ({ session }) => session.complete({
       purpose: 'draft',

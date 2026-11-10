@@ -50,11 +50,6 @@ export interface NarrativeThreadCandidateGeneratorDependencies {
   createRuntime(options: CreateGenerationRuntimeOptions): Promise<GenerationRuntime>
 }
 
-export const NARRATIVE_THREAD_CANDIDATE_BUDGET = Object.freeze({
-  maxAttempts: 1,
-  deadlineMs: 120_000,
-})
-
 function record(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
     ? value as Record<string, unknown>
@@ -127,7 +122,6 @@ export function createNarrativeThreadCandidateGenerator(
   return {
     async generatePlanCandidates(input) {
       const runtime = await dependencies.createRuntime({
-        budget: NARRATIVE_THREAD_CANDIDATE_BUDGET,
         modelId: input.modelId,
       })
       try {
@@ -172,7 +166,6 @@ export function createNarrativeThreadCandidateGenerator(
     },
     async generateEventCandidates(input) {
       const runtime = await dependencies.createRuntime({
-        budget: NARRATIVE_THREAD_CANDIDATE_BUDGET,
         modelId: input.modelId,
       })
       try {

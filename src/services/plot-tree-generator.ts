@@ -18,11 +18,6 @@ import {
   type GenerationRuntime,
 } from './generation/generation-runtime'
 
-export const PLOT_TREE_GENERATION_BUDGET = Object.freeze({
-  maxAttempts: 1,
-  deadlineMs: 10 * 60_000,
-})
-
 export const PLOT_TREE_INPUT_MAX_CHARACTERS = 220_000
 
 const PLOT_TREE_SOURCE_LIMITS = Object.freeze({
@@ -51,7 +46,7 @@ export interface PlotTreeGeneratorDependencies {
 }
 
 export type PlotTreeResponseErrorCode = 'invalid_json' | 'invalid_contract'
-export type PlotTreeGenerationErrorCode = 'DEADLINE_EXHAUSTED' | 'PROVIDER_REQUEST_FAILED'
+export type PlotTreeGenerationErrorCode = 'PROVIDER_REQUEST_FAILED'
 
 export class PlotTreeGenerationError extends Error {
   constructor(readonly code: PlotTreeGenerationErrorCode) {
@@ -344,7 +339,6 @@ export async function generatePlotTree(
     throw new PlotTreeInputLimitError(PLOT_TREE_INPUT_MAX_CHARACTERS)
   }
   const runtime = await dependencies.createRuntime({
-    budget: PLOT_TREE_GENERATION_BUDGET,
     modelId: input.modelId,
     projectSession: input.projectSession,
   })
@@ -385,8 +379,7 @@ export async function generatePlotTree(
       }
     })
   } catch (error) {
-    if (error instanceof GenerationHarnessError
-      && (error.code === 'DEADLINE_EXHAUSTED' || error.code === 'PROVIDER_REQUEST_FAILED')) {
+    if (error instanceof GenerationHarnessError && error.code === 'PROVIDER_REQUEST_FAILED') {
       throw new PlotTreeGenerationError(error.code)
     }
     throw error

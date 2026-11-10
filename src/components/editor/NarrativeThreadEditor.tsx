@@ -79,15 +79,10 @@ function plotTreeErrorMessage(
   fallback: [zh: string, en: string],
 ): string {
   if (error instanceof PlotTreeGenerationError) {
-    return error.code === 'DEADLINE_EXHAUSTED'
-      ? text(
-          '剧情树生成超过会话截止时间，旧快照保持不变，请稍后重试。',
-          'Plot-tree generation exceeded the session deadline; the previous snapshot remains unchanged. Try again later.',
-        )
-      : text(
-          '剧情树模型请求失败，旧快照保持不变，请检查模型连接后重试。',
-          'The plot-tree model request failed; the previous snapshot remains unchanged. Check the model connection and try again.',
-        )
+    return text(
+      '剧情树模型请求失败，旧快照保持不变，请检查模型连接后重试。',
+      'The plot-tree model request failed; the previous snapshot remains unchanged. Check the model connection and try again.',
+    )
   }
   if (error instanceof PlotTreeResponseError) {
     return error.code === 'invalid_json'

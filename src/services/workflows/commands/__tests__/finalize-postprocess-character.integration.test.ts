@@ -435,7 +435,6 @@ describe('RunFinalizePostProcessCommand character-state persistence', () => {
       createRuntime: async () => ({
         execute: async (operation: (scope: { session: unknown }) => Promise<unknown>) => operation({
           session: {
-            budget: {},
             complete: async (task: { messages: Array<{ role: string; content: string }> }) => {
               nextChapterPrompt = task.messages.find(message => message.role === 'user')?.content ?? ''
               throw new Error('next-chapter-prompt-captured')
@@ -516,7 +515,6 @@ describe('RunFinalizePostProcessCommand character-state persistence', () => {
       createRuntime: async () => ({
         execute: async (operation: (scope: { session: unknown }) => Promise<unknown>) => operation({
           session: {
-            budget: {},
             complete: async (task: { messages: Array<{ role: string; content: string }> }) => {
               nextChapterPrompt = task.messages.find(message => message.role === 'user')?.content ?? ''
               throw new Error('candidate-source-prompt-captured')

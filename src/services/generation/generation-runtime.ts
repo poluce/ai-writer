@@ -10,16 +10,12 @@ import { useLLMStore } from '../../stores/llm-store'
 import { useProjectStore } from '../../stores/project-store'
 import { logFailure } from '../../shared/fail-log'
 import {
-  assertGenerationHarnessPolicy,
   createGenerationHarness,
-  type GenerationHarnessPolicy,
   type GenerationMessage,
   type GenerationSession,
   type PhysicalGenerationPlan,
   type ProviderCompletion,
 } from './generation-harness'
-
-export type GenerationRuntimeBudget = GenerationHarnessPolicy
 
 export interface GenerationCompletionRequest {
   modelId: string
@@ -52,7 +48,6 @@ export interface GenerationRuntime {
 }
 
 export interface CreateGenerationRuntimeOptions {
-  budget: GenerationRuntimeBudget
   /** Optional semantic model identity; omitted means snapshot the renderer default once. */
   modelId?: string
   /** Optional creation task key to route stage-specific models. */
@@ -71,7 +66,6 @@ export class GenerationRuntimeError extends Error {
     readonly code:
       | 'NO_DEFAULT_MODEL'
       | 'MODEL_NOT_FOUND'
-      | 'INVALID_BUDGET_SOURCE'
       | 'RUNTIME_CLOSED',
     message: string,
   ) {
@@ -191,28 +185,16 @@ function resolveEffectiveTaskKey(request: GenerationCompletionRequest): Creation
   return 'planning'
 }
 
-function freezeBudget(budget: GenerationRuntimeBudget): Readonly<GenerationRuntimeBudget> {
-  return Object.freeze({ ...budget })
-}
-
 /** 一次生成运行：按当前模型 id 现查档案，不再签发执行租约。 */
 export async function createGenerationRuntime(
   options: CreateGenerationRuntimeOptions,
   environment: GenerationRuntimeEnvironment = createDefaultEnvironment(),
 ): Promise<GenerationRuntime> {
-  if ('policy' in options || 'structuredLimits' in options) {
-    throw new GenerationRuntimeError(
-      'INVALID_BUDGET_SOURCE',
-      '生成运行时只能接受一个共享 budget。',
-    )
-  }
-  const budget = freezeBudget(options.budget)
   const sessionCandidate = options.projectSession
     ?? projectSessionContextFromProject(useProjectStore.getState().currentProject)
   const projectSession = sessionCandidate
     ? Object.freeze({ ...sessionCandidate })
     : undefined
-  assertGenerationHarnessPolicy(budget)
   const explicitModelId = options.modelId?.trim()
   if (Object.hasOwn(options, 'modelId') && !explicitModelId) {
     throw new GenerationRuntimeError('MODEL_NOT_FOUND', '指定的生成模型不存在或已被删除。')
@@ -264,7 +246,6 @@ export async function createGenerationRuntime(
         })
       },
     },
-    policy: budget,
     creativeStrategy: frozenCreativeStrategy,
   })
 

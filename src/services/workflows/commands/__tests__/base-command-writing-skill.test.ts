@@ -9,16 +9,16 @@ describe('BaseWorkflowCommand writing skill injection', () => {
       return {
         content: 'analysis',
         finishReason: 'stop' as const,
-        budget: {} as never,
+
         receipt: {
           model: {} as never,
           capabilities: {} as never,
-          budget: {} as never,
+
           finishReason: 'stop' as const,
         },
       }
     })
-    const session = { budget: {}, complete } as unknown as GenerationSession
+    const session = { complete } as unknown as GenerationSession
     const dependencies: WorkflowGenerationRuntimeDependencies = {
       createRuntime: async () => ({
         execute: operation => operation({ session }),
@@ -28,7 +28,7 @@ describe('BaseWorkflowCommand writing skill injection', () => {
     const { BaseWorkflowCommand } = await import('../base-command')
     class Probe extends BaseWorkflowCommand<string> {
       async execute(params: CommandExecuteParams) {
-        return this.executeWithGenerationRuntime('text', params, () => this.callLLM(
+        return this.executeWithGenerationRuntime(params, () => this.callLLM(
           'ANALYZE STYLE',
           'SYSTEM',
           params.callbacks,

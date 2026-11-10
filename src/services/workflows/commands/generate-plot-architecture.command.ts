@@ -60,7 +60,7 @@ export class GeneratePlotArchitectureCommand extends BaseWorkflowCommand<string>
 
   async execute(params: CommandExecuteParams): Promise<string> {
     assertArchitectureProjectSessionCurrent(requireWorkflowProjectSession(params.context), params.context)
-    return this.executeWithGenerationRuntime('text', params, () => this.executeWithinGeneration(params))
+    return this.executeWithGenerationRuntime(params, () => this.executeWithinGeneration(params))
   }
 
   private async executeWithinGeneration({ context, callbacks }: CommandExecuteParams): Promise<string> {

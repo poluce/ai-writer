@@ -133,7 +133,7 @@ export function createStructuredBatchExecutor<TInput, TOutput>(dependencies: {
       const recordAttempt = (attempt: GenerationAttemptReceipt): void => {
         attemptReceipts.push(attempt)
         receipt.calls = attemptReceipts.length
-        receipt.requestedTokens += attempt.budget.requestedOutputTokens
+        receipt.requestedTokens += attempt.requestedOutputTokens
         dependencies.onAttempt?.(attempt)
       }
 
@@ -485,17 +485,11 @@ export function createStructuredBatchExecutor<TInput, TOutput>(dependencies: {
           recordAttempt(error.receipt)
           if (error.code === 'CANCELLED') {
             failure = { code: 'cancelled', reason: 'cancelled', message: error.message }
-          } else if (error.code === 'DEADLINE_EXHAUSTED') {
-            failure = { code: 'deadline', reason: 'deadline', message: error.message }
           } else {
             failure = { code: 'generation_failed', reason: 'server_error', message: error.message }
           }
         } else if (error instanceof GenerationHarnessError) {
-          if (error.code === 'ATTEMPT_BUDGET_EXHAUSTED') {
-            failure = { code: 'limit_exceeded', reason: 'max_calls', message: error.message }
-          } else if (error.code === 'DEADLINE_EXHAUSTED') {
-            failure = { code: 'deadline', reason: 'deadline', message: error.message }
-          } else if (error.code === 'CANCELLED') {
+          if (error.code === 'CANCELLED') {
             failure = { code: 'cancelled', reason: 'cancelled', message: error.message }
           } else {
             failure = { code: 'generation_failed', reason: 'unknown', message: error.message }

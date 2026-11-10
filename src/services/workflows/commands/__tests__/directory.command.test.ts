@@ -107,7 +107,7 @@ function blueprintJson(chapterNumbers: readonly number[]): string {
 }
 
 function generationReceipt(
-  attempt: number,
+  _attempt: number,
   finishReason: GenerationAttemptReceipt['finishReason'],
   purpose?: string,
 ): GenerationAttemptReceipt {
@@ -130,13 +130,7 @@ function generationReceipt(
         featureFlags: 'unknown',
       },
     },
-    budget: Object.freeze({
-      attempt,
-      maxAttempts: 20,
-      requestedOutputTokens: 4096,
-      cumulativeRequestedOutputTokens: attempt * 4096,
-      deadlineAt: Number.MAX_SAFE_INTEGER,
-    }),
+    requestedOutputTokens: 4096,
     finishReason,
   }
 }
@@ -144,13 +138,7 @@ function generationReceipt(
 function generationSession(
   complete: GenerationSession['complete'],
 ): GenerationSession {
-  return {
-    budget: Object.freeze({
-      maxAttempts: 20,
-      deadlineAt: Number.MAX_SAFE_INTEGER,
-    }),
-    complete,
-  }
+  return { complete }
 }
 
 function testRuntime(session: GenerationSession): GenerationRuntime & { close: ReturnType<typeof vi.fn> } {
@@ -620,10 +608,6 @@ describe('GenerateDirectoryCommand', () => {
     expect(invoke.mock.calls.filter(([channel]) => channel === 'db:blueprint-commit-range'))
       .toHaveLength(1)
     expect(createRuntime).toHaveBeenCalledWith({
-      budget: {
-        maxAttempts: 20,
-        deadlineMs: 1_800_000,
-      },
     })
   })
 
@@ -661,10 +645,6 @@ describe('GenerateDirectoryCommand', () => {
       .toEqual([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20])
     expect(observedRanges).toEqual([[10, 14], [15, 19], [20, 20]])
     expect(createRuntime).toHaveBeenCalledWith({
-      budget: {
-        maxAttempts: 31,
-        deadlineMs: 1_800_000,
-      },
     })
     expect(invoke.mock.calls.filter(([channel]) => channel === 'db:blueprint-commit-range'))
       .toHaveLength(1)
@@ -833,10 +813,6 @@ describe('GenerateDirectoryCommand', () => {
     expect(invoke.mock.calls.filter(([channel]) => channel === 'db:blueprint-commit-range'))
       .toHaveLength(1)
     expect(createRuntime).toHaveBeenCalledWith({
-      budget: {
-        maxAttempts: 15,
-        deadlineMs: 1_800_000,
-      },
     })
   })
 

@@ -12,7 +12,6 @@ import {
 import {
   generatePlotTree,
   parsePlotTreeSnapshot,
-  PLOT_TREE_GENERATION_BUDGET,
   PLOT_TREE_INPUT_MAX_CHARACTERS,
   PlotTreeGenerationError,
   PlotTreeSourceError,
@@ -161,13 +160,6 @@ describe('plot tree AI boundary', () => {
     }), sources())).toThrow(/章节范围|chapter range/u)
   })
 
-  it('allows exactly one request in the ten-minute planning window', () => {
-    expect(PLOT_TREE_GENERATION_BUDGET).toMatchObject({
-      maxAttempts: 1,
-      deadlineMs: 10 * 60_000,
-    })
-  })
-
   it('parses a complete snapshot and rejects references absent from the supplied facts', () => {
     expect(parsePlotTreeSnapshot(
       JSON.stringify(modelResponse),
@@ -256,10 +248,6 @@ describe('plot tree AI boundary', () => {
     const runtime = {
       execute: vi.fn(async operation => operation({
         session: {
-          budget: {
-            maxAttempts: 1,
-            deadlineAt: Date.now() + 10 * 60_000,
-          },
           complete: vi.fn(async (value: GenerationTask) => {
             task = value
             return {
@@ -286,7 +274,6 @@ describe('plot tree AI boundary', () => {
     })
 
     expect(createRuntime).toHaveBeenCalledWith({
-      budget: PLOT_TREE_GENERATION_BUDGET,
       modelId: 'grok-frozen',
       projectSession: PROJECT_SESSION,
     })
@@ -339,7 +326,7 @@ describe('plot tree AI boundary', () => {
       receipt: {} as never,
     })
     const runtime = {
-      execute: vi.fn(async operation => operation({ session: { budget: {}, complete } })),
+      execute: vi.fn(async operation => operation({ session: { complete } })),
       close: vi.fn().mockResolvedValue(undefined),
     } as unknown as GenerationRuntime
 
@@ -377,7 +364,7 @@ describe('plot tree AI boundary', () => {
       receipt: {} as never,
     })
     const runtime = {
-      execute: vi.fn(async operation => operation({ session: { budget: {}, complete } })),
+      execute: vi.fn(async operation => operation({ session: { complete } })),
       close: vi.fn().mockResolvedValue(undefined),
     } as unknown as GenerationRuntime
 
@@ -407,9 +394,8 @@ describe('plot tree AI boundary', () => {
     expect(result.tracks[0]?.endChapter).toBe(4)
   })
 
-  it.each(['DEADLINE_EXHAUSTED', 'PROVIDER_REQUEST_FAILED'] as const)(
-    'maps %s to a safe plot-tree generation error',
-    async (code) => {
+  it('maps PROVIDER_REQUEST_FAILED to a safe plot-tree generation error', async () => {
+    const code = 'PROVIDER_REQUEST_FAILED'
       const runtime = {
         execute: vi.fn().mockRejectedValue(
           new GenerationHarnessError(code, 'PRIVATE_PROVIDER_MESSAGE'),
@@ -436,8 +422,7 @@ describe('plot tree AI boundary', () => {
       expect(failure).toMatchObject({ code, message: code })
       expect((failure as Error).message).not.toContain('PRIVATE_PROVIDER_MESSAGE')
       expect(runtime.close).toHaveBeenCalledOnce()
-    },
-  )
+  })
 
   it.each([150, 200])('includes every blueprint and finalized chapter for a %i-chapter project', async (chapterCount) => {
     const oversized = sources()
@@ -474,10 +459,6 @@ describe('plot tree AI boundary', () => {
     const runtime = {
       execute: vi.fn(async operation => operation({
         session: {
-          budget: {
-            maxAttempts: 1,
-            deadlineAt: Date.now() + 10 * 60_000,
-          },
           complete: vi.fn(async (value: GenerationTask) => {
             task = value
             return {
@@ -609,10 +590,6 @@ describe('plot tree AI boundary', () => {
     const runtime = {
       execute: vi.fn(async operation => operation({
         session: {
-          budget: {
-            maxAttempts: 1,
-            deadlineAt: Date.now() + 10 * 60_000,
-          },
           complete,
         },
       })),
@@ -661,10 +638,6 @@ describe('plot tree AI boundary', () => {
     const runtime = {
       execute: vi.fn(async operation => operation({
         session: {
-          budget: {
-            maxAttempts: 1,
-            deadlineAt: Date.now() + 10 * 60_000,
-          },
           complete,
         },
       })),
@@ -699,10 +672,6 @@ describe('plot tree AI boundary', () => {
     const runtime = {
       execute: vi.fn(async operation => operation({
         session: {
-          budget: {
-            maxAttempts: 1,
-            deadlineAt: Date.now() + 10 * 60_000,
-          },
           complete: vi.fn().mockResolvedValue({
             status: 'incomplete',
             content: '{"tracks":[]}',

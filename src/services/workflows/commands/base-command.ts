@@ -47,29 +47,6 @@ type WorkflowLLMOptions = {
   submitTool?: SubmitToolName
 }
 
-export type WorkflowGenerationIntent = 'structured' | 'text' | 'character-architecture'
-
-/**
- * Intent retry/time limits are product policy, never model profiles. Physical
- * output length is planned from the frozen model capability alone.
- */
-export const WORKFLOW_GENERATION_BUDGETS = Object.freeze({
-  structured: Object.freeze({
-    maxAttempts: 16,
-    deadlineMs: 10 * 60_000,
-  }),
-  text: Object.freeze({
-    maxAttempts: 8,
-    deadlineMs: 20 * 60_000,
-  }),
-  'character-architecture': Object.freeze({
-    // Worst recoverable path: manifest replacements, bounded detail batches,
-    // and one syntax-only repair on a slow provider.
-    maxAttempts: 12,
-    deadlineMs: 20 * 60_000,
-  }),
-})
-
 export interface WorkflowGenerationRuntimeDependencies {
   createRuntime(options: CreateGenerationRuntimeOptions): Promise<GenerationRuntime>
 }
@@ -117,12 +94,11 @@ export abstract class BaseWorkflowCommand<TResult = string> {
   abstract execute(params: CommandExecuteParams): Promise<TResult>
 
   /**
-   * One command execute owns one immutable model lease, one attempt/time
-   * budget and one cancellation signal. Nested helpers consume this scope and
-   * cannot reopen or reselect a model.
+   * One command execute owns one immutable model lease and one cancellation
+   * signal. Nested helpers consume this scope and cannot reopen or reselect a
+   * model.
    */
   protected async executeWithGenerationRuntime<T>(
-    intent: WorkflowGenerationIntent,
     params: CommandExecuteParams,
     operation: () => Promise<T>,
   ): Promise<T> {
@@ -134,7 +110,6 @@ export abstract class BaseWorkflowCommand<TResult = string> {
     try {
       const generationModelId = params.context.generationModelId?.trim() || undefined
       const runtime = await this.generationDependencies.createRuntime({
-        budget: WORKFLOW_GENERATION_BUDGETS[intent],
         ...(generationModelId ? { modelId: generationModelId } : {}),
       })
       return await runtime.execute(async ({ session }) => {
@@ -156,7 +131,7 @@ export abstract class BaseWorkflowCommand<TResult = string> {
     }
   }
 
-  /** Structured orchestrators may consume the same session; they cannot replace its budget. */
+  /** Structured orchestrators may consume the same session. */
   protected requireGenerationExecution(): Readonly<ActiveGenerationExecution> {
     if (!this.activeGenerationExecution) {
       throw new Error('生成调用必须位于命令执行期 GenerationRuntime 内。')
@@ -207,7 +182,7 @@ export abstract class BaseWorkflowCommand<TResult = string> {
       uiLocale: context.uiLocale ?? 'zh-CN',
       promptBudget: {
         contextWindowTokens: completion.receipt.capabilities.contextWindowTokens,
-        maxOutputTokens: completion.receipt.budget.requestedOutputTokens,
+        maxOutputTokens: completion.receipt.requestedOutputTokens,
         systemPromptChars: systemPrompt.length,
       },
       preserveCompleteStructuredPrompt: continuation.mode === 'replace-structured-output'
@@ -318,7 +293,7 @@ export abstract class BaseWorkflowCommand<TResult = string> {
         ? undefined
         : {
             contextWindowTokens: initialReceipt?.capabilities?.contextWindowTokens,
-            maxOutputTokens: initialReceipt?.budget?.requestedOutputTokens,
+            maxOutputTokens: initialReceipt?.requestedOutputTokens,
             systemPromptChars: options.systemPrompt.length,
           },
       isCancelled: () => options.context.cancelled,

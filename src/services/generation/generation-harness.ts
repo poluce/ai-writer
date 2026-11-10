@@ -87,21 +87,6 @@ export interface DefaultModelSource {
   snapshotDefaultModel(): DefaultModelSnapshot | null
 }
 
-export interface GenerationHarnessPolicy {
-  maxAttempts: number
-  deadlineMs: number
-}
-
-/**
- * Application-wide safety ceiling for retry count and wall-clock time. Output
- * length is not budgeted here: every physical request uses the model's own
- * maximum output capability.
- */
-export const GENERATION_ABSOLUTE_BUDGET_LIMITS = Object.freeze({
-  maxAttempts: 32,
-  deadlineMs: 60 * 60_000,
-})
-
 export type CapabilityEvidenceSource = ModelExecutionCapabilityEvidenceSource
 
 export interface ResolvedCapabilityEvidence {
@@ -129,7 +114,6 @@ export interface PhysicalGenerationPlan {
   maxOutputTokens: number
   contextWindowTokens: number | null
   estimatedInputTokens: number
-  deadlineAt: number
   responseFormat?: { type: 'json_object' }
 }
 
@@ -162,12 +146,7 @@ export interface GenerationAttemptReceipt {
   purpose?: string
   model: FrozenGenerationModelIdentity
   capabilities: ResolvedCapabilityEvidence
-  budget: {
-    attempt: number
-    maxAttempts: number
-    requestedOutputTokens: number
-    deadlineAt: number
-  }
+  requestedOutputTokens: number
   finishReason: LLMFinishReason
   usage?: TokenUsage
   promptBudget?: PromptBudgetReport
@@ -193,13 +172,7 @@ export interface GenerationExecutionOptions {
   signal?: AbortSignal
 }
 
-export interface GenerationSessionBudget {
-  maxAttempts: number
-  deadlineAt: number
-}
-
 export interface GenerationSession {
-  readonly budget: Readonly<GenerationSessionBudget>
   complete(task: GenerationTask, options?: GenerationExecutionOptions): Promise<GenerationOutcome>
 }
 
@@ -214,9 +187,7 @@ export class GenerationHarnessError extends Error {
       | 'INVALID_MODEL_REVISION'
       | 'UNTRUSTED_CAPABILITY_EVIDENCE'
       | 'INVALID_POLICY'
-      | 'ATTEMPT_BUDGET_EXHAUSTED'
       | 'PROMPT_BUDGET_EXHAUSTED'
-      | 'DEADLINE_EXHAUSTED'
       | 'CANCELLED'
       | 'PROVIDER_REQUEST_FAILED',
     message: string,
@@ -240,7 +211,7 @@ export class PromptBudgetExceededError extends GenerationHarnessError {
 /** Failed physical attempt with a non-sensitive budget receipt for orchestration and audit. */
 export class GenerationAttemptError extends GenerationHarnessError {
   constructor(
-    code: 'CANCELLED' | 'DEADLINE_EXHAUSTED' | 'PROVIDER_REQUEST_FAILED',
+    code: 'CANCELLED' | 'PROVIDER_REQUEST_FAILED',
     message: string,
     readonly receipt: GenerationAttemptReceipt,
   ) {
@@ -253,20 +224,6 @@ function resolveHarnessReasoningStage(task: GenerationTask): GenerationReasoning
   if (task.reasoningStage) return task.reasoningStage
   if (task.output === 'structured-data') return 'planning'
   return 'drafting'
-}
-
-function harnessAttemptFailure(termination: 'cancelled' | 'deadline' | null): {
-  code: 'CANCELLED' | 'DEADLINE_EXHAUSTED' | 'PROVIDER_REQUEST_FAILED'
-  message: string
-  finishReason: 'cancelled' | 'error'
-} {
-  if (termination === 'cancelled') {
-    return { code: 'CANCELLED', message: '生成请求已取消。', finishReason: 'cancelled' }
-  }
-  if (termination === 'deadline') {
-    return { code: 'DEADLINE_EXHAUSTED', message: '生成请求超过会话截止时间。', finishReason: 'error' }
-  }
-  return { code: 'PROVIDER_REQUEST_FAILED', message: '模型请求失败。', finishReason: 'error' }
 }
 
 export function safeReceiptPurpose(purpose: string): string {
@@ -394,21 +351,6 @@ function positiveInteger(value: unknown): number | null {
     : null
 }
 
-export function assertGenerationHarnessPolicy(policy: GenerationHarnessPolicy): void {
-  if (
-    positiveInteger(policy.maxAttempts) === null
-    || positiveInteger(policy.deadlineMs) === null
-  ) {
-    throw new GenerationHarnessError('INVALID_POLICY', '生成会话限制必须是正整数。')
-  }
-  if (
-    policy.maxAttempts > GENERATION_ABSOLUTE_BUDGET_LIMITS.maxAttempts
-    || policy.deadlineMs > GENERATION_ABSOLUTE_BUDGET_LIMITS.deadlineMs
-  ) {
-    throw new GenerationHarnessError('INVALID_POLICY', '生成会话限制超过应用安全上限。')
-  }
-}
-
 type GenerationModelDescriptor = DefaultModelSnapshot['model']
 
 function freezeModel(model: GenerationModelDescriptor): Readonly<GenerationModelDescriptor> {
@@ -488,15 +430,11 @@ function copyCapabilities(capabilities: ResolvedCapabilityEvidence): ResolvedCap
 export function createGenerationHarness(dependencies: {
   modelSource: DefaultModelSource
   completionPort: CompletionPort
-  policy: GenerationHarnessPolicy
   creativeStrategy?: CreativeStrategy
-  now?: () => number
 }): GenerationHarness {
   const { modelSource, completionPort } = dependencies
-  const policy = Object.freeze({ ...dependencies.policy })
-  const now = dependencies.now ?? Date.now
   const creativeStrategy = dependencies.creativeStrategy ?? 'auto'
-  assertGenerationHarnessPolicy(policy)
+
 
   return {
     openSession(): GenerationSession {
@@ -517,15 +455,10 @@ export function createGenerationHarness(dependencies: {
       const capabilities = selected.resolvedCapabilities
         ? copyCapabilities(selected.resolvedCapabilities)
         : resolveInitialCapabilities(frozenModel)
-      const sessionBudget = Object.freeze({
-        maxAttempts: policy.maxAttempts,
-        deadlineAt: now() + policy.deadlineMs,
-      })
       let attempts = 0
 
       const attemptReceipt = (
         purpose: string,
-        attempt: number,
         requestedOutputTokens: number,
         finishReason: LLMFinishReason,
         usage?: TokenUsage,
@@ -534,19 +467,13 @@ export function createGenerationHarness(dependencies: {
         purpose: safeReceiptPurpose(purpose),
         model: { ...frozenIdentity },
         capabilities: copyCapabilities(capabilities),
-        budget: {
-          attempt,
-          maxAttempts: sessionBudget.maxAttempts,
-          requestedOutputTokens,
-          deadlineAt: sessionBudget.deadlineAt,
-        },
+        requestedOutputTokens,
         finishReason,
         ...(usage ? { usage: { ...usage } } : {}),
         ...(promptBudget ? { promptBudget } : {}),
       })
 
       return {
-        budget: sessionBudget,
         async complete(
           task: GenerationTask,
           options?: GenerationExecutionOptions,
@@ -554,13 +481,6 @@ export function createGenerationHarness(dependencies: {
           if (options?.signal?.aborted) {
             throw new GenerationHarnessError('CANCELLED', '生成请求已取消。')
           }
-          if (now() >= sessionBudget.deadlineAt) {
-            throw new GenerationHarnessError('DEADLINE_EXHAUSTED', '生成会话已超过截止时间。')
-          }
-          if (attempts >= sessionBudget.maxAttempts) {
-            throw new GenerationHarnessError('ATTEMPT_BUDGET_EXHAUSTED', '生成会话已用尽请求次数。')
-          }
-
           const estimatedInputTokens = estimateInputTokens(task.messages)
           // Single-turn requests are bounded by the model's own output capability,
           // never by a workflow-level token budget or by leftover context.
@@ -592,7 +512,6 @@ export function createGenerationHarness(dependencies: {
             maxOutputTokens,
             contextWindowTokens: capabilities.contextWindowTokens,
             estimatedInputTokens,
-            deadlineAt: sessionBudget.deadlineAt,
             ...(task.output === 'structured-data' && capabilities.structuredOutput === true
               ? { responseFormat: { type: 'json_object' as const } }
               : {}),
@@ -600,22 +519,13 @@ export function createGenerationHarness(dependencies: {
           attempts = attempt
 
           const controller = new AbortController()
-          const remainingMs = Math.max(1, sessionBudget.deadlineAt - now())
-          let timeoutId: ReturnType<typeof setTimeout> | undefined
-          let termination: 'cancelled' | 'deadline' | null = null
-          let rejectTermination: ((reason: GenerationHarnessError) => void) | undefined
-          const terminationPromise = new Promise<never>((_resolve, reject) => {
-            rejectTermination = reject
-            timeoutId = setTimeout(() => {
-              termination = 'deadline'
-              controller.abort()
-              reject(new GenerationHarnessError('DEADLINE_EXHAUSTED', '生成请求超过会话截止时间。'))
-            }, remainingMs)
+          let rejectCancellation: ((reason: Error) => void) | undefined
+          const cancellation = new Promise<never>((_resolve, reject) => {
+            rejectCancellation = reject
           })
           const cancel = () => {
-            termination = 'cancelled'
             controller.abort()
-            rejectTermination?.(new GenerationHarnessError('CANCELLED', '生成请求已取消。'))
+            rejectCancellation?.(new GenerationHarnessError('CANCELLED', '生成请求已取消。'))
           }
           options?.signal?.addEventListener('abort', cancel, { once: true })
 
@@ -632,24 +542,22 @@ export function createGenerationHarness(dependencies: {
                 signal: controller.signal,
                 ...(task.submitTool ? { submitTool: task.submitTool } : {}),
               }),
-              terminationPromise,
+              cancellation,
             ])
           } catch {
-            const failure = harnessAttemptFailure(termination)
+            const cancelled = options?.signal?.aborted === true
             throw new GenerationAttemptError(
-              failure.code,
-              failure.message,
+              cancelled ? 'CANCELLED' : 'PROVIDER_REQUEST_FAILED',
+              cancelled ? '生成请求已取消。' : '模型请求失败。',
               attemptReceipt(
                 task.purpose,
-                attempt,
                 maxOutputTokens,
-                failure.finishReason,
+                cancelled ? 'cancelled' : 'error',
                 undefined,
                 promptBudget,
               ),
             )
           } finally {
-            if (timeoutId !== undefined) clearTimeout(timeoutId)
             options?.signal?.removeEventListener('abort', cancel)
           }
 
@@ -659,7 +567,6 @@ export function createGenerationHarness(dependencies: {
           const finishReason = completion.finishReason ?? 'unknown'
           const receipt = attemptReceipt(
             task.purpose,
-            attempt,
             maxOutputTokens,
             finishReason,
             completion.usage,

@@ -78,11 +78,6 @@ export function createDraftGeneratingPlaceholder(
   return { stop() { /* 占位由下一步的结果文本覆盖，无需额外收尾 */ } }
 }
 
-export const DRAFT_GENERATION_BUDGET = Object.freeze({
-  maxAttempts: 8,
-  deadlineMs: 20 * 60_000,
-})
-
 export interface GenerateDraftCommandDependencies {
   createRuntime(options: CreateGenerationRuntimeOptions): Promise<GenerationRuntime>
 }
@@ -184,8 +179,8 @@ export function logDraftAttempt(
 ): void {
   callbacks.log(workflowUiText(
     context,
-    `  ${phase.zhCN}：请求输出上限 ${receipt.budget.requestedOutputTokens} Tokens`,
-    `  ${phase.enUS}: request output limit ${receipt.budget.requestedOutputTokens} tokens`,
+    `  ${phase.zhCN}：请求输出上限 ${receipt.requestedOutputTokens} Tokens`,
+    `  ${phase.enUS}: request output limit ${receipt.requestedOutputTokens} tokens`,
   ))
 }
 

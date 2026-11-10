@@ -29,13 +29,6 @@ function task(purpose: string) {
   }
 }
 
-function budget() {
-  return {
-    maxAttempts: 1,
-    deadlineMs: 60_000,
-  }
-}
-
 describe('GenerationRuntime', () => {
   it('uses an explicitly selected model id without reading the mutable default', async () => {
     const snapshotDefaultModelId = vi.fn(() => 'model-a')
@@ -48,7 +41,6 @@ describe('GenerationRuntime', () => {
     }
     const runtime = await createGenerationRuntime({
       modelId: 'model-b',
-      budget: budget(),
     }, environment)
 
     const content = await runtime.execute(async ({ session }) => (
@@ -68,7 +60,7 @@ describe('GenerationRuntime', () => {
       snapshotModel: (modelId) => testModel(modelId),
       complete,
     }
-    const runtime = await createGenerationRuntime({ budget: budget() }, environment)
+    const runtime = await createGenerationRuntime({}, environment)
     const log = vi.spyOn(console, 'info').mockImplementation(() => undefined)
 
     await expect(runtime.execute(async ({ session }) => (
@@ -91,7 +83,7 @@ describe('GenerationRuntime', () => {
       snapshotModel: (modelId) => testModel(modelId),
       complete,
     }
-    const runtime = await createGenerationRuntime({ budget: budget() }, environment)
+    const runtime = await createGenerationRuntime({}, environment)
     await runtime.execute(async ({ session }) => session.complete(task('default-model')))
     expect(complete.mock.calls[0]?.[0].modelId).toBe('model-a')
   })
@@ -102,7 +94,7 @@ describe('GenerationRuntime', () => {
       snapshotModel: () => null,
       complete: vi.fn(),
     }
-    const runtime = await createGenerationRuntime({ budget: budget() }, environment)
+    const runtime = await createGenerationRuntime({}, environment)
     await expect(runtime.execute(async ({ session }) => session.complete(task('none'))))
       .rejects.toMatchObject({ code: 'NO_DEFAULT_MODEL' })
   })
@@ -110,7 +102,6 @@ describe('GenerationRuntime', () => {
   it('rejects a blank explicit model id', async () => {
     await expect(createGenerationRuntime({
       modelId: '   ',
-      budget: budget(),
     })).rejects.toMatchObject({ code: 'MODEL_NOT_FOUND' })
   })
 
@@ -120,7 +111,7 @@ describe('GenerationRuntime', () => {
       snapshotModel: (modelId) => testModel(modelId),
       complete: vi.fn(),
     }
-    const runtime = await createGenerationRuntime({ budget: budget() }, environment)
+    const runtime = await createGenerationRuntime({}, environment)
     await runtime.close()
     await expect(runtime.execute(async ({ session }) => session.complete(task('closed'))))
       .rejects.toBeInstanceOf(GenerationRuntimeError)
