@@ -156,4 +156,25 @@ describe('assistant composer runtime pickers', () => {
     expect(useAgentStore.getState().getActiveConversation()?.thinkingLevel).toBeNull()
     expect(buttonWithText('gemini-3.8-flash-low')?.textContent).toContain('关')
   })
+
+  it('routes the writer assistant composer to the drafting preset independently from lead assistant', async () => {
+    useLLMStore.setState({
+      taskModelRouting: {
+        assistant: { modelId: 'p1', thinkingLevel: 'auto' },
+        drafting: { modelId: 'p2', thinkingLevel: 'auto' },
+      },
+    })
+
+    await act(async () => root.render(<AgentInputBox assistantType="writer" />))
+    expect(buttonWithText('gemini-3.1-pro-low')).toBeDefined()
+
+    await click(buttonWithText('gemini-3.1-pro-low'))
+    await click(buttonWithText('模型'))
+    await click(buttonWithText('gpt-5'))
+
+    const writerConv = useAgentStore.getState().getActiveConversation('writer')
+    expect(writerConv?.modelId).toBe('p3')
+    expect(useLLMStore.getState().taskModelRouting['drafting']?.modelId).toBe('p3')
+    expect(useLLMStore.getState().taskModelRouting['assistant']?.modelId).toBe('p1')
+  })
 })

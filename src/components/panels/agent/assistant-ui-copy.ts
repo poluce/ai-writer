@@ -32,7 +32,7 @@ export interface AssistantUiCopy {
   starterHeading: (text: AssistantTextFn) => string
   starters: readonly AssistantStarter[]
   /** 未显式选择模型时，按哪一类创作环节解析默认模型。 */
-  modelTaskKey: 'assistant' | 'planning' | 'review'
+  modelTaskKey: 'assistant' | 'planning' | 'drafting' | 'review'
 }
 
 const ARCHITECT_STARTERS: readonly AssistantStarter[] = [
@@ -105,6 +105,41 @@ const BLUEPRINT_STARTERS: readonly AssistantStarter[] = [
   },
 ]
 
+const WRITER_STARTERS: readonly AssistantStarter[] = [
+  {
+    titleZh: '起草下一章正文',
+    titleEn: 'Draft Next Chapter',
+    descZh: '读取蓝图、前文事实与人物状态，直接执笔落盘',
+    descEn: 'Read the blueprint, prior facts, and character states, then draft and save the chapter',
+    promptZh: '请读取当前项目的章节进度、对应章节蓝图、前文连续性事实与人物近况，执笔起草下一章正文，并通过 manage_drafts 写入保存；如有必要同步更新人物与伏笔状态。',
+    promptEn: 'Please read the project progress, the matching chapter blueprint, prior continuity facts, and character states, draft the next chapter prose, save it with manage_drafts, and update character or thread states if needed.',
+  },
+  {
+    titleZh: '按划词批注精修草稿',
+    titleEn: 'Revise from Annotations',
+    descZh: '读取当前章节正文与作者批注，逐处精准替换并归档',
+    descEn: 'Read the current chapter draft and author notes, then apply targeted edits and resolve them',
+    promptZh: '请读取我当前打开的章节草稿与待处理批注，对照上下文逐处精修正文并用 replace_excerpt 写入，修改完成后将已处理的批注标记为已解决。',
+    promptEn: 'Please read my currently open chapter draft and active annotations, apply targeted revisions with replace_excerpt, and mark resolved annotations.',
+  },
+  {
+    titleZh: '扩写当前场景与动作细节',
+    titleEn: 'Expand Scene & Action',
+    descZh: '围绕因果、感官细节与情绪张力充实章节画面感',
+    descEn: 'Enrich the current scene with sensory detail, action, and tension',
+    promptZh: '请读取当前章节草稿与本章蓝图，针对薄弱或偏概括的段落补充具体动作、环境感官与潜台词交锋，保持项目既有文风并通过 replace_excerpt 写入。',
+    promptEn: 'Please read the current chapter draft and blueprint, expand thin passages with concrete action, sensory detail, and subtext while matching the project writing style, and persist changes with replace_excerpt.',
+  },
+  {
+    titleZh: '润色人物对白与节奏张力',
+    titleEn: 'Polish Dialogue & Pacing',
+    descZh: '让人物说话贴合性格动机，拉紧段落节奏推进冲突',
+    descEn: 'Sharpen character voice in dialogue and tighten scene pacing',
+    promptZh: '请读取当前章节草稿和登场人物档案，润色不自然或同质化的人物对白，理顺节奏起伏，并用 replace_excerpt 局部写入更新。',
+    promptEn: 'Please read the current chapter draft and appearing character dossiers, polish flat dialogue to fit each voice, tighten pacing, and save targeted replacements with replace_excerpt.',
+  },
+]
+
 const REVIEW_STARTERS: readonly AssistantStarter[] = [
   {
     titleZh: '审当前章',
@@ -134,19 +169,19 @@ const REVIEW_STARTERS: readonly AssistantStarter[] = [
 
 export const ASSISTANT_UI_COPY: Record<AssistantType, AssistantUiCopy> = {
   general: {
-    title: text => text('AI 写作助手', 'AI Writing Assistant'),
+    title: text => text('AI 助手', 'AI Assistant'),
     description: text => text(
-      '创作助手 — 支持 / 命令和 @ 引用',
-      'Creative assistant — use / commands and @ mentions',
+      '主助手 — 统筹调度架构、蓝图、写作与审稿，支持 / 命令和 @ 引用',
+      'Lead assistant — coordinates Architect, Blueprint, Writing, and Review; use / commands and @ mentions',
     ),
     placeholder: text => text(
       '输入消息，@ 提及，/ 使用工作流...',
       'Type a message, @ mention, or / use a workflow...',
     ),
-    closeTitle: text => text('关闭 Agent 面板', 'Close Agent panel'),
+    closeTitle: text => text('关闭助手面板', 'Close Assistant panel'),
     historyLinkLabel: text => text('查看全部对话', 'View all conversations'),
     historyTitle: text => text('全部对话', 'All conversations'),
-    starterHeading: text => text('创作起点', 'Writing kickstarts'),
+    starterHeading: text => text('创作起点', 'Creative kickstarts'),
     starters: [],
     modelTaskKey: 'assistant',
   },
@@ -183,6 +218,23 @@ export const ASSISTANT_UI_COPY: Record<AssistantType, AssistantUiCopy> = {
     starterHeading: text => text('蓝图推演起点', 'Blueprint Kickstarts'),
     starters: BLUEPRINT_STARTERS,
     modelTaskKey: 'planning',
+  },
+  writer: {
+    title: text => text('AI 写作助手', 'AI Writing Assistant'),
+    description: text => text(
+      '写作助手 — 专注章节正文起草、改写润色，并同步人物状态与伏笔进度',
+      'Writing Assistant — Drafts and refines chapter prose while keeping characters and threads in sync',
+    ),
+    placeholder: text => text(
+      '告诉我写哪一章、扩写哪段或怎么改稿...（Enter 发送）',
+      'Tell me which chapter to draft, expand, or revise... (Enter to send)',
+    ),
+    closeTitle: text => text('关闭写作助手', 'Close Writing panel'),
+    historyLinkLabel: text => text('查看全部写作记录', 'View all writing discussions'),
+    historyTitle: text => text('全部写作记录', 'All writing discussions'),
+    starterHeading: text => text('写作起点', 'Writing kickstarts'),
+    starters: WRITER_STARTERS,
+    modelTaskKey: 'drafting',
   },
   review: {
     title: text => text('AI 审稿助手', 'AI Review Assistant'),

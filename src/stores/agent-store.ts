@@ -18,7 +18,7 @@ import { createAgentExecutionContext } from '../services/agent/project-context'
 import { writingLanguageText } from '../shared/writing-language'
 import { projectSessionContextFromProject } from '../shared/project-session-context'
 import { readActiveProject } from '../services/active-project'
-import type { ProjectSessionContext } from '../shared/ipc-channels'
+import type { CreationTaskKey, ProjectSessionContext } from '../shared/ipc-channels'
 import type { AssistantThinkingLevel } from '../shared/agent-runtime'
 import {
   ASSISTANT_TYPES,
@@ -96,6 +96,8 @@ export interface AgentState {
   activeArchitectConversationId: string | null
   /** 当前活跃章节蓝图助手会话 ID */
   activeBlueprintConversationId: string | null
+  /** 当前活跃写作助手会话 ID */
+  activeWriterConversationId: string | null
   /** 当前活跃审稿助手会话 ID */
   activeReviewConversationId: string | null
   /** 是否显示通用助手历史面板 */
@@ -104,6 +106,8 @@ export interface AgentState {
   showArchitectHistory: boolean
   /** 是否显示章节蓝图助手历史面板 */
   showBlueprintHistory: boolean
+  /** 是否显示写作助手历史面板 */
+  showWriterHistory: boolean
   /** 是否显示审稿助手历史面板 */
   showReviewHistory: boolean
   /** 全局默认模式 */
@@ -145,15 +149,15 @@ export interface AgentState {
   /** 设置历史面板可见性 */
   setShowHistory: (show: boolean, type?: AssistantType) => void
   /** 设置当前会话模式 */
-  setMode: (mode: AgentMode) => void
-  /** 设置当前会话使用的模型档案（渠道）；同时清掉会话级模型覆盖。 */
-  setModelId: (modelId: string | null) => void
+  setMode: (mode: AgentMode, type?: AssistantType) => void
+  /** 设置当前会话使用的模型档案（渠道）；同时自动持久化到该助手对应的创作环节。 */
+  setModelId: (modelId: string | null, type?: AssistantType) => void
   /** 设置当前会话的思考等级；null 表示不指定（Pi 默认）。 */
-  setThinkingLevel: (thinkingLevel: AssistantThinkingLevel | null) => void
+  setThinkingLevel: (thinkingLevel: AssistantThinkingLevel | null, type?: AssistantType) => void
   /** 发送消息（触发 Agent ReAct 循环） */
   sendMessage: (content: string, type?: AssistantType) => Promise<void>
   /** 取消当前生成 */
-  cancelGeneration: () => Promise<void>
+  cancelGeneration: (type?: AssistantType) => Promise<void>
   /** 响应 Tool 确认（用于 ConfirmCard） */
   resolveToolConfirmation: (toolCallId: string, confirmed: boolean, options?: unknown) => void
   /** 切书/开书前清空会话，避免短暂显示上一本的对话 */
@@ -170,18 +174,21 @@ type ActiveConversationField =
   | 'activeConversationId'
   | 'activeArchitectConversationId'
   | 'activeBlueprintConversationId'
+  | 'activeWriterConversationId'
   | 'activeReviewConversationId'
 
 type HistoryVisibleField =
   | 'showHistory'
   | 'showArchitectHistory'
   | 'showBlueprintHistory'
+  | 'showWriterHistory'
   | 'showReviewHistory'
 
 const ACTIVE_CONVERSATION_FIELD: Record<AssistantType, ActiveConversationField> = {
   general: 'activeConversationId',
   architect: 'activeArchitectConversationId',
   blueprint: 'activeBlueprintConversationId',
+  writer: 'activeWriterConversationId',
   review: 'activeReviewConversationId',
 }
 
@@ -189,6 +196,7 @@ const HISTORY_VISIBLE_FIELD: Record<AssistantType, HistoryVisibleField> = {
   general: 'showHistory',
   architect: 'showArchitectHistory',
   blueprint: 'showBlueprintHistory',
+  writer: 'showWriterHistory',
   review: 'showReviewHistory',
 }
 
@@ -197,7 +205,15 @@ const DEFAULT_CONVERSATION_TITLES: Record<AssistantType, readonly [string, strin
   general: ['新对话', 'New conversation'],
   architect: ['新架构推演', 'New architecture discussion'],
   blueprint: ['新章节蓝图推演', 'New chapter blueprint'],
+  writer: ['新写作会话', 'New writing session'],
   review: ['审稿对话', 'New review'],
+}
+
+function assistantTaskKey(type: AssistantType): CreationTaskKey {
+  if (type === 'review') return 'review'
+  if (type === 'writer') return 'drafting'
+  if (type === 'architect' || type === 'blueprint') return 'planning'
+  return 'assistant'
 }
 
 /** 切换助手面板的活跃会话，并收起历史面板。 */
@@ -210,6 +226,8 @@ function activeConversationPatch(
       return { activeArchitectConversationId: conversationId, showArchitectHistory: false }
     case 'blueprint':
       return { activeBlueprintConversationId: conversationId, showBlueprintHistory: false }
+    case 'writer':
+      return { activeWriterConversationId: conversationId, showWriterHistory: false }
     case 'review':
       return { activeReviewConversationId: conversationId, showReviewHistory: false }
     case 'general':
@@ -226,6 +244,8 @@ function historyVisiblePatch(
       return { showArchitectHistory: show }
     case 'blueprint':
       return { showBlueprintHistory: show }
+    case 'writer':
+      return { showWriterHistory: show }
     case 'review':
       return { showReviewHistory: show }
     case 'general':
@@ -388,10 +408,12 @@ export const useAgentStore = create<AgentState>()((set, get) => ({
   activeConversationId: null,
   activeArchitectConversationId: null,
   activeBlueprintConversationId: null,
+  activeWriterConversationId: null,
   activeReviewConversationId: null,
   showHistory: false,
   showArchitectHistory: false,
   showBlueprintHistory: false,
+  showWriterHistory: false,
   showReviewHistory: false,
   defaultMode: 'planning',
   executionMode: getSavedExecutionMode(),
@@ -584,8 +606,8 @@ export const useAgentStore = create<AgentState>()((set, get) => ({
     set(patch)
   },
 
-  setMode: (mode) => {
-    const conv = get().getActiveConversation()
+  setMode: (mode, type = 'general') => {
+    const conv = get().getActiveConversation(type)
     if (!conv) {
       set({ defaultMode: mode })
       return
@@ -598,34 +620,36 @@ export const useAgentStore = create<AgentState>()((set, get) => ({
     }))
   },
 
-  setModelId: (modelId) => {
-    const conv = get().getActiveConversation() ?? get().createConversation()
+  setModelId: (modelId, type = 'general') => {
+    const conv = get().getActiveConversation(type) ?? get().createConversation(type)
     set(state => ({
       conversations: state.conversations.map(c =>
         c.id === conv.id ? { ...c, modelId } : c
       ),
     }))
-    // 助手选择的模型自动持久化保存到全局 taskModelRouting['assistant']
+    // 助手选择的模型自动持久化保存到对应的创作环节预设
     if (modelId) {
-      const currentRouting = useLLMStore.getState().taskModelRouting['assistant']
-      void useLLMStore.getState().setTaskConfig('assistant', {
+      const taskKey = assistantTaskKey(type)
+      const currentRouting = useLLMStore.getState().taskModelRouting[taskKey]
+      void useLLMStore.getState().setTaskConfig(taskKey, {
         ...currentRouting,
         modelId,
       })
     }
   },
 
-  setThinkingLevel: (thinkingLevel) => {
-    const conv = get().getActiveConversation() ?? get().createConversation()
+  setThinkingLevel: (thinkingLevel, type = 'general') => {
+    const conv = get().getActiveConversation(type) ?? get().createConversation(type)
     set(state => ({
       conversations: state.conversations.map(c =>
         c.id === conv.id ? { ...c, thinkingLevel } : c
       ),
     }))
-    // 助手选择的思考档位自动持久化保存到全局 taskModelRouting['assistant']
+    // 助手选择的思考档位自动持久化保存到对应的创作环节预设
     if (thinkingLevel) {
-      const currentRouting = useLLMStore.getState().taskModelRouting['assistant']
-      void useLLMStore.getState().setTaskConfig('assistant', {
+      const taskKey = assistantTaskKey(type)
+      const currentRouting = useLLMStore.getState().taskModelRouting[taskKey]
+      void useLLMStore.getState().setTaskConfig(taskKey, {
         ...currentRouting,
         thinkingLevel: thinkingLevel === 'off' ? 'off' : thinkingLevel,
       })
@@ -852,9 +876,14 @@ export const useAgentStore = create<AgentState>()((set, get) => ({
     }
   },
 
-  cancelGeneration: async () => {
+  cancelGeneration: async (type) => {
     const state = get()
-    const convId = state.activeConversationId
+    const streamingConv = state.activeRequestId
+      ? state.conversations.find(c => c.messages.some(m => m.id === state.activeRequestId || m.streaming))
+      : state.conversations.find(c => c.messages.some(m => m.streaming))
+    const convId = (type ? state.getActiveConversation(type)?.id : undefined)
+      ?? streamingConv?.id
+      ?? state.activeConversationId
     const cancelledUiLocale = (convId ? inflightTurns.get(convId)?.uiLocale : null)
       ?? useLocaleStore.getState().locale
     const stoppedText = cancelledUiLocale === 'en-US'

@@ -50,7 +50,7 @@ describe('buildAssistantSystemPrompt', () => {
     const prompt = buildAssistantSystemPrompt(blocks, core())
     const order = [
       prompt.indexOf('【不可变系统合同】'),
-      prompt.indexOf('你是一位经验丰富的长篇小说写作助手'),
+      prompt.indexOf('长篇小说统筹与创作主助手'),
       prompt.indexOf('【多助手协同调度能力】'),
       prompt.indexOf('当前项目上下文'),
     ]
@@ -93,12 +93,13 @@ describe('buildAssistantSystemPrompt', () => {
     const blocks = resolveAssistantPromptBlocks('general', 'en-US')
     const prompt = buildAssistantSystemPrompt(blocks, core({ writingLanguage: 'en-US' }))
     expect(prompt).toContain('[Immutable system contract]')
-    expect(prompt).toContain('You are an experienced long-form fiction-writing assistant')
+    expect(prompt).toContain('Lead Fiction Coordinator')
     expect(prompt).toContain('[Multi-Assistant Coordination]')
+    expect(prompt).toContain('Writing Assistant ("writer")')
     expect(prompt).toContain('Current project context')
     expect(prompt).toContain('Project name: 潮门')
     expect(prompt).not.toContain('【不可变系统合同】')
-    expect(prompt).not.toContain('你是一位经验丰富的长篇小说写作助手')
+    expect(prompt).not.toContain('长篇小说统筹与创作主助手')
   })
 
   it('accepts a caller-supplied identity template', () => {
@@ -111,7 +112,7 @@ describe('buildAssistantSystemPrompt', () => {
     )
     const prompt = buildAssistantSystemPrompt({ ...blocks, identity }, core())
     expect(prompt).toContain('你是潮门的连续性编辑。')
-    expect(prompt).not.toContain('你是一位经验丰富的长篇小说写作助手')
+    expect(prompt).not.toContain('长篇小说统筹与创作主助手')
     expect(prompt).toContain('项目名称: 潮门')
   })
 
@@ -151,7 +152,7 @@ describe('sub-assistant default modules', () => {
     expect(prompt).toContain('严禁撰写具体章节正文')
     expect(prompt).toContain('当前项目上下文')
     expect(prompt).toContain('项目名称: 潮门')
-    expect(prompt).not.toContain('你是一位经验丰富的长篇小说写作助手')
+    expect(prompt).not.toContain('长篇小说统筹与创作主助手')
   })
 
   it('localizes the architect modules to en-US', () => {
@@ -194,5 +195,26 @@ describe('sub-assistant default modules', () => {
     expect(prompt).toContain('【不可变审稿助手边界】')
     expect(prompt).toContain('submit_chapter_review')
     expect(prompt).toContain('当前项目上下文')
+  })
+
+  it('assembles the writer identity, work rules, and drafting skills in both languages', () => {
+    const zhBlocks = resolveAssistantPromptBlocks('writer', 'zh-CN')
+    const catalog: AgentSkillCatalogEntry[] = [
+      { name: 'drafting-skill', description: 'draft', location: 'builtin://drafting-skill', source: 'builtin', stage: 'drafting' },
+      { name: 'planning-skill', description: 'plan', location: 'builtin://planning-skill', source: 'builtin', stage: 'planning' },
+    ]
+    const zhPrompt = buildAssistantSystemPrompt(zhBlocks, core(), filterAgentSkillCatalog(catalog, 'writer'))
+    expect(zhPrompt).toContain('长篇小说执笔作家')
+    expect(zhPrompt).toContain('【不可变写作助手边界】')
+    expect(zhPrompt).toContain('manage_drafts')
+    expect(zhPrompt).toContain('manage_characters')
+    expect(zhPrompt).toContain('manage_narrative_threads')
+    expect(zhPrompt).toContain('<name>drafting-skill</name>')
+    expect(zhPrompt).not.toContain('<name>planning-skill</name>')
+
+    const enBlocks = resolveAssistantPromptBlocks('writer', 'en-US')
+    const enPrompt = buildAssistantSystemPrompt(enBlocks, core({ writingLanguage: 'en-US' }))
+    expect(enPrompt).toContain('Fiction Prose Writer')
+    expect(enPrompt).toContain('[Immutable Writing Assistant Boundaries]')
   })
 })

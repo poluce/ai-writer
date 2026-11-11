@@ -118,9 +118,11 @@ const expectedPromptVariables: Record<string, string[]> = {
   assistant_writing_work_rules: [],
   assistant_architect_identity: ['mode_instruction'],
   assistant_blueprint_identity: ['mode_instruction'],
+  assistant_writer_identity: ['mode_instruction'],
   assistant_review_identity: ['mode_instruction'],
   assistant_architect_work_rules: [],
   assistant_blueprint_work_rules: [],
+  assistant_writer_work_rules: [],
   assistant_review_work_rules: [],
 }
 

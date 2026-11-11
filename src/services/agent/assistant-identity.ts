@@ -2,17 +2,19 @@ import type { AssistantType } from '../../shared/agent-conversation-archive'
 import { writingLanguageText, type WritingLanguage } from '../../shared/writing-language'
 import { renderPrompt, type PromptTemplate } from '../prompt-templates-core'
 
-/** 四个助手共用的软件硬规则模板。 */
+/** 五个助手共用的软件硬规则模板。 */
 export const ASSISTANT_HARD_RULES_KEY = 'assistant_hard_rules'
 /** 主助手身份模板（历史 key，保持不变）。 */
 export const ASSISTANT_WRITING_IDENTITY_KEY = 'assistant_writing_identity'
 export const ASSISTANT_ARCHITECT_IDENTITY_KEY = 'assistant_architect_identity'
 export const ASSISTANT_BLUEPRINT_IDENTITY_KEY = 'assistant_blueprint_identity'
+export const ASSISTANT_WRITER_IDENTITY_KEY = 'assistant_writer_identity'
 export const ASSISTANT_REVIEW_IDENTITY_KEY = 'assistant_review_identity'
 /** 各助手的工作规范（主助手为协同规范，专门助手为职责边界）。 */
 export const ASSISTANT_WRITING_WORK_RULES_KEY = 'assistant_writing_work_rules'
 export const ASSISTANT_ARCHITECT_WORK_RULES_KEY = 'assistant_architect_work_rules'
 export const ASSISTANT_BLUEPRINT_WORK_RULES_KEY = 'assistant_blueprint_work_rules'
+export const ASSISTANT_WRITER_WORK_RULES_KEY = 'assistant_writer_work_rules'
 export const ASSISTANT_REVIEW_WORK_RULES_KEY = 'assistant_review_work_rules'
 
 export interface AssistantPromptKeys {
@@ -32,6 +34,11 @@ export function assistantPromptKeys(assistantType: AssistantType): AssistantProm
       return {
         identityKey: ASSISTANT_BLUEPRINT_IDENTITY_KEY,
         workRulesKey: ASSISTANT_BLUEPRINT_WORK_RULES_KEY,
+      }
+    case 'writer':
+      return {
+        identityKey: ASSISTANT_WRITER_IDENTITY_KEY,
+        workRulesKey: ASSISTANT_WRITER_WORK_RULES_KEY,
       }
     case 'review':
       return {

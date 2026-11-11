@@ -9,7 +9,7 @@ import { saveDirtyEditorChangesForExit, resetEditorSessionStores, useEditorStore
 import { useLayoutStore } from '../../../stores/layout-store'
 import { useProjectStore } from '../../../stores/project-store'
 import { useWorkflowStore } from '../../../stores/workflow-store'
-import AIOutputPanel from '../AIOutputPanel'
+import BottomPanel from '../BottomPanel'
 import EditorArea from '../EditorArea'
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -19,6 +19,7 @@ let container: HTMLDivElement | undefined
 let invoke: ReturnType<typeof vi.fn>
 let clipboardWrite: ReturnType<typeof vi.fn>
 let storedCandidate: RecoveryCandidate
+const originalLayoutState = useLayoutStore.getState()
 
 const projectPath = 'C:\\novels\\recovery-project'
 const session = {
@@ -65,7 +66,7 @@ beforeEach(() => {
   })
   setActiveProjectSessionContext(session)
   resetEditorSessionStores()
-  useLayoutStore.setState({ sidebarView: 'project' })
+  useLayoutStore.setState({ ...originalLayoutState, sidebarView: 'project', bottomPanelOpen: true, bottomTab: 'tasks' })
   storedCandidate = candidate()
   invoke = vi.fn(async (channel: string, candidateId?: string, visibleText?: string) => {
     if (channel === 'db:recovery-candidate-list') return [storedCandidate]
@@ -102,14 +103,15 @@ afterEach(async () => {
   container?.remove()
   root = undefined
   container = undefined
+  useLayoutStore.setState(originalLayoutState)
   setActiveProjectSessionContext(null)
   delete (window as typeof window & { velaAPI?: unknown }).velaAPI
 })
 
-describe('AI output recovery candidates', () => {
+describe('BottomPanel recovery candidates', () => {
   it('discovers a pending candidate after project reopen and copies or continues it explicitly', async () => {
     await act(async () => {
-      root?.render(<AIOutputPanel />)
+      root?.render(<BottomPanel />)
       await Promise.resolve()
     })
 
@@ -192,7 +194,7 @@ describe('AI output recovery candidates', () => {
     ))).toBe(false)
 
     await act(async () => {
-      root?.render(<AIOutputPanel />)
+      root?.render(<BottomPanel />)
       await Promise.resolve()
     })
     expect(container?.textContent).toContain('林岚停下列车，保存现场。')
@@ -200,7 +202,7 @@ describe('AI output recovery candidates', () => {
 
   it('discards explicitly without creating an editor tab', async () => {
     await act(async () => {
-      root?.render(<AIOutputPanel />)
+      root?.render(<BottomPanel />)
       await Promise.resolve()
     })
     await act(async () => {
@@ -225,7 +227,7 @@ describe('AI output recovery candidates', () => {
       throw new Error(`unexpected IPC: ${channel}`)
     })
     await act(async () => {
-      root?.render(<AIOutputPanel />)
+      root?.render(<BottomPanel />)
       await Promise.resolve()
     })
 

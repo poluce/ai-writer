@@ -38,6 +38,7 @@ describe('tool declarations carry the migrated usage rules', () => {
     expect(defaultSkillStageForAssistant('general')).toBe('planning')
     expect(defaultSkillStageForAssistant('architect')).toBe('planning')
     expect(defaultSkillStageForAssistant('blueprint')).toBe('planning')
+    expect(defaultSkillStageForAssistant('writer')).toBe('drafting')
     expect(defaultSkillStageForAssistant('review')).toBe('review')
 
     const schema = createManageSkillsTool('zh-CN', []).parameters as {

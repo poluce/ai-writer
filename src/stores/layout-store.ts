@@ -7,7 +7,7 @@ export type SidebarView = 'project' | 'knowledge' | 'characters' | 'settings'
 export type BottomTab = 'tasks' | 'log' | 'models'
 
 /** 右侧面板视图类型 */
-export type RightView = 'agent' | 'architect' | 'blueprint' | 'review' | 'ai-output'
+export type RightView = 'agent' | 'architect' | 'blueprint' | 'writer' | 'review'
 
 /** 左侧主导航当前视觉激活项 */
 export type LeftRailItem = SidebarView | 'blueprint' | 'world' | 'synopsis' | 'plot-tree' | BottomTab
@@ -42,7 +42,7 @@ interface LayoutState {
   // ===== AI 对话面板 =====
   aiPanelOpen: boolean
   aiPanelWidth: number
-  /** 右侧面板当前视图：Agent 对话 / AI 输出 */
+  /** 右侧面板当前视图 */
   rightView: RightView
 
   // ===== 底部面板 =====

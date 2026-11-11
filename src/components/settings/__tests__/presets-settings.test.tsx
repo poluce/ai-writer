@@ -54,7 +54,7 @@ describe('PresetsSettings component', () => {
     expect(markup).toContain('故事规划与分卷蓝图')
     expect(markup).toContain('章节起草与正文扩写')
     expect(markup).toContain('审稿质检与润色改写')
-    expect(markup).toContain('侧边栏 AI 创作助手')
+    expect(markup).toContain('侧边栏 AI 主助手')
     expect(markup).toContain('思考')
   })
 
@@ -75,6 +75,6 @@ describe('PresetsSettings component', () => {
     expect(markup).toContain('Story Planning &amp; Beat Sheets')
     expect(markup).toContain('Chapter Drafting &amp; Prose Expansion')
     expect(markup).toContain('Review, Quality Check &amp; Polish')
-    expect(markup).toContain('Sidebar Creative Assistant')
+    expect(markup).toContain('Sidebar Lead Assistant')
   })
 })

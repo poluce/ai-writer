@@ -1,11 +1,22 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Save, BookOpen, RefreshCw, Plus, Trash2,
-  Sparkles, PenLine, ListChecks, AlertTriangle
+  AlertTriangle,
+  BookOpen,
+  Check,
+  ListChecks,
+  MoreHorizontal,
+  PenLine,
+  Plus,
+  RefreshCw,
+  Search,
+  Sparkles,
+  Trash2,
+  X,
 } from 'lucide-react'
 import { useProjectStore } from '../../stores/project-store'
 import { useWorkflowStore } from '../../stores/workflow-store'
 import { useLayoutStore } from '../../stores/layout-store'
+import { useCharacterStore } from '../../stores/character-store'
 import { ipc } from '../../services/ipc-client'
 import { clearProjectData } from '../../services/project-clear-service'
 import type { ProjectSessionContext } from '../../shared/ipc-channels'
@@ -26,7 +37,7 @@ import { guardDirectoryGeneration } from '../../services/workflow-guards'
 import DirectoryConfigDialog from '../dialogs/DirectoryConfigDialog'
 import BatchChapterCreationDialog from '../dialogs/BatchChapterCreationDialog'
 import { Button } from '../ui/Button'
-import { cn } from '../../lib/utils'
+import { MenuItem } from '../ui/MenuItem'
 import { toast } from '../ui/Toast'
 import { confirm } from '../ui/Confirm'
 import { globalEventBus } from '../../shared/event-bus'
@@ -48,12 +59,9 @@ import {
   type EditableChapterBlueprintField,
 } from '../../stores/chapter-card-draft-ledger'
 import { LatestRequestGate } from './latest-request-gate'
+import { readAuthoritativeNextChapter } from '../../services/authoritative-chapter-sequence'
 import {
-  readAuthoritativeNextChapter,
-} from '../../services/authoritative-chapter-sequence'
-import {
-  ROLE_COLORS,
-  ROLE_EN,
+  ROLE_ORDER,
   createEmptyBlueprint,
   currentProjectSessionForPath,
   emitBlueprintResourceRefresh,
@@ -64,6 +72,7 @@ import {
   matchingDataProjectSession,
   readDraftLedgerFromFixedTab,
   recoveryChapterFromSequenceError,
+  roleLabel,
 } from './chapter-card-shared'
 import { ChapterCardForm } from './ChapterCardForm'
 
@@ -72,7 +81,14 @@ interface ChapterCardEditorProps {
   initialChapterNumber?: number
 }
 
-/** 章节蓝图编辑器 — 读写 directory.json */
+type AutoSaveState = 'idle' | 'pending' | 'saving' | 'saved' | 'error'
+type LedgerDensity = 'read' | 'compact'
+
+const AUTO_SAVE_DELAY_MS = 700
+const FILTER_ALL = 'all'
+const FILTER_GUIDANCE = 'guidance'
+
+/** 章节蓝图编辑器 — 连续分章剧本手稿 */
 export default function ChapterCardEditor({
   projectKey,
   initialChapterNumber,
@@ -80,11 +96,14 @@ export default function ChapterCardEditor({
   const text = useLocaleStore(s => s.text)
   const locale = useLocaleStore(s => s.locale)
   const currentProject = useProjectStore(s => s.currentProject)
-  // action 用 getState() 获取，不订阅 workflow store 高频更新
+  const characterCards = useCharacterStore(s => s.characters)
+  const characterLoaded = useCharacterStore(s => s.loaded)
+  const characterProjectSession = useCharacterStore(s => s.dataProjectSession)
   const addLog = useWorkflowStore.getState().addLog
+
   const [blueprints, setBlueprints] = useState<ChapterBlueprint[]>([])
-  const [selectedIdx, setSelectedIdx] = useState<number>(0)
   const [saving, setSaving] = useState(false)
+  const [autoSaveState, setAutoSaveState] = useState<AutoSaveState>('idle')
   const [loading, setLoading] = useState(true)
   const [dirtyChapterNumbers, setDirtyChapterNumbers] = useState<Set<number>>(() => new Set())
   const blueprintsRef = useRef<ChapterBlueprint[]>([])
@@ -92,6 +111,21 @@ export default function ChapterCardEditor({
   const [dataProjectSession, setDataProjectSession] = useState<ProjectSessionContext | null>(null)
   const dataProjectSessionRef = useRef<ProjectSessionContext | null>(null)
   const loadRequestGateRef = useRef(new LatestRequestGate())
+
+  const [density, setDensity] = useState<LedgerDensity>('read')
+  const [roleFilter, setRoleFilter] = useState<string>(FILTER_ALL)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [editingChapterNumber, setEditingChapterNumber] = useState<number | null>(null)
+  const [activeTocChapter, setActiveTocChapter] = useState<number | null>(null)
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false)
+
+  const pageRef = useRef<HTMLDivElement>(null)
+  const headerMenuRef = useRef<HTMLDivElement>(null)
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const saveInFlightRef = useRef(false)
+  const saveQueuedRef = useRef(false)
+  const mountedRef = useRef(true)
+
   const currentProjectSession = projectSessionContextFromProject(currentProject)
   const renderedProjectId = currentProjectSession?.projectId ?? null
   const renderedProjectPath = currentProjectSession?.projectPath ?? null
@@ -100,29 +134,59 @@ export default function ChapterCardEditor({
     projectMatches
     && sameProjectSessionContext(currentProjectSession, dataProjectSession),
   )
-  const dirty = dirtyChapterNumbers.size > 0
-  // 下一个可写的章节号
+
   const [nextWriteChapter, setNextWriteChapter] = useState<number | null>(null)
   const [authorityError, setAuthorityError] = useState<string | null>(null)
-  // 旧版仿写导入可能造成“前章未写、后续正文已定稿”的异常状态；该状态只能由用户确认恢复。
   const [legacyImportedTextRecoveryChapter, setLegacyImportedTextRecoveryChapter] = useState<number | null>(null)
-
-  // 蓝图生成弹窗（替代原 inline 批量面板）
   const [showBlueprintDialog, setShowBlueprintDialog] = useState(false)
   const [showBatchCreationDialog, setShowBatchCreationDialog] = useState(false)
   const [recoveringLegacyImportedText, setRecoveringLegacyImportedText] = useState(false)
 
+  const characterSuggestions = useMemo(() => {
+    if (!characterLoaded || !currentProjectSession) return []
+    if (!sameProjectSessionContext(characterProjectSession, currentProjectSession)) return []
+    return characterCards.map(card => card.name).filter(Boolean)
+  }, [characterCards, characterLoaded, characterProjectSession, currentProjectSession])
+
+  useEffect(() => {
+    if (!headerMenuOpen) return
+    const handlePointerDown = (event: MouseEvent) => {
+      if (headerMenuRef.current && !headerMenuRef.current.contains(event.target as Node)) {
+        setHeaderMenuOpen(false)
+      }
+    }
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') setHeaderMenuOpen(false)
+    }
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [headerMenuOpen])
+
+  const scrollToChapter = useCallback((chapterNumber: number) => {
+    setActiveTocChapter(chapterNumber)
+    requestAnimationFrame(() => {
+      document
+        .getElementById(`chapter-ledger-entry-${chapterNumber}`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }, [])
+
   useEffect(() => {
     if (loading || initialChapterNumber === undefined) return
-    const targetIndex = blueprintsRef.current.findIndex(
+    const exists = blueprintsRef.current.some(
       blueprint => blueprint.chapterNumber === initialChapterNumber,
     )
-    if (targetIndex >= 0) setSelectedIdx(targetIndex)
-  }, [initialChapterNumber, loading])
-
-  function roleLabel(role: string): string {
-    return text(role, ROLE_EN[role] ?? role)
-  }
+    if (exists) {
+      setRoleFilter(FILTER_ALL)
+      setSearchQuery('')
+      setDensity('read')
+      scrollToChapter(initialChapterNumber)
+    }
+  }, [initialChapterNumber, loading, scrollToChapter])
 
   const applyVisibleDraftState = useCallback((nextBlueprints: ChapterBlueprint[], nextDirty: Set<number>): void => {
     blueprintsRef.current = nextBlueprints
@@ -165,6 +229,88 @@ export default function ChapterCardEditor({
     }
   }, [])
 
+  const clearAutoSaveTimer = useCallback(() => {
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current)
+      autoSaveTimerRef.current = null
+    }
+  }, [])
+
+  const persistDirtyBlueprints = useCallback(async (forceAll = false): Promise<void> => {
+    if (saveInFlightRef.current) {
+      saveQueuedRef.current = true
+      return
+    }
+    if (!projectMatches) return
+    const projectSession = matchingDataProjectSession(projectKey, dataProjectSessionRef.current)
+    if (!projectSession) return
+
+    saveInFlightRef.current = true
+    if (mountedRef.current) {
+      setSaving(true)
+      setAutoSaveState('saving')
+    }
+    try {
+      do {
+        saveQueuedRef.current = false
+        const currentDirty = dirtyChapterNumbersRef.current
+        const allBlueprints = blueprintsRef.current
+        const dirtyList = forceAll
+          ? allBlueprints
+          : allBlueprints.filter(bp => currentDirty.has(bp.chapterNumber))
+        if (dirtyList.length === 0) break
+
+        let savedSnapshots: ReturnType<typeof captureBlueprintSnapshots>
+        if (dirtyList.length === 1 && !forceAll) {
+          const selected = dirtyList[0]
+          savedSnapshots = captureBlueprintSnapshots([selected])
+          await saveChapterBlueprint(selected, projectKey, projectSession)
+        } else {
+          const saveInput = forceAll ? allBlueprints : dirtyList
+          savedSnapshots = captureBlueprintSnapshots(saveInput)
+          await saveAllBlueprints(saveInput, projectKey, projectSession)
+        }
+
+        if (!isCurrentProjectSession(projectSession)) return
+        const current = currentWorkingState(projectKey, projectSession)
+        const nextDirty = reconcileSavedBlueprintSnapshots(
+          current.blueprints,
+          current.dirtyChapterNumbers,
+          savedSnapshots,
+        )
+        persistProjectDraftState(projectKey, projectSession, current.blueprints, nextDirty)
+        if (nextDirty.size > 0) {
+          saveQueuedRef.current = true
+        }
+      } while (saveQueuedRef.current)
+
+      if (mountedRef.current) setAutoSaveState('saved')
+    } catch (err) {
+      if (!isCurrentProjectSession(projectSession)) return
+      const message = errorMessage(err)
+      addLog('error', text(`自动保存蓝图失败：${message}`, 'Could not save chapter blueprints.'))
+      if (mountedRef.current) setAutoSaveState('error')
+    } finally {
+      saveInFlightRef.current = false
+      if (mountedRef.current) setSaving(false)
+    }
+  }, [addLog, currentWorkingState, persistProjectDraftState, projectKey, projectMatches, text])
+
+  const persistRef = useRef(persistDirtyBlueprints)
+  useEffect(() => {
+    persistRef.current = persistDirtyBlueprints
+  }, [persistDirtyBlueprints])
+
+  const scheduleAutoSave = useCallback(() => {
+    if (!mountedRef.current) return
+    setAutoSaveState('pending')
+    clearAutoSaveTimer()
+    autoSaveTimerRef.current = setTimeout(() => {
+      autoSaveTimerRef.current = null
+      void persistRef.current(false)
+    }, AUTO_SAVE_DELAY_MS)
+  }, [clearAutoSaveTimer])
+
   const markChapterDirty = useCallback((
     nextBlueprints: ChapterBlueprint[],
     chapterNumber: number,
@@ -185,6 +331,8 @@ export default function ChapterCardEditor({
       setAuthorityError(null)
       setLegacyImportedTextRecoveryChapter(null)
       setSaving(false)
+      setAutoSaveState('idle')
+      clearAutoSaveTimer()
       applyVisibleDraftState([], new Set())
     }
 
@@ -232,9 +380,17 @@ export default function ChapterCardEditor({
           }
         },
       })
-      // 项目可能在远端读取期间切换；旧项目结果不会进入 commit。
       if (!restored || !isLatestProjectRequest()) return
-      if (restored.blueprints.length > 0) setSelectedIdx(0)
+      if (restored.blueprints.length > 0) {
+        setActiveTocChapter(prev => (
+          prev !== null && restored.blueprints.some(bp => bp.chapterNumber === prev)
+            ? prev
+            : restored.blueprints[0].chapterNumber
+        ))
+        if (restored.dirtyChapterNumbers.size > 0) {
+          setAutoSaveState('pending')
+        }
+      }
       try {
         const nextChapter = await readAuthoritativeNextChapter(activeSession, locale)
         if (!isLatestProjectRequest()) return
@@ -265,6 +421,7 @@ export default function ChapterCardEditor({
     locale,
     applyVisibleDraftState,
     persistProjectDraftState,
+    clearAutoSaveTimer,
   ])
 
   useEffect(() => {
@@ -286,7 +443,6 @@ export default function ChapterCardEditor({
           loadBlueprints()
         }
       }),
-      // 单章或批量定稿后，重新读取连续定稿状态，避免旧版异常记录造成跳章入口。
       globalEventBus.on('FINALIZE_COMPLETE', ({ projectPath, projectSession }) => {
         if (
           !sameProjectPathKey(projectPath, projectKey)
@@ -311,79 +467,14 @@ export default function ChapterCardEditor({
     }
   }, [loadBlueprints, projectKey])
 
-  const selected = projectDataReady ? blueprints[selectedIdx] ?? null : null
-
-  function updateField<K extends EditableChapterBlueprintField>(
-    key: K,
-    value: ChapterBlueprint[K],
-  ): void {
-    if (!selected) return
-    markChapterDirty(blueprintsRef.current.map((blueprint, index) => (
-      index === selectedIdx
-        ? updateEditableChapterBlueprintField(blueprint, key, value)
-        : blueprint
-    )), selected.chapterNumber)
-  }
-
-  async function handleSaveOne(): Promise<void> {
-    if (!projectMatches || !selected) return
-    const projectSession = matchingDataProjectSession(projectKey, dataProjectSessionRef.current)
-    if (!projectSession) return
-    const savedSnapshots = captureBlueprintSnapshots([selected])
-    setSaving(true)
-    try {
-      await saveChapterBlueprint(selected, projectKey, projectSession)
-      if (!isCurrentProjectSession(projectSession)) return
-      const current = currentWorkingState(projectKey, projectSession)
-      const nextDirty = reconcileSavedBlueprintSnapshots(
-        current.blueprints,
-        current.dirtyChapterNumbers,
-        savedSnapshots,
-      )
-      persistProjectDraftState(projectKey, projectSession, current.blueprints, nextDirty)
-      addLog('info', text(`第 ${selected.chapterNumber} 章蓝图已保存`, `Saved blueprint for Chapter ${selected.chapterNumber}`))
-    } catch (err) {
-      if (!isCurrentProjectSession(projectSession)) return
-      const message = errorMessage(err)
-      addLog('error', text(`保存第 ${selected.chapterNumber} 章蓝图失败：${message}`, `Could not save the blueprint for Chapter ${selected.chapterNumber}.`))
-      toast.error(text(`保存失败\n\n${message}`, 'Could not save the blueprint.'))
-    } finally {
-      if (isCurrentProjectSession(projectSession)) setSaving(false)
-    }
-  }
-
-  async function handleSaveAll(): Promise<void> {
-    if (!projectMatches) return
-    const projectSession = matchingDataProjectSession(projectKey, dataProjectSessionRef.current)
-    if (!projectSession) return
-    const saveInput = blueprintsRef.current
-    const savedSnapshots = captureBlueprintSnapshots(saveInput)
-    setSaving(true)
-    try {
-      await saveAllBlueprints(saveInput, projectKey, projectSession)
-      if (!isCurrentProjectSession(projectSession)) return
-      const current = currentWorkingState(projectKey, projectSession)
-      const nextDirty = reconcileSavedBlueprintSnapshots(
-        current.blueprints,
-        current.dirtyChapterNumbers,
-        savedSnapshots,
-      )
-      persistProjectDraftState(projectKey, projectSession, current.blueprints, nextDirty)
-      addLog('info', text(`已保存全部 ${saveInput.length} 章蓝图`, `Saved all ${saveInput.length} chapter blueprints`))
-    } catch (err) {
-      if (!isCurrentProjectSession(projectSession)) return
-      const message = errorMessage(err)
-      addLog('error', text(`保存全部蓝图失败：${message}`, 'Could not save all chapter blueprints.'))
-      toast.error(text(`保存失败\n\n${message}`, 'Could not save the blueprints.'))
-    } finally {
-      if (isCurrentProjectSession(projectSession)) setSaving(false)
-    }
-  }
-
-  const exitSaveRef = useRef(handleSaveAll)
+  const exitSaveRef = useRef<() => Promise<void>>(async () => undefined)
   useEffect(() => {
-    exitSaveRef.current = handleSaveAll
+    exitSaveRef.current = async () => {
+      clearAutoSaveTimer()
+      await persistRef.current(true)
+    }
   })
+
   useEffect(() => {
     registerEditorExitSaveHandler({
       type: 'chapter-card',
@@ -391,6 +482,40 @@ export default function ChapterCardEditor({
       save: () => exitSaveRef.current(),
     })
   }, [projectKey])
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current)
+        autoSaveTimerRef.current = null
+        void persistRef.current(false)
+      }
+    }
+  }, [])
+
+  function updateField<K extends EditableChapterBlueprintField>(
+    chapterNumber: number,
+    key: K,
+    value: ChapterBlueprint[K],
+  ): void {
+    const nextBlueprints = blueprintsRef.current.map(blueprint => (
+      blueprint.chapterNumber === chapterNumber
+        ? updateEditableChapterBlueprintField(blueprint, key, value)
+        : blueprint
+    ))
+    markChapterDirty(nextBlueprints, chapterNumber)
+    scheduleAutoSave()
+  }
+
+  function handleDoneEdit(): void {
+    setEditingChapterNumber(null)
+    if (autoSaveTimerRef.current) {
+      clearAutoSaveTimer()
+      void persistRef.current(false)
+    }
+  }
 
   function handleAddChapter(): void {
     if (
@@ -417,7 +542,11 @@ export default function ChapterCardEditor({
     }
     const newBlueprint = createEmptyBlueprint(chapterNumber)
     markChapterDirty([...currentBlueprints, newBlueprint], newBlueprint.chapterNumber)
-    setSelectedIdx(currentBlueprints.length)
+    setRoleFilter(FILTER_ALL)
+    setSearchQuery('')
+    setDensity('read')
+    setEditingChapterNumber(newBlueprint.chapterNumber)
+    scrollToChapter(newBlueprint.chapterNumber)
     if (authoritativeBlueprintExists) {
       toast.info(text(
         `第 ${nextWriteChapter} 章蓝图已存在，已新增第 ${chapterNumber} 章；写作入口仍为第 ${nextWriteChapter} 章。`,
@@ -426,8 +555,8 @@ export default function ChapterCardEditor({
     }
   }
 
-  async function handleDeleteChapter(): Promise<void> {
-    if (!projectMatches || !selected) return
+  async function handleDeleteChapter(selected: ChapterBlueprint): Promise<void> {
+    if (!projectMatches) return
     const projectSession = matchingDataProjectSession(projectKey, dataProjectSessionRef.current)
     if (!projectSession) return
     const deletedSnapshots = captureBlueprintSnapshots([selected])
@@ -458,8 +587,15 @@ export default function ChapterCardEditor({
       deletedSnapshots,
     )
     persistProjectDraftState(projectKey, projectSession, next.blueprints, next.dirtyChapterNumbers)
+    if (next.dirtyChapterNumbers.size === 0) {
+      clearAutoSaveTimer()
+      setAutoSaveState('idle')
+    }
     if (isCurrentProjectSession(projectSession)) {
-      setSelectedIdx(index => Math.max(0, Math.min(index, next.blueprints.length - 1)))
+      if (editingChapterNumber === selected.chapterNumber) setEditingChapterNumber(null)
+      if (activeTocChapter === selected.chapterNumber) {
+        setActiveTocChapter(next.blueprints[0]?.chapterNumber ?? null)
+      }
     }
     emitBlueprintResourceRefresh(projectKey, projectSession)
     toast.success(text(`已删除第 ${selected.chapterNumber} 章蓝图`, `Deleted the blueprint for Chapter ${selected.chapterNumber}`))
@@ -493,7 +629,14 @@ export default function ChapterCardEditor({
     const current = currentWorkingState(projectKey, projectSession)
     const next = reconcileClearedBlueprintSnapshots(current.blueprints, clearedSnapshots)
     persistProjectDraftState(projectKey, projectSession, next.blueprints, next.dirtyChapterNumbers)
-    if (isCurrentProjectSession(projectSession)) setSelectedIdx(0)
+    if (next.dirtyChapterNumbers.size === 0) {
+      clearAutoSaveTimer()
+      setAutoSaveState('idle')
+    }
+    if (isCurrentProjectSession(projectSession)) {
+      setEditingChapterNumber(null)
+      setActiveTocChapter(null)
+    }
     emitBlueprintResourceRefresh(projectKey, projectSession)
     toast.success(text('已清空全部蓝图', 'All chapter blueprints cleared'))
   }
@@ -507,12 +650,10 @@ export default function ChapterCardEditor({
     const guard = await guardDirectoryGeneration(projectKey, projectSession)
     if (!isCurrentProjectSession(projectSession)) return
     if (!guard.ok) {
-      // 校验失败：阻断并提示
       addLog('error', text(`前置条件未满足：${guard.message}`, 'A required precondition is not met.'))
       throw new Error(guard.message || text('章节蓝图生成前置条件未满足', 'Blueprint prerequisites are not met.'))
     }
     if (guard.message) {
-      // 有警告但允许继续：弹出确认
       const yes = await confirm(text(
         `${guard.message}\n\n是否仍要继续生成？`,
         'A precondition warning was reported. Continue generating anyway?',
@@ -525,7 +666,7 @@ export default function ChapterCardEditor({
 
     if (!isCurrentProjectSession(projectSession)) {
       addLog('error', text('项目已切换，未启动章节蓝图生成', 'The project changed, so chapter blueprint generation was not started.'))
-      throw new Error(text('项目已切换，未启动章节蓝图生成', 'The project changed, so blueprint generation was not started.'))
+      throw new Error(text('项目已切换，未启动章节蓝图生成', 'The project changed, so chapter blueprint generation was not started.'))
     }
     await launchCreativeWorkflow({ workflow: 'generate_blueprint', params }, projectSession)
     addLog('info', text('已启动章节蓝图生成', 'Chapter blueprint generation started'))
@@ -603,235 +744,473 @@ export default function ChapterCardEditor({
   }
 
   const visibleBlueprints = projectDataReady ? blueprints : []
-  const visibleDirty = projectDataReady && dirty
   const nextWritableBlueprint = nextWriteChapter === null
     ? null
     : visibleBlueprints.find(blueprint => blueprint.chapterNumber === nextWriteChapter)
   const canRecoverLegacyImportedText = projectDataReady
     && legacyImportedTextRecoveryChapter !== null
 
+  const availableRoles = (() => {
+    const present = new Set(visibleBlueprints.map(bp => bp.role).filter(Boolean))
+    const ordered = ROLE_ORDER.filter(role => present.has(role))
+    for (const role of present) {
+      if (!ordered.includes(role)) ordered.push(role)
+    }
+    return ordered
+  })()
+
+  const hasAnyGuidance = visibleBlueprints.some(bp => Boolean(bp.userGuidance.trim()))
+  const trimmedSearch = searchQuery.trim().toLowerCase()
+  const filteredBlueprints = visibleBlueprints.filter(bp => {
+    if (roleFilter === FILTER_GUIDANCE && !bp.userGuidance.trim()) return false
+    if (roleFilter !== FILTER_ALL && roleFilter !== FILTER_GUIDANCE && bp.role !== roleFilter) return false
+    if (!trimmedSearch) return true
+    return (
+      String(bp.chapterNumber).includes(trimmedSearch)
+      || bp.title.toLowerCase().includes(trimmedSearch)
+      || bp.purpose.toLowerCase().includes(trimmedSearch)
+      || bp.keyEvents.toLowerCase().includes(trimmedSearch)
+      || bp.suspenseHook.toLowerCase().includes(trimmedSearch)
+      || bp.characters.some(c => c.toLowerCase().includes(trimmedSearch))
+    )
+  })
+
+  const handlePageScroll = () => {
+    const container = pageRef.current
+    if (!container || filteredBlueprints.length === 0) return
+    const threshold = container.getBoundingClientRect().top + 110
+    let next = filteredBlueprints[0].chapterNumber
+    for (const bp of filteredBlueprints) {
+      const element = document.getElementById(`chapter-ledger-entry-${bp.chapterNumber}`)
+      if (element && element.getBoundingClientRect().top <= threshold) {
+        next = bp.chapterNumber
+      }
+    }
+    if (container.scrollTop + container.clientHeight >= container.scrollHeight - 24) {
+      next = filteredBlueprints[filteredBlueprints.length - 1].chapterNumber
+    }
+    setActiveTocChapter(prev => (prev === next ? prev : next))
+  }
+
+  const resolvedAutoSaveState: AutoSaveState =
+    dirtyChapterNumbers.size > 0 && autoSaveState === 'idle'
+      ? 'pending'
+      : autoSaveState
+
+  const saveLabel: Record<AutoSaveState, string> = {
+    idle: text('已自动保存', 'Saved automatically'),
+    saved: text('已自动保存', 'Saved automatically'),
+    pending: text('待保存', 'Unsaved'),
+    saving: text('保存中…', 'Saving…'),
+    error: text('保存失败', 'Save failed'),
+  }
+
+  const jumpToWritableChapter = () => {
+    if (!nextWritableBlueprint) return
+    setRoleFilter(FILTER_ALL)
+    setSearchQuery('')
+    setDensity('read')
+    scrollToChapter(nextWritableBlueprint.chapterNumber)
+  }
+
   return (
-    <div className="h-full flex flex-col overflow-hidden">
-      {/* 顶部工具栏 */}
-      <div
-        className="flex items-center justify-between gap-2 px-3 h-10 flex-shrink-0 border-b"
-        style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-sidebar)' }}
-      >
-        <div className="flex items-center gap-1.5">
-          <BookOpen size={13} style={{ color: 'var(--color-text-muted)' }} />
-          <span className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>
-            {text('章节蓝图', 'Chapter blueprints')}
-            {visibleBlueprints.length > 0 && (
-              <span style={{ color: 'var(--color-text-muted)' }} className="ml-1 font-normal">
-                {text(`(${visibleBlueprints.length} 章)`, `(${visibleBlueprints.length} chapters)`)}
-              </span>
-            )}
-          </span>
-          {visibleDirty && (
-            <span className="inline-flex items-center gap-1 text-[0.7rem]" style={{ color: 'var(--color-accent)' }}>
-              <span
-                aria-hidden="true"
-                className="h-1.5 w-1.5 rounded-full"
-                style={{ backgroundColor: 'currentColor' }}
-              />
-              {text('未保存', 'Unsaved')}
-            </span>
+    <div className="chapter-ledger-page" ref={pageRef} onScroll={handlePageScroll}>
+      <div className="chapter-ledger-sheet">
+        <div className="chapter-ledger-head">
+          <div className="chapter-ledger-title-row">
+            <div>
+              <h1 className="chapter-ledger-title">{text('章节蓝图', 'Chapter blueprints')}</h1>
+              <p className="chapter-ledger-sub">
+                <span>
+                  {visibleBlueprints.length > 0
+                    ? text(`共 ${visibleBlueprints.length} 章`, `${visibleBlueprints.length} chapters`)
+                    : text('尚未规划章节', 'No chapters yet')}
+                </span>
+                {projectDataReady && nextWritableBlueprint && (
+                  <>
+                    <span className="chapter-ledger-sep">·</span>
+                    <button
+                      type="button"
+                      className="chapter-ledger-next-link"
+                      onClick={jumpToWritableChapter}
+                    >
+                      {text(
+                        `下一待写 第 ${nextWritableBlueprint.chapterNumber} 章`,
+                        `Next to write: Chapter ${nextWritableBlueprint.chapterNumber}`,
+                      )}
+                    </button>
+                  </>
+                )}
+                {visibleBlueprints.length > 0 && (
+                  <>
+                    <span className="chapter-ledger-sep">·</span>
+                    <span
+                      className={`chapter-ledger-save ${resolvedAutoSaveState}`}
+                      aria-live="polite"
+                    >
+                      {resolvedAutoSaveState === 'saved' || resolvedAutoSaveState === 'idle'
+                        ? <Check size={11} />
+                        : null}
+                      {saveLabel[resolvedAutoSaveState]}
+                    </span>
+                  </>
+                )}
+              </p>
+            </div>
+
+            <div className="chapter-ledger-head-actions">
+              <Button
+                variant="ai"
+                size="default"
+                onClick={() => setShowBlueprintDialog(true)}
+                disabled={!projectDataReady || Boolean(authorityError)}
+                title={text('AI 生成章节蓝图', 'Generate chapter blueprints with AI')}
+              >
+                <Sparkles size={12} />
+                {text('AI 生成蓝图', 'AI generate blueprints')}
+              </Button>
+
+              {projectDataReady && nextWritableBlueprint && (
+                <Button
+                  variant="outline"
+                  size="default"
+                  onClick={() => setShowBatchCreationDialog(true)}
+                  title={text(
+                    '按连续章节蓝图启动受控批量创作任务（最高10章）',
+                    'Start a controlled batch writing task from consecutive chapter blueprints (maximum 10 chapters).',
+                  )}
+                >
+                  <ListChecks size={12} />
+                  {text('批量创作', 'Batch write')}
+                </Button>
+              )}
+
+              <Button
+                variant="ghost"
+                size="default"
+                onClick={handleAddChapter}
+                disabled={!projectDataReady || nextWriteChapter === null || Boolean(authorityError)}
+                title={text('新建章节', 'New chapter')}
+              >
+                <Plus size={13} />
+                {text('新建章', 'New chapter')}
+              </Button>
+
+              <div className="relative" ref={headerMenuRef}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setHeaderMenuOpen(open => !open)}
+                  aria-expanded={headerMenuOpen}
+                  aria-label={text('蓝图更多操作', 'More blueprint actions')}
+                  title={text('更多操作', 'More actions')}
+                >
+                  <MoreHorizontal size={15} />
+                </Button>
+                {headerMenuOpen && (
+                  <div className="chapter-ledger-popover" role="menu">
+                    <MenuItem
+                      label={text('重新加载', 'Reload')}
+                      icon={<RefreshCw size={13} />}
+                      disabled={loading}
+                      onClick={() => {
+                        setHeaderMenuOpen(false)
+                        void loadBlueprints()
+                      }}
+                    />
+                    <div
+                      className="my-1"
+                      style={{ height: 1, backgroundColor: 'var(--color-border)' }}
+                    />
+                    <MenuItem
+                      label={text('清空全部蓝图', 'Clear all blueprints')}
+                      icon={<Trash2 size={13} />}
+                      danger
+                      disabled={saving || visibleBlueprints.length === 0 || !projectDataReady}
+                      onClick={() => {
+                        setHeaderMenuOpen(false)
+                        void handleClearAllBlueprints()
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {visibleBlueprints.length > 0 && (
+            <div className="chapter-ledger-toolbar">
+              <div className="chapter-ledger-filters">
+                <button
+                  type="button"
+                  className={`chapter-ledger-chip${roleFilter === FILTER_ALL ? ' active' : ''}`}
+                  onClick={() => setRoleFilter(FILTER_ALL)}
+                >
+                  {text('全部', 'All')}
+                </button>
+                {availableRoles.map(role => (
+                  <button
+                    key={role}
+                    type="button"
+                    className={`chapter-ledger-chip${roleFilter === role ? ' active' : ''}`}
+                    onClick={() => setRoleFilter(role)}
+                  >
+                    {roleLabel(role, text)}
+                  </button>
+                ))}
+                {(hasAnyGuidance || roleFilter === FILTER_GUIDANCE) && (
+                  <button
+                    type="button"
+                    className={`chapter-ledger-chip${roleFilter === FILTER_GUIDANCE ? ' active' : ''}`}
+                    onClick={() => setRoleFilter(FILTER_GUIDANCE)}
+                  >
+                    {text('有微操', 'Guidance')}
+                  </button>
+                )}
+              </div>
+
+              <div className="chapter-ledger-toolbar-right">
+                <div className="chapter-ledger-search">
+                  <Search size={12} className="chapter-ledger-search-icon" />
+                  <input
+                    type="text"
+                    className="chapter-ledger-search-input"
+                    value={searchQuery}
+                    onChange={event => setSearchQuery(event.target.value)}
+                    placeholder={text('筛查章名或角色', 'Filter title or cast')}
+                    aria-label={text('筛查章节蓝图', 'Filter chapter blueprints')}
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      className="chapter-ledger-search-clear"
+                      onClick={() => setSearchQuery('')}
+                      aria-label={text('清除搜索', 'Clear filter')}
+                    >
+                      <X size={11} />
+                    </button>
+                  )}
+                </div>
+
+                <div className="chapter-ledger-seg" role="group" aria-label={text('视图密度', 'View density')}>
+                  <button
+                    type="button"
+                    className={`chapter-ledger-seg-btn${density === 'read' ? ' active' : ''}`}
+                    onClick={() => setDensity('read')}
+                  >
+                    {text('细纲阅读', 'Detail')}
+                  </button>
+                  <button
+                    type="button"
+                    className={`chapter-ledger-seg-btn${density === 'compact' ? ' active' : ''}`}
+                    onClick={() => {
+                      setEditingChapterNumber(null)
+                      setDensity('compact')
+                    }}
+                  >
+                    {text('紧凑提纲', 'Outline')}
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
         </div>
-        <div className="flex items-center gap-1">
-          {/* 写作入口 — 仅下一章可写时显示 */}
-          {projectDataReady && nextWritableBlueprint && (
+
+        {canRecoverLegacyImportedText && (
+          <div className="chapter-ledger-banner">
+            <div className="flex min-w-0 items-start gap-2" style={{ color: 'var(--color-text-secondary)' }}>
+              <AlertTriangle size={15} className="mt-0.5 flex-shrink-0" style={{ color: 'var(--color-warning)' }} />
+              <p className="max-w-3xl leading-5">
+                {text(
+                  `检测到后续正文但第 ${legacyImportedTextRecoveryChapter} 章尚未写作，可能是旧版“小说拆解与仿写”误导入的参考原文。系统不会自动清除任何内容；确认“清除误导入正文”后会保留角色、故事架构、章节蓝图与知识库，并可从第 ${legacyImportedTextRecoveryChapter} 章开始写作。`,
+                  `Later manuscript text exists while Chapter ${legacyImportedTextRecoveryChapter} has not been written. This may be reference text incorrectly imported by a legacy “Novel analysis and imitation” workflow. Nothing is cleared automatically; after you confirm “Clear incorrectly imported text”, characters, story architecture, chapter blueprints, and the knowledge base are kept, and you can start writing from Chapter ${legacyImportedTextRecoveryChapter}.`,
+                )}
+              </p>
+            </div>
             <Button
-              variant="ai"
+              variant="destructive"
               size="sm"
-              onClick={() => handleWriteChapter(nextWritableBlueprint)}
+              onClick={handleClearLegacyImportedText}
+              disabled={recoveringLegacyImportedText}
             >
-              <PenLine size={12} />
-              {text(`写作第${nextWritableBlueprint.chapterNumber}章`, `Write Chapter ${nextWritableBlueprint.chapterNumber}`)}
+              <Trash2 size={12} />
+              {recoveringLegacyImportedText
+                ? text('清除中...', 'Clearing...')
+                : text('清除误导入正文', 'Clear incorrectly imported text')}
             </Button>
-          )}
-          {projectDataReady && nextWritableBlueprint && (
+          </div>
+        )}
+
+        {projectDataReady && authorityError && !canRecoverLegacyImportedText && (
+          <div
+            className="chapter-ledger-banner"
+            style={{ color: 'var(--color-warning-text)' }}
+          >
+            <div className="flex items-start gap-2">
+              <AlertTriangle size={15} className="mt-0.5 flex-shrink-0" style={{ color: 'var(--color-warning)' }} />
+              <p className="leading-5">{authorityError}</p>
+            </div>
+          </div>
+        )}
+
+        <DirectoryConfigDialog
+          isOpen={showBlueprintDialog}
+          onClose={() => setShowBlueprintDialog(false)}
+          existingCount={visibleBlueprints.length}
+          onConfirm={handleBatchGenerate}
+        />
+        <BatchChapterCreationDialog
+          isOpen={showBatchCreationDialog}
+          startChapterNumber={nextWritableBlueprint?.chapterNumber ?? null}
+          onClose={() => setShowBatchCreationDialog(false)}
+        />
+
+        {visibleBlueprints.length === 0 ? (
+          <div className="chapter-ledger-empty-sheet">
+            <BookOpen size={30} style={{ opacity: 0.45 }} />
+            <div className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>
+              {text('暂无蓝图', 'No blueprints yet')}
+            </div>
+            <p className="max-w-md text-xs leading-relaxed">
+              {text(
+                '可用「AI 生成蓝图」按故事架构批量拆解细纲，或点击右上角手动新建一章。',
+                'Use AI generate blueprints to outline from your story architecture, or create a chapter manually.',
+              )}
+            </p>
+            <div className="flex items-center gap-2 pt-1">
+              <Button
+                variant="ai"
+                size="default"
+                onClick={() => setShowBlueprintDialog(true)}
+                disabled={!projectDataReady || Boolean(authorityError)}
+              >
+                <Sparkles size={12} />
+                {text('AI 生成蓝图', 'AI generate blueprints')}
+              </Button>
+              <Button
+                variant="outline"
+                size="default"
+                onClick={handleAddChapter}
+                disabled={!projectDataReady || nextWriteChapter === null || Boolean(authorityError)}
+              >
+                <Plus size={12} />
+                {text('手动新建', 'Create manually')}
+              </Button>
+            </div>
+          </div>
+        ) : filteredBlueprints.length === 0 ? (
+          <div className="chapter-ledger-empty-sheet">
+            <Search size={26} style={{ opacity: 0.4 }} />
+            <p className="text-xs">
+              {text('没有符合当前筛选条件的章节蓝图。', 'No chapter blueprints match the current filter.')}
+            </p>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setShowBatchCreationDialog(true)}
-              title={text('按连续章节蓝图启动受控批量创作任务（最高10章）', 'Start a controlled batch writing task from consecutive chapter blueprints (maximum 10 chapters).')}
+              onClick={() => {
+                setRoleFilter(FILTER_ALL)
+                setSearchQuery('')
+              }}
             >
-              <ListChecks size={12} />
-              {text('批量创作', 'Batch write')}
+              {text('重置筛选', 'Reset filters')}
             </Button>
-          )}
-          {/* AI 生成蓝图 → 弹出 DirectoryConfigDialog */}
-          <Button
-            variant="ai"
-            size="sm"
-            onClick={() => setShowBlueprintDialog(true)}
-            disabled={!projectDataReady || Boolean(authorityError)}
-            title={text('AI 生成章节蓝图（选择范围和模式）', 'Generate chapter blueprints with AI (choose the range and mode)')}
-          >
-            <Sparkles size={12} />
-            {text('AI 生成蓝图', 'AI generate blueprints')}
-          </Button>
-          <Button variant="ghost" size="icon" onClick={() => loadBlueprints()} title={text('重新加载', 'Reload')} disabled={loading}>
-            <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-          </Button>
-          <Button variant="ghost" size="icon" onClick={handleAddChapter} disabled={!projectDataReady || nextWriteChapter === null || Boolean(authorityError)} title={text('新建章节', 'New chapter')}>
-            <Plus size={14} />
-          </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={handleClearAllBlueprints}
-            disabled={saving || visibleBlueprints.length === 0 || !projectDataReady}
-            title={text('清空全部章节蓝图', 'Clear all chapter blueprints')}
-          >
-            <Trash2 size={12} />
-            {text('清空全部蓝图', 'Clear all blueprints')}
-          </Button>
-          {visibleDirty && (
-            <Button variant="outline" size="sm" onClick={handleSaveAll} disabled={saving || !projectDataReady}>
-            <Save size={12} /> {saving ? text('保存中...', 'Saving...') : text('保存全部', 'Save all')}
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {canRecoverLegacyImportedText && (
-        <div
-          className="flex flex-wrap items-center justify-between gap-3 border-b px-3 py-2 text-xs"
-          style={{
-            borderColor: 'color-mix(in srgb, var(--color-warning) 42%, var(--color-border))',
-            backgroundColor: 'color-mix(in srgb, var(--color-warning) 8%, transparent)',
-          }}
-        >
-          <div className="flex min-w-0 items-start gap-2" style={{ color: 'var(--color-text-secondary)' }}>
-            <AlertTriangle size={15} className="mt-0.5 flex-shrink-0" style={{ color: 'var(--color-warning)' }} />
-            <p className="max-w-3xl leading-5">
-              {text(
-                `检测到后续正文但第 ${legacyImportedTextRecoveryChapter} 章尚未写作，可能是旧版“小说拆解与仿写”误导入的参考原文。系统不会自动清除任何内容；确认“清除误导入正文”后会保留角色、故事架构、章节蓝图与知识库，并可从第 ${legacyImportedTextRecoveryChapter} 章开始写作。`,
-                `Later manuscript text exists while Chapter ${legacyImportedTextRecoveryChapter} has not been written. This may be reference text incorrectly imported by a legacy “Novel analysis and imitation” workflow. Nothing is cleared automatically; after you confirm “Clear incorrectly imported text”, characters, story architecture, chapter blueprints, and the knowledge base are kept, and you can start writing from Chapter ${legacyImportedTextRecoveryChapter}.`,
-              )}
-            </p>
           </div>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={handleClearLegacyImportedText}
-            disabled={recoveringLegacyImportedText}
-          >
-            <Trash2 size={12} />
-            {recoveringLegacyImportedText
-              ? text('清除中...', 'Clearing...')
-              : text('清除误导入正文', 'Clear incorrectly imported text')}
-          </Button>
-        </div>
-      )}
-
-      {projectDataReady && authorityError && !canRecoverLegacyImportedText && (
-        <div
-          className="flex items-start gap-2 border-b px-3 py-2 text-xs"
-          style={{
-            color: 'var(--color-warning-text)',
-            borderColor: 'color-mix(in srgb, var(--color-warning) 42%, var(--color-border))',
-            backgroundColor: 'color-mix(in srgb, var(--color-warning) 8%, transparent)',
-          }}
-        >
-          <AlertTriangle size={15} className="mt-0.5 flex-shrink-0" style={{ color: 'var(--color-warning)' }} />
-          <p className="leading-5">{authorityError}</p>
-        </div>
-      )}
-
-      {/* 蓝图生成配置弹窗 */}
-      <DirectoryConfigDialog
-        isOpen={showBlueprintDialog}
-        onClose={() => setShowBlueprintDialog(false)}
-        existingCount={visibleBlueprints.length}
-        onConfirm={handleBatchGenerate}
-      />
-      <BatchChapterCreationDialog
-        isOpen={showBatchCreationDialog}
-        startChapterNumber={nextWritableBlueprint?.chapterNumber ?? null}
-        onClose={() => setShowBatchCreationDialog(false)}
-      />
-
-      {/* 主区域：左侧列表 + 右侧编辑 */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* 左侧章节列表 */}
-        <div
-          className="flex flex-col flex-shrink-0 w-[200px] border-r overflow-hidden"
-          style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-sidebar)' }}
-        >
-          {visibleBlueprints.length === 0 ? (
-            <div className="flex flex-col items-center justify-center flex-1 gap-3 opacity-40 p-4">
-              <BookOpen size={28} />
-              <span className="text-xs text-center">{text(
-                '暂无蓝图，可点击右上角「+」手动新建，或用「AI 生成蓝图」批量创建。',
-                'No blueprints yet. Use “+” to add one manually, or “AI generate blueprints” to create a batch.',
-              )}</span>
-            </div>
-          ) : (
-          <div className="flex-1 overflow-y-auto p-1">
-            {visibleBlueprints.map((bp, idx) => (
-              <div
-                key={bp.chapterNumber}
-                className={cn(
-                  'group relative px-2.5 py-2 rounded-md text-xs cursor-pointer mb-0.5 transition-colors',
-                  selectedIdx === idx
-                    ? 'bg-[var(--color-active)] text-[var(--color-text)]'
-                    : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-hover)]'
-                )}
-                onClick={() => setSelectedIdx(idx)}
-              >
-                <div className="flex items-center gap-1.5">
-                  <span className="font-mono text-[0.7rem] opacity-40 flex-shrink-0">
-                    {bp.chapterNumber}
-                  </span>
-                  <span className="font-medium truncate flex-1">{bp.title || text('未命名', 'Untitled')}</span>
-                </div>
-                <div className="flex items-center gap-1 mt-0.5">
-                  <span className={cn(
-                    'text-[0.7rem] px-1 py-0.5 rounded',
-                    ROLE_COLORS[bp.role] || 'bg-[var(--color-hover)] text-[var(--color-text-muted)]'
-                  )}>
-                    {roleLabel(bp.role)}
-                  </span>
-                  {bp.userGuidance && (
-                    <span
-                      className="text-[0.7rem] px-1 py-0.5 rounded"
-                      style={{ backgroundColor: 'rgba(var(--accent-rgb), 0.15)', color: 'var(--color-accent)' }}
-                      title={text('已有作者微操指导', 'Author guidance is available')}
-                    >
-                      {text('有指导', 'Guidance')}
-                    </span>
-                  )}
-                  {bp.notes && (
-                    <span
-                      className="text-[0.7rem] px-1 py-0.5 rounded"
-                      style={{ backgroundColor: 'rgba(34,197,94,0.15)', color: 'rgb(34,197,94)' }}
-                      title={text('已生成章节要点', 'Chapter notes are available')}
-                    >
-                      {text('有要点', 'Notes')}
-                    </span>
-                  )}
-                </div>
+        ) : (
+          <div className="chapter-ledger-body">
+            <nav
+              className="chapter-ledger-toc"
+              aria-label={text('章节目录', 'Chapter index')}
+            >
+              <div className="chapter-ledger-toc-head">
+                <span>{text('目录', 'Index')}</span>
+                <span className="chapter-ledger-toc-count">
+                  {text(`${filteredBlueprints.length} 章`, `${filteredBlueprints.length}`)}
+                </span>
               </div>
-            ))}
-          </div>
-          )}
-        </div>
+              {filteredBlueprints.map(bp => {
+                const isActive = activeTocChapter === bp.chapterNumber
+                  || (activeTocChapter === null && bp.chapterNumber === filteredBlueprints[0].chapterNumber)
+                return (
+                  <button
+                    key={bp.chapterNumber}
+                    type="button"
+                    className={`chapter-ledger-toc-item${isActive ? ' active' : ''}`}
+                    onClick={() => {
+                      if (density === 'compact') {
+                        setDensity('read')
+                        setEditingChapterNumber(null)
+                      }
+                      scrollToChapter(bp.chapterNumber)
+                    }}
+                  >
+                    <span className="chapter-ledger-toc-num">
+                      {String(bp.chapterNumber).padStart(2, '0')}
+                    </span>
+                    <span className="chapter-ledger-toc-title">
+                      {bp.title || text('未命名', 'Untitled')}
+                    </span>
+                    {bp.userGuidance.trim() && (
+                      <span
+                        className="chapter-ledger-toc-dot"
+                        title={text('已有作者微操指导', 'Author guidance is available')}
+                        aria-hidden="true"
+                      />
+                    )}
+                  </button>
+                )
+              })}
+            </nav>
 
-        {/* 右侧编辑区 */}
-        <div className="flex-1 overflow-y-auto">
-          <ChapterCardForm
-            selected={selected ?? null}
-            nextWritableBlueprint={nextWritableBlueprint}
-            onUpdateField={updateField}
-            onWriteChapter={handleWriteChapter}
-            onDeleteChapter={handleDeleteChapter}
-            onSaveOne={handleSaveOne}
-            saving={saving}
-          />
-        </div>
+            <div className="chapter-ledger-stream">
+              {filteredBlueprints.map(bp => {
+                const isNextWritable = Boolean(
+                  projectDataReady
+                  && nextWritableBlueprint
+                  && bp.chapterNumber === nextWritableBlueprint.chapterNumber,
+                )
+                const entryMode = editingChapterNumber === bp.chapterNumber
+                  ? 'edit'
+                  : density
+
+                return (
+                  <ChapterCardForm
+                    key={bp.chapterNumber}
+                    blueprint={bp}
+                    mode={entryMode}
+                    isNextWritable={isNextWritable}
+                    characterSuggestions={characterSuggestions}
+                    writeButton={
+                      projectDataReady && nextWritableBlueprint && (
+                        bp.chapterNumber === nextWritableBlueprint.chapterNumber ? (
+                          <Button
+                            variant="ai"
+                            size="sm"
+                            onClick={() => handleWriteChapter(nextWritableBlueprint)}
+                            title={text('以当前蓝图信息生成草稿', 'Create a draft from this blueprint')}
+                          >
+                            <PenLine size={12} />
+                            {text(
+                              `写作第${nextWritableBlueprint.chapterNumber}章`,
+                              `Write Chapter ${nextWritableBlueprint.chapterNumber}`,
+                            )}
+                          </Button>
+                        ) : null
+                      )
+                    }
+                    onStartEdit={() => {
+                      setDensity('read')
+                      setEditingChapterNumber(bp.chapterNumber)
+                      setActiveTocChapter(bp.chapterNumber)
+                    }}
+                    onDoneEdit={handleDoneEdit}
+                    onUpdateField={updateField}
+                    onDeleteChapter={selected => void handleDeleteChapter(selected)}
+                  />
+                )
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

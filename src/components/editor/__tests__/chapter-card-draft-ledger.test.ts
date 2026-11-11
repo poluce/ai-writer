@@ -265,17 +265,14 @@ describe('chapter-card draft ledger', () => {
     expect(getChapterCardProjectDraft(ledger, 'project-a')?.dirtyChapterNumbers).toEqual([7])
   })
 
-  it('renders the chapter number as a readonly field with no ordinary renumber action', () => {
+  it('displays chapter numbers statically without any editable or fake input field', () => {
     const source = chapterCardSurface()
-    const chapterNumberInput = source.match(
-      /<Input\s+type="number"\s+value=\{selected\.chapterNumber\}[\s\S]*?\/>/,
-    )?.[0]
 
     expect(source).toContain('EditableChapterBlueprintField')
-    expect(chapterNumberInput).toContain('readOnly')
-    expect(chapterNumberInput).not.toContain('onChange')
-    expect(chapterNumberInput).not.toContain('onBlur')
+    expect(source).toContain('第 ${blueprint.chapterNumber} 章')
+    expect(source).not.toMatch(/<Input\b[^>]*\bvalue=\{[^}]*chapterNumber/)
     expect(source).not.toContain("updateField('chapterNumber'")
+    expect(source).not.toContain("onUpdateField('chapterNumber'")
   })
 
   it('binds chapter-card IPC reads and writes to the loaded project identity', () => {

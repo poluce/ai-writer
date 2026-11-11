@@ -90,8 +90,9 @@ describe('assistant settings page', () => {
     const invoke = installIpc()
     await renderSettings()
 
-    // 四个助手页签 + 共用模块清单（无序号）。
+    // 五个助手页签 + 共用模块清单（无序号）。
     await expect.element(page.getByRole('button', { name: '主助手' })).toBeVisible()
+    await expect.element(page.getByRole('button', { name: '写作助手' })).toBeVisible()
     await expect.element(page.getByRole('button', { name: '审稿助手' })).toBeVisible()
     for (const label of ['软件硬规则', '助手身份', '工作规范', '技能目录']) {
       await expect.element(page.getByRole('button', { name: new RegExp(label) })).toBeVisible()

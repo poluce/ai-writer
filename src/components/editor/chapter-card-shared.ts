@@ -22,7 +22,21 @@ import { globalEventBus } from '../../shared/event-bus'
 
 export const ROLES = ['建置', '铺垫', '发展', '冲突', '高潮', '转折', '收尾']
 
+export const ROLE_ORDER = [
+  '开端',
+  '建置',
+  '铺垫',
+  '发展',
+  '冲突',
+  '转折',
+  '高潮',
+  '收尾',
+  '结局',
+  '过渡',
+]
+
 export const ROLE_EN: Record<string, string> = {
+  开端: 'Opening',
   建置: 'Setup',
   铺垫: 'Foreshadowing',
   发展: 'Development',
@@ -30,6 +44,8 @@ export const ROLE_EN: Record<string, string> = {
   高潮: 'Climax',
   转折: 'Turning point',
   收尾: 'Resolution',
+  结局: 'Ending',
+  过渡: 'Transition',
 }
 
 export const ROLE_COLORS: Record<string, string> = {
@@ -37,7 +53,32 @@ export const ROLE_COLORS: Record<string, string> = {
   冲突: 'bg-orange-500/20 text-[var(--color-warning-text)]',
   转折: 'bg-purple-500/20 text-[var(--color-category-review-text)]',
   建置: 'bg-blue-500/20 text-[var(--color-category-progress-text)]',
+  开端: 'bg-blue-500/20 text-[var(--color-category-progress-text)]',
   收尾: 'bg-green-500/20 text-[var(--color-success-text)]',
+  结局: 'bg-green-500/20 text-[var(--color-success-text)]',
+}
+
+const ROLE_TONE_CLASS: Record<string, string> = {
+  开端: 'chapter-ledger-role-setup',
+  建置: 'chapter-ledger-role-setup',
+  铺垫: 'chapter-ledger-role-foreshadow',
+  过渡: 'chapter-ledger-role-foreshadow',
+  发展: 'chapter-ledger-role-develop',
+  冲突: 'chapter-ledger-role-conflict',
+  转折: 'chapter-ledger-role-turn',
+  高潮: 'chapter-ledger-role-climax',
+  收尾: 'chapter-ledger-role-resolve',
+  结局: 'chapter-ledger-role-resolve',
+}
+
+export function roleToneClass(role: string): string {
+  return ROLE_TONE_CLASS[role] ?? ''
+}
+
+export function roleOptionsFor(currentRole: string): string[] {
+  const trimmed = currentRole.trim()
+  if (!trimmed || ROLES.includes(trimmed)) return ROLES
+  return [trimmed, ...ROLES]
 }
 
 export function roleLabel(

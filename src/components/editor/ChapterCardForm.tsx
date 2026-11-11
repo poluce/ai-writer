@@ -1,215 +1,586 @@
 /**
- * 章节卡片/蓝图详情编辑表单 — 单章信息编辑、微操指导、要点与快捷操作。
- * 从 ChapterCardEditor 拆出的受控展示与表单组件。
+ * 章节蓝图单章条目 — 支持细纲阅读、紧凑提纲与原地编辑三种呈现状态。
+ * 从 ChapterCardEditor 拆出的受控展示与编辑组件。
  */
 
-import { BookOpen, PenLine, Save, Trash2 } from 'lucide-react'
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { Check, MoreHorizontal, PenLine, Plus, Trash2, X } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
-import { Label } from '../ui/Label'
+import { MenuItem } from '../ui/MenuItem'
 import { NativeSelect } from '../ui/NativeSelect'
-import { Textarea } from '../ui/Textarea'
+import { cn } from '../../lib/utils'
 import { useLocaleStore } from '../../stores/locale-store'
 import type { ChapterBlueprint } from '../../services/workflows/directory-workflow'
 import type { EditableChapterBlueprintField } from '../../stores/chapter-card-draft-ledger'
-import { ROLES, roleLabel } from './chapter-card-shared'
+import { roleLabel, roleOptionsFor, roleToneClass } from './chapter-card-shared'
 
 export interface ChapterCardFormProps {
-  selected: ChapterBlueprint | null
-  nextWritableBlueprint?: ChapterBlueprint | null
-  onUpdateField: (field: EditableChapterBlueprintField, value: any) => void
-  onWriteChapter: (blueprint: ChapterBlueprint) => void
-  onDeleteChapter: () => void
-  onSaveOne: () => void
-  saving: boolean
+  blueprint: ChapterBlueprint
+  mode: 'read' | 'compact' | 'edit'
+  isNextWritable: boolean
+  writeButton?: ReactNode
+  characterSuggestions?: readonly string[]
+  onStartEdit: () => void
+  onDoneEdit: () => void
+  onUpdateField: <K extends EditableChapterBlueprintField>(
+    chapterNumber: number,
+    field: K,
+    value: ChapterBlueprint[K],
+  ) => void
+  onDeleteChapter: (blueprint: ChapterBlueprint) => void
 }
 
-export function ChapterCardForm({
-  selected,
-  nextWritableBlueprint,
+function LedgerAutoGrowTextarea({
+  value,
+  onChange,
+  placeholder,
+  label,
+  minHeight = 44,
+}: {
+  value: string
+  onChange: (value: string) => void
+  placeholder: string
+  label: string
+  minHeight?: number
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null)
+
+  const syncHeight = () => {
+    const element = ref.current
+    if (!element) return
+    element.style.height = 'auto'
+    element.style.height = `${Math.max(element.scrollHeight, minHeight)}px`
+  }
+
+  useLayoutEffect(() => {
+    syncHeight()
+  })
+
+  useEffect(() => {
+    const element = ref.current
+    if (!element || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(syncHeight)
+    observer.observe(element)
+    return () => observer.disconnect()
+  })
+
+  return (
+    <textarea
+      ref={ref}
+      aria-label={label}
+      className="chapter-ledger-textarea"
+      value={value}
+      placeholder={placeholder}
+      rows={1}
+      style={{ minHeight }}
+      onChange={event => onChange(event.target.value)}
+    />
+  )
+}
+
+function ChapterCardEditPanel({
+  blueprint,
+  characterSuggestions,
   onUpdateField,
-  onWriteChapter,
-  onDeleteChapter,
-  onSaveOne,
-  saving,
-}: ChapterCardFormProps) {
+}: {
+  blueprint: ChapterBlueprint
+  characterSuggestions: readonly string[]
+  onUpdateField: ChapterCardFormProps['onUpdateField']
+}) {
   const text = useLocaleStore(s => s.text)
   const locale = useLocaleStore(s => s.locale)
+  const [addingCast, setAddingCast] = useState(false)
+  const [castDraft, setCastDraft] = useState('')
+  const [showOptionalNotes, setShowOptionalNotes] = useState(false)
+  const castInputRef = useRef<HTMLInputElement>(null)
+  const titleInputRef = useRef<HTMLInputElement>(null)
+  const focusBlankOnMountRef = useRef(
+    !blueprint.title.trim() && !blueprint.purpose.trim() && !blueprint.keyEvents.trim(),
+  )
 
-  if (!selected) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full gap-3 opacity-30">
-        <BookOpen size={36} />
-        <span className="text-sm">{text('在左侧选择一章开始编辑', 'Choose a chapter on the left to start editing')}</span>
-      </div>
+  useEffect(() => {
+    if (focusBlankOnMountRef.current) {
+      titleInputRef.current?.focus()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (addingCast) castInputRef.current?.focus()
+  }, [addingCast])
+
+  const hasNotesArchive = Boolean(blueprint.notes?.trim() || blueprint.notesUpdatedAt)
+  const roleOptions = roleOptionsFor(blueprint.role)
+  const availableSuggestions = characterSuggestions.filter(
+    name => name.trim() && !blueprint.characters.includes(name),
+  )
+
+  const commitCastName = (rawName: string) => {
+    const trimmed = rawName.trim()
+    if (!trimmed) return
+    if (!blueprint.characters.includes(trimmed)) {
+      onUpdateField(blueprint.chapterNumber, 'characters', [...blueprint.characters, trimmed])
+    }
+    setCastDraft('')
+  }
+
+  const handleCastInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter' || event.key === ',' || event.key === '、') {
+      event.preventDefault()
+      commitCastName(castDraft)
+    } else if (event.key === 'Escape') {
+      setAddingCast(false)
+      setCastDraft('')
+    }
+  }
+
+  const removeCharacter = (index: number) => {
+    onUpdateField(
+      blueprint.chapterNumber,
+      'characters',
+      blueprint.characters.filter((_, i) => i !== index),
     )
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-5 py-4">
-      {/* 编辑区头部 */}
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-bold" style={{ color: 'var(--color-text)' }}>
-          {text(
-            `第 ${selected.chapterNumber} 章：${selected.title || '未命名'}`,
-            `Chapter ${selected.chapterNumber}: ${selected.title || 'Untitled'}`,
-          )}
-        </h3>
-        <div className="flex items-center gap-1.5">
-          {/* 仅下一章允许写作 */}
-          {nextWritableBlueprint && selected.chapterNumber === nextWritableBlueprint.chapterNumber && (
-            <Button
-              variant="ai"
-              size="sm"
-              onClick={() => onWriteChapter(selected)}
-              title={text('以当前蓝图信息生成草稿', 'Create a draft from this blueprint')}
-            >
-              <PenLine size={12} /> {text('写作此章', 'Write this chapter')}
-            </Button>
-          )}
-          <Button variant="destructive" size="sm" onClick={onDeleteChapter} title={text('删除此章', 'Delete this chapter')}>
-            <Trash2 size={12} />
-            {text('删除此章', 'Delete chapter')}
-          </Button>
-          <Button variant="outline" size="sm" onClick={onSaveOne} disabled={saving}>
-            <Save size={12} /> {saving ? text('保存中...', 'Saving...') : text('保存', 'Save')}
-          </Button>
+    <div className="chapter-ledger-edit-panel">
+      <div className="chapter-ledger-edit-grid">
+        <div>
+          <div className="chapter-ledger-field-head">
+            <label className="chapter-ledger-field-label" htmlFor={`bp-title-${blueprint.chapterNumber}`}>
+              {text('章节标题', 'Chapter title')}
+            </label>
+          </div>
+          <Input
+            ref={titleInputRef}
+            id={`bp-title-${blueprint.chapterNumber}`}
+            value={blueprint.title}
+            onChange={e => onUpdateField(blueprint.chapterNumber, 'title', e.target.value)}
+            placeholder={text('引人入胜的章节标题', 'A compelling chapter title')}
+          />
+        </div>
+
+        <div>
+          <div className="chapter-ledger-field-head">
+            <label className="chapter-ledger-field-label" htmlFor={`bp-role-${blueprint.chapterNumber}`}>
+              {text('章节定位', 'Chapter role')}
+            </label>
+          </div>
+          <NativeSelect
+            id={`bp-role-${blueprint.chapterNumber}`}
+            value={blueprint.role}
+            onChange={e => onUpdateField(blueprint.chapterNumber, 'role', e.target.value)}
+          >
+            {roleOptions.map(role => (
+              <option key={role} value={role}>
+                {roleLabel(role, text)}
+              </option>
+            ))}
+          </NativeSelect>
         </div>
       </div>
 
-      <div className="space-y-3">
-        {/* 基本信息 */}
-        <div className="grid grid-cols-3 gap-3">
-          <div>
-            <Label>{text('章节号', 'Chapter number')}</Label>
-            <Input
-              type="number"
-              value={selected.chapterNumber}
-              readOnly
-              aria-readonly="true"
-              title={text('章节号是现有内容的稳定标识，不能在普通编辑中修改', 'The chapter number is a stable identifier and cannot be changed in ordinary editing.')}
-            />
-          </div>
-          <div className="col-span-2">
-            <Label>{text('章节标题', 'Chapter title')}</Label>
-            <Input
-              value={selected.title}
-              onChange={e => onUpdateField('title', e.target.value)}
-              placeholder={text('引人入胜的章节标题', 'A compelling chapter title')}
-            />
-          </div>
+      <div>
+        <div className="chapter-ledger-field-head">
+          <span className="chapter-ledger-field-label">{text('出场角色', 'Characters')}</span>
         </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label>{text('章节定位', 'Chapter role')}</Label>
-            <NativeSelect value={selected.role} onChange={e => onUpdateField('role', e.target.value)}>
-              {ROLES.map(r => <option key={r} value={r}>{roleLabel(r, text)}</option>)}
-            </NativeSelect>
-          </div>
-          <div>
-            <Label>{text('出场关键人（逗号分隔）', 'Key characters (comma-separated)')}</Label>
-            <Input
-              value={selected.characters.join('、')}
-              onChange={e => onUpdateField('characters', e.target.value.split(/[,，、\s]+/).filter(Boolean))}
-              placeholder={text('如：主角、反派A', 'For example: protagonist, antagonist A')}
-            />
-          </div>
-        </div>
-
-        <div>
-          <Label>{text('主角小目标（本章最想解决的事）', 'Protagonist goal (the main thing to resolve in this chapter)')}</Label>
-          <Textarea
-            value={selected.purpose}
-            onChange={e => onUpdateField('purpose', e.target.value)}
-            placeholder={text('本章主角最迫切要解决的一件事...', 'The most urgent thing the protagonist needs to resolve in this chapter...')}
-            rows={2}
-          />
-        </div>
-
-        <div>
-          <Label>{text('实质冲突与转折', 'Core conflict and turning point')}</Label>
-          <Textarea
-            value={selected.keyEvents}
-            onChange={e => onUpdateField('keyEvents', e.target.value)}
-            placeholder={text('主角做了什么，遭遇了什么反转，金手指怎么用的...', 'What the protagonist does, the reversal they encounter, and how special abilities are used...')}
-            rows={4}
-          />
-        </div>
-
-        <div>
-          <Label>{text('末尾悬念钩子', 'Ending suspense hook')}</Label>
-          <Textarea
-            value={selected.suspenseHook}
-            onChange={e => onUpdateField('suspenseHook', e.target.value)}
-            placeholder={text('一句话说明结尾留了什么悬念...', 'In one sentence, describe the suspense left at the end...')}
-            rows={2}
-          />
-        </div>
-
-        {/* 作者微操指导 — 特别标注，写稿时注入为最高优先级 */}
-        <div
-          className="p-3 rounded-lg border"
-          style={{
-            borderColor: 'var(--color-accent)',
-            backgroundColor: 'rgba(var(--accent-rgb, 99 102 241), 0.06)',
-          }}
-        >
-          <Label className="flex items-center gap-1.5">
-            <span>{text('作者微操指导', 'Author guidance')}</span>
-            <span
-              className="text-[0.7rem] font-normal"
-              style={{ color: 'var(--color-text-muted)' }}
-            >
-              {text('（写稿时会作为最高优先级注入 AI — 可覆盖蓝图）', '(Used as the highest-priority instruction during drafting; it can override the blueprint.)')}
+        <div className="chapter-ledger-cast-list">
+          {blueprint.characters.map((name, index) => (
+            <span key={`${name}-${index}`} className="chapter-ledger-cast-chip">
+              <span>{name}</span>
+              <button
+                type="button"
+                className="chapter-ledger-cast-remove"
+                onClick={() => removeCharacter(index)}
+                aria-label={text(`移除 ${name}`, `Remove ${name}`)}
+              >
+                <X size={11} />
+              </button>
             </span>
-          </Label>
-          <Textarea
-            value={selected.userGuidance}
-            onChange={e => onUpdateField('userGuidance', e.target.value)}
-            placeholder={text(
-              '我想在这章加入一个意外的背叛...\n让反派在这章露出破绽...\n（不填则完全按蓝图走）',
-              'Add an unexpected betrayal in this chapter...\nLet the antagonist reveal a weakness...\n(Leave blank to follow the blueprint exactly.)',
-            )}
-            rows={3}
-            style={{ marginTop: 6 }}
-          />
+          ))}
+
+          {addingCast ? (
+            <div className="inline-flex items-center gap-1.5">
+              <Input
+                ref={castInputRef}
+                value={castDraft}
+                onChange={e => setCastDraft(e.target.value)}
+                onKeyDown={handleCastInputKeyDown}
+                placeholder={text('输入角色名后回车', 'Character name, press Enter')}
+                className="h-6 w-36 text-xs"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => commitCastName(castDraft)}
+              >
+                {text('添加', 'Add')}
+              </Button>
+              <button
+                type="button"
+                className="chapter-ledger-action"
+                style={{ height: 24, padding: '0 6px' }}
+                onClick={() => {
+                  setAddingCast(false)
+                  setCastDraft('')
+                }}
+              >
+                {text('收起', 'Close')}
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="chapter-ledger-cast-add"
+              onClick={() => setAddingCast(true)}
+            >
+              <Plus size={11} />
+              {text('添加角色', 'Add character')}
+            </button>
+          )}
         </div>
 
-        {/* 章节要点（定稿后自动生成，也可手动编辑） */}
-        <div
-          className="p-3 rounded-lg border"
-          style={{
-            borderColor: 'var(--color-border)',
-            backgroundColor: 'rgba(34,197,94,0.04)',
-          }}
-        >
-          <Label className="flex items-center gap-1.5">
-            <span>{text('章节要点', 'Chapter notes')}</span>
-            <span
-              className="text-[0.7rem] font-normal"
-              style={{ color: 'var(--color-text-muted)' }}
-            >
-              {selected.notesUpdatedAt
+        {addingCast && availableSuggestions.length > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <span className="chapter-ledger-field-hint">{text('已有角色：', 'Roster:')}</span>
+            {availableSuggestions.slice(0, 8).map(name => (
+              <button
+                key={name}
+                type="button"
+                className="chapter-ledger-chip"
+                style={{ height: 22, padding: '0 8px', fontSize: 11 }}
+                onClick={() => commitCastName(name)}
+              >
+                + {name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <div className="chapter-ledger-field-head">
+          <span className="chapter-ledger-field-label">{text('主角目标', 'Protagonist goal')}</span>
+        </div>
+        <LedgerAutoGrowTextarea
+          label={text('主角目标', 'Protagonist goal')}
+          value={blueprint.purpose}
+          onChange={value => onUpdateField(blueprint.chapterNumber, 'purpose', value)}
+          placeholder={text('本章主角最迫切要解决的一件事', 'The primary objective the protagonist pursues in this chapter')}
+        />
+      </div>
+
+      <div>
+        <div className="chapter-ledger-field-head">
+          <span className="chapter-ledger-field-label">{text('实质冲突与转折', 'Core conflict and turning point')}</span>
+        </div>
+        <LedgerAutoGrowTextarea
+          label={text('实质冲突与转折', 'Core conflict and turning point')}
+          value={blueprint.keyEvents}
+          minHeight={92}
+          onChange={value => onUpdateField(blueprint.chapterNumber, 'keyEvents', value)}
+          placeholder={text('按场景推进记录关键行动、阻碍与反转', 'Record key scene beats, obstacles, and reversals')}
+        />
+      </div>
+
+      <div>
+        <div className="chapter-ledger-field-head">
+          <span className="chapter-ledger-field-label">{text('末尾悬念钩子', 'Ending suspense hook')}</span>
+        </div>
+        <LedgerAutoGrowTextarea
+          label={text('末尾悬念钩子', 'Ending suspense hook')}
+          value={blueprint.suspenseHook}
+          onChange={value => onUpdateField(blueprint.chapterNumber, 'suspenseHook', value)}
+          placeholder={text('一句话点明结尾留下的悬念', 'State the closing hook in one sentence')}
+        />
+      </div>
+
+      <div>
+        <div className="chapter-ledger-field-head">
+          <span className="chapter-ledger-field-label">{text('作者微操指导', 'Author guidance')}</span>
+          <span className="chapter-ledger-field-hint">{text('写稿时高优注入', 'Highest priority in drafting')}</span>
+        </div>
+        <LedgerAutoGrowTextarea
+          label={text('作者微操指导', 'Author guidance')}
+          value={blueprint.userGuidance}
+          minHeight={56}
+          onChange={value => onUpdateField(blueprint.chapterNumber, 'userGuidance', value)}
+          placeholder={text('留空则按上方蓝图自然写作', 'Leave blank to follow the blueprint above')}
+        />
+      </div>
+
+      {(hasNotesArchive || showOptionalNotes) ? (
+        <div>
+          <div className="chapter-ledger-field-head">
+            <span className="chapter-ledger-field-label">{text('章节要点', 'Chapter notes')}</span>
+            <span className="chapter-ledger-field-hint">
+              {blueprint.notesUpdatedAt
                 ? text(
-                  `（定稿后自动生成 — ${new Date(selected.notesUpdatedAt).toLocaleDateString(locale)}）`,
-                  `(Generated after finalization — ${new Date(selected.notesUpdatedAt).toLocaleDateString(locale)})`,
+                  `定稿归档 · ${new Date(blueprint.notesUpdatedAt).toLocaleDateString(locale)}`,
+                  `Archived · ${new Date(blueprint.notesUpdatedAt).toLocaleDateString(locale)}`,
                 )
-                : text('（定稿后自动生成，也可手动填写）', '(Generated after finalization, or enter it manually.)')
-              }
+                : text('定稿后自动生成', 'Generated after finalization')}
             </span>
-          </Label>
-          <Textarea
-            value={selected.notes || ''}
-            onChange={e => onUpdateField('notes', e.target.value)}
-            placeholder={text(
-              '定稿后 AI 会自动填充本章要点（事件进展/角色变化/伏笔埋点），也可以提前手动输入给 AI 作参考',
-              'After finalization, AI fills these notes with plot progress, character changes, and foreshadowing. You can also enter them beforehand as AI reference.',
-            )}
-            rows={4}
+          </div>
+          <LedgerAutoGrowTextarea
+            label={text('章节要点', 'Chapter notes')}
+            value={blueprint.notes || ''}
+            minHeight={64}
+            onChange={value => onUpdateField(blueprint.chapterNumber, 'notes', value)}
+            placeholder={text('事件进展、角色变化与伏笔回收摘要', 'Summary of plot progress, character shifts, and payoffs')}
           />
         </div>
-      </div>
+      ) : (
+        <div>
+          <button
+            type="button"
+            className="chapter-ledger-action"
+            style={{ paddingLeft: 0 }}
+            onClick={() => setShowOptionalNotes(true)}
+          >
+            <Plus size={12} />
+            {text('补充定稿要点', 'Add chapter notes')}
+          </button>
+        </div>
+      )}
     </div>
+  )
+}
+
+export function ChapterCardForm({
+  blueprint,
+  mode,
+  isNextWritable,
+  writeButton,
+  characterSuggestions = [],
+  onStartEdit,
+  onDoneEdit,
+  onUpdateField,
+  onDeleteChapter,
+}: ChapterCardFormProps) {
+  const text = useLocaleStore(s => s.text)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuWrapRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!menuOpen) return
+    const handlePointerDown = (event: MouseEvent) => {
+      if (menuWrapRef.current && !menuWrapRef.current.contains(event.target as Node)) {
+        setMenuOpen(false)
+      }
+    }
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [menuOpen])
+
+  const beats = blueprint.keyEvents
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean)
+
+  const hasNotesArchive = Boolean(blueprint.notes?.trim() || blueprint.notesUpdatedAt)
+  const hasProseContent = Boolean(
+    blueprint.purpose.trim()
+    || beats.length > 0
+    || blueprint.suspenseHook.trim()
+    || blueprint.userGuidance.trim()
+    || hasNotesArchive,
+  )
+
+  if (mode === 'compact') {
+    const compactSummary = beats.join(' ') || blueprint.purpose.trim()
+    return (
+      <article
+        id={`chapter-ledger-entry-${blueprint.chapterNumber}`}
+        className="chapter-ledger-compact"
+        onClick={onStartEdit}
+      >
+        <span className="chapter-ledger-entry-num">
+          {String(blueprint.chapterNumber).padStart(2, '0')}
+        </span>
+        <div className="chapter-ledger-compact-main">
+          <div className="chapter-ledger-compact-top">
+            <span className="chapter-ledger-compact-title">
+              {blueprint.title || text('未命名', 'Untitled')}
+            </span>
+            <span className={cn('chapter-ledger-role', roleToneClass(blueprint.role))}>
+              {roleLabel(blueprint.role, text)}
+            </span>
+            {isNextWritable && (
+              <span className="chapter-ledger-writable-tag">
+                {text('待写', 'Next')}
+              </span>
+            )}
+            {blueprint.userGuidance.trim() && (
+              <span className="chapter-ledger-guidance-tag">
+                {text('有微操', 'Guidance')}
+              </span>
+            )}
+          </div>
+          {compactSummary && (
+            <p className="chapter-ledger-compact-summary">{compactSummary}</p>
+          )}
+          {blueprint.suspenseHook.trim() && (
+            <p className="chapter-ledger-compact-hook">
+              {text(`钩子：${blueprint.suspenseHook}`, `Hook: ${blueprint.suspenseHook}`)}
+            </p>
+          )}
+        </div>
+        <div
+          className="chapter-ledger-entry-actions"
+          onClick={event => event.stopPropagation()}
+        >
+          {writeButton}
+          <button
+            type="button"
+            className="chapter-ledger-action"
+            onClick={onStartEdit}
+          >
+            <PenLine size={12} />
+            {text('编辑', 'Edit')}
+          </button>
+        </div>
+      </article>
+    )
+  }
+
+  const isEditing = mode === 'edit'
+
+  return (
+    <article
+      id={`chapter-ledger-entry-${blueprint.chapterNumber}`}
+      className="chapter-ledger-entry"
+    >
+      <div className="chapter-ledger-entry-head">
+        <div className="chapter-ledger-entry-title-group">
+          <span className="chapter-ledger-entry-num">
+            {text(`第 ${blueprint.chapterNumber} 章`, `Ch. ${blueprint.chapterNumber}`)}
+          </span>
+          <h3 className="chapter-ledger-entry-title">
+            {blueprint.title || text('未命名', 'Untitled')}
+          </h3>
+          <span className={cn('chapter-ledger-role', roleToneClass(blueprint.role))}>
+            {roleLabel(blueprint.role, text)}
+          </span>
+        </div>
+
+        <div className="chapter-ledger-entry-actions">
+          {writeButton}
+          {isEditing ? (
+            <Button variant="outline" size="sm" onClick={onDoneEdit}>
+              <Check size={12} />
+              {text('完成', 'Done')}
+            </Button>
+          ) : (
+            <button
+              type="button"
+              className="chapter-ledger-action"
+              onClick={onStartEdit}
+            >
+              <PenLine size={12} />
+              {text('编辑', 'Edit')}
+            </button>
+          )}
+
+          <div className="relative" ref={menuWrapRef}>
+            <button
+              type="button"
+              className="chapter-ledger-action"
+              style={{ padding: '0 6px' }}
+              onClick={() => setMenuOpen(open => !open)}
+              aria-expanded={menuOpen}
+              aria-label={text('章节更多操作', 'More chapter actions')}
+              title={text('更多操作', 'More actions')}
+            >
+              <MoreHorizontal size={14} />
+            </button>
+            {menuOpen && (
+              <div className="chapter-ledger-popover" role="menu">
+                <MenuItem
+                  label={text('删除此章', 'Delete chapter')}
+                  icon={<Trash2 size={13} />}
+                  danger
+                  onClick={() => {
+                    setMenuOpen(false)
+                    onDeleteChapter(blueprint)
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {isEditing ? (
+        <ChapterCardEditPanel
+          blueprint={blueprint}
+          characterSuggestions={characterSuggestions}
+          onUpdateField={onUpdateField}
+        />
+      ) : (
+        <>
+          <div className="chapter-ledger-meta-line">
+            <span>
+              {text('出场：', 'Cast: ')}
+              {blueprint.characters.length > 0
+                ? blueprint.characters.join(' · ')
+                : text('未指定', 'None')}
+            </span>
+          </div>
+
+          {hasProseContent ? (
+            <div
+              className="chapter-ledger-prose"
+              onDoubleClick={onStartEdit}
+              title={text('双击进入编辑', 'Double-click to edit')}
+            >
+              {blueprint.purpose.trim() && (
+                <p className="chapter-ledger-goal">{blueprint.purpose}</p>
+              )}
+
+              {beats.length > 0 && (
+                <div className="chapter-ledger-beats">
+                  {beats.map((line, index) => (
+                    <p key={index}>{line}</p>
+                  ))}
+                </div>
+              )}
+
+              {blueprint.suspenseHook.trim() && (
+                <div className="chapter-ledger-hook">
+                  <strong>{text('末尾钩子', 'Ending hook')}</strong>
+                  {blueprint.suspenseHook}
+                </div>
+              )}
+
+              {blueprint.userGuidance.trim() && (
+                <div className="chapter-ledger-guidance">
+                  <strong>{text('作者微操', 'Author guidance')}</strong>
+                  {blueprint.userGuidance}
+                </div>
+              )}
+
+              {blueprint.notes?.trim() && (
+                <p className="chapter-ledger-notes">
+                  {text(`定稿要点：${blueprint.notes}`, `Notes: ${blueprint.notes}`)}
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="chapter-ledger-empty-prose">
+              {text('尚未填写本章细纲，点击右上角「编辑」补充。', 'No chapter details yet. Select Edit to write.')}
+            </p>
+          )}
+        </>
+      )}
+    </article>
   )
 }

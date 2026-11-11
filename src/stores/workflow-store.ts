@@ -284,7 +284,7 @@ interface WorkflowState {
   hasActiveRun: () => boolean
   /** 活跃任务数量 */
   activeCount: () => number
-  /** 获取当前正在流式输出的活跃工作流（供 AI 输出面板消费） */
+  /** 获取当前正在流式输出的活跃工作流（供底部任务面板消费） */
   getActiveStreamingRun: () => WorkflowRun | null
   /** 获取当前最活跃任务的步骤信息（供 StatusBar 胶囊显示） */
   getActiveStepInfo: () => { title: string; stepName: string; progress: number; total: number; completed: number } | null

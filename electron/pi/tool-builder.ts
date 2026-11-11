@@ -86,7 +86,7 @@ export function buildAgentTools(
     createStoryArchitectureTool(language, rendererAction),
     createReadArchitectureTool(language),
     createReadBlueprintTool(language),
-    createManageDraftsTool(language, rendererAction),
+    createManageDraftsTool(language, rendererAction, { readOnly: true }),
     createManageReviewReportsTool(language, rendererAction),
     createDeleteReviewReportTool(language, rendererAction),
     createReadProjectStateTool(language),
@@ -208,13 +208,44 @@ export function buildReviewAgentTools(
   ].map(withExecutionMode)
 }
 
+/**
+ * Build the tools dedicated to the Prose Writing Assistant.
+ *
+ * 写作助手专属工具集：专注章节正文写作、局部精修与批注处理，同时可维护人物档案与伏笔线索。
+ * 严禁修改小说配置、故事架构、章节蓝图或审稿报告，也不挂载底层 bash/write/edit 工具。
+ */
+export function buildWriterAgentTools(
+  language: WritingLanguage,
+  rendererAction: RendererActionSink,
+  options: AssistantToolKitOptions = {},
+): AnyAgentTool[] {
+  return [
+    createReadProjectStateTool(language),
+    createReadArchitectureTool(language),
+    createReadBlueprintTool(language),
+    createReadContinuityFactsTool(language),
+    createReadNarrativeThreadsTool(language),
+    createManageNarrativeThreadsTool(language),
+    createManageDraftsTool(language, rendererAction),
+    createManageCharactersTool(language, rendererAction),
+    createSearchKnowledgeTool(language),
+    createReadFileTool(language),
+    createListFilesTool(language),
+    createOpenEditorTool(language, rendererAction),
+    createWebFetchTool(language),
+    createManageSkillsTool(language, options.skills ?? [], options.skillRoots ?? [], {
+      assistantType: 'writer',
+    }),
+  ].map(withExecutionMode)
+}
+
 export interface AssistantToolKitOptions {
   skills?: readonly AgentSkillCatalogEntry[]
   skillRoots?: readonly string[]
   delegateHandler?: AssistantDelegateHandler
 }
 
-/** 助手类型到工具集的唯一分发点：四个助手各有一套职责边界。 */
+/** 助手类型到工具集的唯一分发点：五个助手各有一套职责边界。 */
 export function buildToolsForAssistantType(
   assistantType: AssistantType,
   language: WritingLanguage,
@@ -227,6 +258,8 @@ export function buildToolsForAssistantType(
       return buildArchitectAgentTools(language, rendererAction, { ...options, skills: visibleSkills })
     case 'blueprint':
       return buildBlueprintAgentTools(language, rendererAction, { ...options, skills: visibleSkills })
+    case 'writer':
+      return buildWriterAgentTools(language, rendererAction, { ...options, skills: visibleSkills })
     case 'review':
       return buildReviewAgentTools(language, rendererAction, { ...options, skills: visibleSkills })
     case 'general':

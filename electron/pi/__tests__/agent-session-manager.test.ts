@@ -45,16 +45,19 @@ vi.mock('../tool-builder', () => {
   const buildAgentTools = vi.fn(() => [])
   const buildArchitectAgentTools = vi.fn(() => [])
   const buildBlueprintAgentTools = vi.fn(() => [])
+  const buildWriterAgentTools = vi.fn(() => [])
   const buildReviewAgentTools = vi.fn(() => [])
   return {
     buildAgentTools,
     buildArchitectAgentTools,
     buildBlueprintAgentTools,
+    buildWriterAgentTools,
     buildReviewAgentTools,
     buildToolsForAssistantType: vi.fn((assistantType: string) => {
       switch (assistantType) {
         case 'architect': return buildArchitectAgentTools()
         case 'blueprint': return buildBlueprintAgentTools()
+        case 'writer': return buildWriterAgentTools()
         case 'review': return buildReviewAgentTools()
         default: return buildAgentTools()
       }
@@ -557,5 +560,36 @@ describe('AgentSessionManager', () => {
     expect(result.error).toContain('没有提交正式审稿报告')
     const session = h.sessions.at(-1)!
     expect(session.prompt).toHaveBeenCalledTimes(2)
+  })
+
+  it('creates a new writer conversation without sandbox executionEnv and passes writer assistantType', async () => {
+    const openMock = vi.fn(async (id: string) => ({
+      metadata: { id },
+      setName: vi.fn(),
+    }))
+    const store = fakeStore({
+      listConversations: vi.fn(async () => []),
+      open: openMock,
+    })
+    const { manager } = buildManager(store as never)
+
+    const result = await manager.delegateTask({
+      target: 'writer',
+      task: '撰写第 3 章正文并同步角色状态',
+      chapter_number: 3,
+      instructions: '突出雨夜伏击的紧张感',
+    }, 'parent-conv-1')
+
+    expect(result.success).toBe(true)
+    expect(result.conversationId).toMatch(/^writer-/)
+    expect(openMock).toHaveBeenCalledWith(expect.stringMatching(/^writer-/), { create: true })
+    expect(h.createdOptions.at(-1)).toMatchObject({
+      assistantType: 'writer',
+    })
+    expect(h.createdOptions.at(-1)).not.toHaveProperty('executionEnv')
+    const session = h.sessions.at(-1)!
+    const prompt = session.prompt.mock.calls[0][0] as string
+    expect(prompt).toContain('目标章节：第 3 章')
+    expect(prompt).toContain('manage_drafts')
   })
 })

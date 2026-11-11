@@ -6,7 +6,7 @@ describe('createDelegateToAssistantTool', () => {
     const handler = vi.fn()
     const tool = createDelegateToAssistantTool('zh-CN', handler)
     expect(tool.name).toBe('delegate_to_assistant')
-    expect(tool.description).toContain('向专门领域助手（架构助手、章节蓝图助手或审稿助手）委派专门任务')
+    expect(tool.description).toContain('向专门领域助手（架构助手、章节蓝图助手、写作助手或审稿助手）委派专门任务')
     expect(tool.isWriteOperation?.({ assistant: 'architect', task: '完善设定' })).toBe(true)
   })
 
@@ -206,7 +206,52 @@ describe('createDelegateToAssistantTool', () => {
     expect(handler).not.toHaveBeenCalled()
   })
 
-  it('does not save drafts before delegating to non-review assistants', async () => {
+  it('saves the active draft before delegating to the writer assistant', async () => {
+    const handler = vi.fn().mockResolvedValue({
+      success: true,
+      result: '第 4 章正文已写入。',
+      conversationId: 'writer-888',
+    })
+    const rendererAction = vi.fn().mockResolvedValue({ ok: true, summary: '已保存第 4 章草稿。' })
+
+    const tool = createDelegateToAssistantTool('zh-CN', handler, rendererAction)
+    const result = await tool.execute('call-writer-1', {
+      assistant: 'writer',
+      task: '润色并扩写打斗段落',
+      chapter_number: 4,
+      instructions: '突出人物动作感',
+    })
+
+    expect(rendererAction).toHaveBeenCalledWith({ type: 'save_draft_for_ai', chapterNumber: 4 })
+    expect(handler).toHaveBeenCalledWith({
+      target: 'writer',
+      task: '润色并扩写打斗段落',
+      chapter_number: 4,
+      instructions: '突出人物动作感',
+    })
+    const textContent = result.content[0] as { type: 'text'; text: string }
+    expect(textContent.text).toContain('【写作助手已完成任务】')
+    expect(result.details).toMatchObject({
+      assistant: 'writer',
+      conversationId: 'writer-888',
+      savedDraft: '已保存第 4 章草稿。',
+    })
+  })
+
+  it('aborts writer delegation when the current draft cannot be saved', async () => {
+    const handler = vi.fn()
+    const rendererAction = vi.fn().mockResolvedValue({ ok: false, error: '磁盘写入失败' })
+
+    const tool = createDelegateToAssistantTool('zh-CN', handler, rendererAction)
+    await expect(tool.execute('call-writer-fail', {
+      assistant: 'writer',
+      task: '修改第 4 章',
+      chapter_number: 4,
+    })).rejects.toThrow('写作前保存当前草稿失败：磁盘写入失败')
+    expect(handler).not.toHaveBeenCalled()
+  })
+
+  it('does not save drafts before delegating to architect or blueprint assistants', async () => {
     const handler = vi.fn().mockResolvedValue({
       success: true,
       result: '设定完成',

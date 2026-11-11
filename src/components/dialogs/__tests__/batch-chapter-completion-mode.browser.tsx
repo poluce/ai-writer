@@ -219,6 +219,7 @@ function installIpc() {
   }
   invoke = vi.fn(async (channel: string, ...args: unknown[]) => {
     if (channel === 'prompt:load-global') return { templates: [], diagnostics: [] }
+    if (channel === 'db:recovery-candidate-list') return []
     if (channel === 'db:draft-authority-sequence') {
       return {
         status: 'empty',

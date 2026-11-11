@@ -92,7 +92,7 @@ describe('buildAssistantPromptPreview', () => {
     expect(hardRules.source).toBe('global')
     expect(hardRules.chars).toBe(0)
     expect(preview.prompt).not.toContain('【不可变系统合同】')
-    expect(preview.prompt.startsWith('你是一位经验丰富的长篇小说写作助手')).toBe(true)
+    expect(preview.prompt.startsWith('你是一位经验丰富的长篇小说统筹与创作主助手')).toBe(true)
   })
 
   it('prefers a project override and reports its source', () => {

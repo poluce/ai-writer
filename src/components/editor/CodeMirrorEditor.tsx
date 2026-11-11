@@ -180,11 +180,11 @@ export default function CodeMirrorEditor({
     closeBubble()
   }
 
-  // 选区 → 助手：引用构造与提示词在 useEditorAiHandoff，store 接线留在这里（组合点）。
+  // 选区 → 写作助手：引用构造与提示词在 useEditorAiHandoff，store 接线留在这里（组合点）。
   const dispatchPrompt = useCallback((citation: DraftPassageCitation, prompt: string) => {
     useAgentStore.getState().addComposerCitation(citation)
-    useLayoutStore.getState().openRightPanel('agent')
-    void useAgentStore.getState().sendMessage(prompt)
+    useLayoutStore.getState().openRightPanel('writer')
+    void useAgentStore.getState().sendMessage(prompt, 'writer')
   }, [])
   const closeContextMenu = useCallback(() => setContextMenu(null), [setContextMenu])
   const { aiActions, runAIAction, addSelectionToAssistant } = useEditorAiHandoff({

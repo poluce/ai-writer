@@ -171,7 +171,8 @@ describe('ChapterCardEditor writing entry', () => {
     expect(addButton).toBeDefined()
     await act(async () => addButton?.click())
 
-    expect(container?.textContent).toContain('第 10 章：')
+    expect(container?.textContent).toContain('第 10 章')
+    expect(container?.querySelector('input[id="bp-title-10"]')).not.toBeNull()
   })
 
   it('appends after the blueprint maximum when the authoritative next blueprint already exists', async () => {
@@ -194,7 +195,8 @@ describe('ChapterCardEditor writing entry', () => {
     expect(addButton).toBeDefined()
     await act(async () => addButton?.click())
 
-    expect(container?.textContent).toContain('第 12 章：')
+    expect(container?.textContent).toContain('第 12 章')
+    expect(container?.querySelector('input[id="bp-title-12"]')).not.toBeNull()
     expect(container?.textContent).toContain('写作第10章')
     expect(info).toHaveBeenCalledWith(expect.stringContaining('写作入口仍为第 10 章'))
   })

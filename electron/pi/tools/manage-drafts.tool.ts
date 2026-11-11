@@ -751,8 +751,8 @@ export function createManageDraftsTool(
         const action = resolveDraftAction(String(params.action || 'read').toLowerCase().trim())
         if (action !== 'read' && action !== 'list_versions' && action !== 'list_revisions' && action !== 'read_revision' && action !== 'list_annotations') {
           throw new Error(text(
-            '本助手为只读审稿角色，不能修改草稿；请只使用 read / list_versions / list_revisions / read_revision / list_annotations。',
-            'This assistant is read-only for review and cannot modify drafts. Use read, list_versions, list_revisions, read_revision, or list_annotations only.',
+            '当前助手仅有只读草稿权限，不能直接修改草稿；请只使用 read / list_versions / list_revisions / read_revision / list_annotations（写稿或改稿请委派写作助手）。',
+            'This assistant has read-only access to drafts and cannot modify them. Use read, list_versions, list_revisions, read_revision, or list_annotations only (delegate prose writing or revisions to the writing assistant).',
           ))
         }
       }

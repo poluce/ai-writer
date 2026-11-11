@@ -275,7 +275,7 @@ export function createDirectoryWorkflow(
               'Chapter-blueprint generation failed. Please try again.',
             ))
           }
-          // 返回可读摘要字符串（step.result 必须是 string，否则 AIOutputPanel 渲染会崩溃）
+          // 返回可读摘要字符串（step.result 必须是 string，否则任务面板渲染会崩溃）
           return text(
             `已生成 ${blueprints.length} 章蓝图`,
             `Generated ${blueprints.length} chapter blueprint${blueprints.length === 1 ? '' : 's'}`,

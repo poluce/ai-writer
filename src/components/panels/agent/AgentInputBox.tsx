@@ -115,10 +115,10 @@ export default function AgentInputBox({ assistantType = 'general' }: { assistant
     } else {
       // 内置命令：直接发送
       setInputText('')
-      sendMessage(`/${cmd.name}`)
+      sendMessage(`/${cmd.name}`, assistantType)
     }
     textareaRef.current?.focus()
-  }, [sendMessage])
+  }, [sendMessage, assistantType])
 
   // 选择 @ 提及
   const handleMentionSelect = useCallback((target: MentionTarget) => {
@@ -195,7 +195,7 @@ export default function AgentInputBox({ assistantType = 'general' }: { assistant
   /** 发送或停止 */
   const handleSendOrStop = useCallback(async () => {
     if (generating) {
-      await cancelGeneration()
+      await cancelGeneration(assistantType)
       return
     }
     if (!hasProject) return
@@ -361,7 +361,7 @@ export default function AgentInputBox({ assistantType = 'general' }: { assistant
                           key={entry.profile.id}
                           type="button"
                           onClick={() => {
-                            setModelId(entry.profile.id)
+                            setModelId(entry.profile.id, assistantType)
                             setShowModelSelectMenu(false)
                             setSelectPane('root')
                           }}
@@ -401,7 +401,7 @@ export default function AgentInputBox({ assistantType = 'general' }: { assistant
                       type="button"
                       data-thinking-level={item.value ?? 'default'}
                       onClick={() => {
-                        setThinkingLevel(item.value)
+                        setThinkingLevel(item.value, assistantType)
                         setShowModelSelectMenu(false)
                         setSelectPane('root')
                       }}

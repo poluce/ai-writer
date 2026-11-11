@@ -249,6 +249,12 @@ export const BUILTIN_PROMPT_STRUCTURES: readonly BuiltinPromptStructure[] = [
     },
   },
   {
+    key: "assistant_writer_identity",
+    variables: {
+      "mode_instruction": "当前助手工作模式说明",
+    },
+  },
+  {
     key: "assistant_review_identity",
     variables: {
       "mode_instruction": "当前助手工作模式说明",
@@ -260,6 +266,10 @@ export const BUILTIN_PROMPT_STRUCTURES: readonly BuiltinPromptStructure[] = [
   },
   {
     key: "assistant_blueprint_work_rules",
+    variables: {},
+  },
+  {
+    key: "assistant_writer_work_rules",
     variables: {},
   },
   {
@@ -317,9 +327,11 @@ export const CORE_LOCALIZED_BUILTIN_PROMPT_KEYS: readonly string[] = [
   "assistant_writing_work_rules",
   "assistant_architect_identity",
   "assistant_blueprint_identity",
+  "assistant_writer_identity",
   "assistant_review_identity",
   "assistant_architect_work_rules",
   "assistant_blueprint_work_rules",
+  "assistant_writer_work_rules",
   "assistant_review_work_rules",
 ]
 

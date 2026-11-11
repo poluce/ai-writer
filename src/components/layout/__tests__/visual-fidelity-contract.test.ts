@@ -23,8 +23,14 @@ const files = [
   'src/components/layout/StatusBar.tsx',
   'src/components/panels/sidebar/ProjectTree.tsx',
   'src/components/panels/AIPanel.tsx',
-  'src/components/panels/AIOutputPanel.tsx',
+  'src/components/panels/WriterPanel.tsx',
   'src/components/panels/BottomPanel.tsx',
+  'src/components/panels/bottom/TaskRunView.tsx',
+  'src/components/panels/bottom/WorkflowStepStream.tsx',
+  'src/components/panels/bottom/WorkflowFailureNotice.tsx',
+  'src/components/panels/bottom/RecoveryCandidatesBar.tsx',
+  'src/components/panels/bottom/LogsView.tsx',
+  'src/components/panels/bottom/ModelsView.tsx',
   'src/components/panels/agent/AgentHeader.tsx',
   'src/components/panels/agent/AgentConversation.tsx',
   'src/components/panels/agent/assistant-ui-copy.ts',
@@ -130,10 +136,7 @@ describe('writer console visual fidelity contract', () => {
     expect(source('src/components/layout/TitleBar.tsx')).toContain('writer-command-button')
     expect(source('src/components/panels/sidebar/ProjectTree.tsx')).toContain('writer-project-tree')
     expect(source('src/components/panels/BottomPanel.tsx')).toContain('writer-task-table')
-    expect([
-      source('src/components/panels/AIPanel.tsx'),
-      source('src/components/panels/AIOutputPanel.tsx'),
-    ].join('\n')).toContain('writer-ai-panel')
+    expect(source('src/components/panels/AIPanel.tsx')).toContain('writer-ai-panel')
     expect(combined).not.toMatch(pseudoIconPattern)
     expect(combined).not.toMatch(/<svg\b|<path\b/)
   })

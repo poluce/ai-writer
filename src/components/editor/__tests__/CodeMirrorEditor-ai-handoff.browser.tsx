@@ -28,7 +28,7 @@ const REFINE_EN_US = 'Refine this passage for natural, specific language and str
 let root: Root
 let container: HTMLDivElement
 let invoke: ReturnType<typeof vi.fn>
-let sendMessage: ReturnType<typeof vi.fn<(content: string) => Promise<void>>>
+let sendMessage: ReturnType<typeof vi.fn<(content: string, type?: string) => Promise<void>>>
 let originalSendMessage: ReturnType<typeof useAgentStore.getState>['sendMessage']
 
 beforeEach(() => {
@@ -38,7 +38,7 @@ beforeEach(() => {
   root = createRoot(container)
 
   originalSendMessage = useAgentStore.getState().sendMessage
-  sendMessage = vi.fn<(content: string) => Promise<void>>(async () => {})
+  sendMessage = vi.fn<(content: string, type?: string) => Promise<void>>(async () => {})
   // 只替换派发入口：本用例断言的是"有没有把正确的任务交给助手"，
   // 助手内部那一轮（含 IPC）不是这里要覆盖的范围。
   useAgentStore.setState({ sendMessage, composerCitations: [] })
@@ -76,16 +76,16 @@ async function selectAllAndRun(label: string, content: string) {
   await act(async () => page.getByRole('button', { name: label }).click())
 }
 
-describe('CodeMirror editor AI handoff to the assistant', () => {
-  it('hands the selected passage to the assistant as a cited quick task', async () => {
+describe('CodeMirror editor AI handoff to the writing assistant', () => {
+  it('hands the selected passage to the writing assistant as a cited quick task', async () => {
     await selectAllAndRun('润色', '原文段落')
 
     const citations = useAgentStore.getState().composerCitations
     expect(citations).toHaveLength(1)
     expect(citations[0]).toMatchObject({ quote: '原文段落', fromLine: 1, toLine: 1 })
 
-    expect(useLayoutStore.getState()).toMatchObject({ aiPanelOpen: true, rightView: 'agent' })
-    expect(sendMessage).toHaveBeenCalledWith(REFINE_ZH_CN)
+    expect(useLayoutStore.getState()).toMatchObject({ aiPanelOpen: true, rightView: 'writer' })
+    expect(sendMessage).toHaveBeenCalledWith(REFINE_ZH_CN, 'writer')
   })
 
   it('sends the English prompt for an English interface', async () => {
@@ -93,7 +93,8 @@ describe('CodeMirror editor AI handoff to the assistant', () => {
     await selectAllAndRun('Refine', 'Original passage')
 
     expect(useAgentStore.getState().composerCitations[0]?.quote).toBe('Original passage')
-    expect(sendMessage).toHaveBeenCalledWith(REFINE_EN_US)
+    expect(useLayoutStore.getState()).toMatchObject({ aiPanelOpen: true, rightView: 'writer' })
+    expect(sendMessage).toHaveBeenCalledWith(REFINE_EN_US, 'writer')
   })
 
 })

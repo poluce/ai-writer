@@ -2,13 +2,17 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 
+import { useLayoutStore } from '../../../stores/layout-store'
 import { useWorkflowStore, type WorkflowRun } from '../../../stores/workflow-store'
 import { useLocaleStore } from '../../../stores/locale-store'
 import { useProjectStore } from '../../../stores/project-store'
 import { resetEditorSessionStores, useEditorStore } from '../../../stores/editor-store'
-import AIOutputPanel from '../AIOutputPanel'
+import { onWorkflowRunStarted } from '../../../services/workflows/workflow-ui-bridge'
+import StatusBar from '../../layout/StatusBar'
+import BottomPanel from '../BottomPanel'
 import type { PromptBudgetReport } from '../../../services/generation/generation-harness'
 
+const originalLayoutState = useLayoutStore.getState()
 const originalWorkflowState = useWorkflowStore.getState()
 const originalLocaleState = useLocaleStore.getState()
 const originalProjectState = useProjectStore.getState()
@@ -129,6 +133,12 @@ function activeEnglishBlueprintRun(): WorkflowRun {
 }
 
 beforeEach(() => {
+  useLayoutStore.setState({
+    ...originalLayoutState,
+    bottomPanelOpen: true,
+    bottomTab: 'tasks',
+    rightView: 'writer',
+  })
   useWorkflowStore.setState({
     activeRuns: [],
     history: [failedChapterDraft()],
@@ -157,29 +167,58 @@ afterEach(async () => {
   container?.remove()
   root = undefined
   container = undefined
+  useLayoutStore.setState(originalLayoutState)
   useWorkflowStore.setState(originalWorkflowState)
   useLocaleStore.setState(originalLocaleState)
   useProjectStore.setState(originalProjectState)
   useEditorStore.setState(originalEditorState)
 })
 
-describe('AIOutputPanel failed chapter draft', () => {
-  it('renders active workflow chrome in the run locale', async () => {
+describe('BottomPanel unified task and output view', () => {
+  it('opens the bottom tasks tab without disturbing the active right assistant view when a workflow starts', async () => {
+    useLayoutStore.setState({ bottomPanelOpen: false, bottomTab: 'log', rightView: 'writer' })
+    onWorkflowRunStarted('run-bridge-1')
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    expect(useLayoutStore.getState().bottomPanelOpen).toBe(true)
+    expect(useLayoutStore.getState().bottomTab).toBe('tasks')
+    expect(useLayoutStore.getState().rightView).toBe('writer')
+  })
+
+  it('opens the bottom tasks tab from the status bar capsule without changing the active right assistant', async () => {
     const run = activeEnglishBlueprintRun()
-    useLocaleStore.setState({ locale: 'zh-CN' })
+    useLayoutStore.setState({ bottomPanelOpen: false, bottomTab: 'log', rightView: 'writer' })
     useWorkflowStore.setState({ activeRuns: [run], history: [], currentRun: run })
 
     await act(async () => {
-      root?.render(<AIOutputPanel />)
+      root?.render(<StatusBar />)
     })
 
-    expect(container?.textContent).toContain('AI output')
-    expect(container?.textContent).toContain('Waiting for the workflow step...')
-    expect(container?.textContent).toContain('Stop generation')
-    expect(container?.textContent).not.toMatch(/AI 输出|等待指令响应|中止生成/u)
+    const capsule = container?.querySelector<HTMLElement>('.ai-task-capsule')
+    expect(capsule).not.toBeNull()
+    await act(async () => capsule?.click())
+
+    expect(useLayoutStore.getState().bottomPanelOpen).toBe(true)
+    expect(useLayoutStore.getState().bottomTab).toBe('tasks')
+    expect(useLayoutStore.getState().rightView).toBe('writer')
   })
 
-  it('renders English history chrome and timestamps from the frozen run locale', async () => {
+  it('renders active workflow chrome in the frozen run locale', async () => {
+    const run = activeEnglishBlueprintRun()
+    useLocaleStore.setState({ locale: 'en-US' })
+    useWorkflowStore.setState({ activeRuns: [run], history: [], currentRun: run })
+
+    await act(async () => {
+      root?.render(<BottomPanel />)
+    })
+
+    expect(container?.textContent).toContain('Generate chapter blueprints (all)')
+    expect(container?.textContent).toContain('Waiting for the workflow step...')
+    expect(container?.textContent).toContain('Stop generation')
+    expect(container?.textContent).not.toMatch(/等待指令响应|中止生成/u)
+  })
+
+  it('renders English history chrome, timestamps, and thinking blocks from the frozen run locale', async () => {
     const run: WorkflowRun = {
       ...activeEnglishBlueprintRun(),
       id: 'completed-english-draft',
@@ -197,11 +236,11 @@ describe('AIOutputPanel failed chapter draft', () => {
         logs: [],
       }],
     }
-    useLocaleStore.setState({ locale: 'en-US' })
+    useLocaleStore.setState({ locale: 'zh-CN' })
     useWorkflowStore.setState({ activeRuns: [], history: [run], currentRun: null })
 
     await act(async () => {
-      root?.render(<AIOutputPanel />)
+      root?.render(<BottomPanel />)
     })
 
     const expectedTime = new Date(run.createdAt).toLocaleTimeString('en-US', {
@@ -210,18 +249,18 @@ describe('AIOutputPanel failed chapter draft', () => {
     })
     expect(container?.textContent).toContain('History')
     expect(container?.textContent).toContain(expectedTime)
-    expect(container?.textContent).not.toContain('历史')
 
     const historyItem = Array.from(container?.querySelectorAll('button') ?? [])
       .find(button => button.textContent?.includes('Chapter 1 First Day'))
     await act(async () => historyItem?.click())
     expect(container?.textContent).toContain('Thinking process')
+    expect(container?.textContent).toContain('The opening scene.')
     expect(container?.textContent).not.toMatch(/思考中|思考过程/u)
   })
 
   it('explains a failed generation and confirms that no draft or manuscript was saved', async () => {
     await act(async () => {
-      root?.render(<AIOutputPanel />)
+      root?.render(<BottomPanel />)
     })
 
     const failedRun = Array.from(container?.querySelectorAll('button') ?? [])
@@ -253,7 +292,7 @@ describe('AIOutputPanel failed chapter draft', () => {
     useWorkflowStore.setState({ history: [run] })
 
     await act(async () => {
-      root?.render(<AIOutputPanel />)
+      root?.render(<BottomPanel />)
     })
 
     const failedRun = Array.from(container?.querySelectorAll('button') ?? [])
@@ -262,17 +301,15 @@ describe('AIOutputPanel failed chapter draft', () => {
 
     expect(container?.textContent).toContain('This attempt did not save a draft or manuscript chapter.')
   })
-})
 
-describe('AIOutputPanel prompt budget failure', () => {
   it.each([
     ['zh-CN', '提示词预算不足', '打开作品设定'],
     ['en-US', 'Prompt budget is insufficient', 'Open novel configuration'],
-  ] as const)('shows a %s actionable adjustment entry', async (locale, heading, actionLabel) => {
+  ] as const)('shows a %s actionable adjustment entry for prompt budget failure', async (locale, heading, actionLabel) => {
     useLocaleStore.setState({ locale })
     useWorkflowStore.setState({ history: [failedPromptBudget(locale)] })
     await act(async () => {
-      root?.render(<AIOutputPanel />)
+      root?.render(<BottomPanel />)
     })
 
     const failedRun = Array.from(container?.querySelectorAll('button') ?? [])
@@ -303,7 +340,7 @@ describe('AIOutputPanel prompt budget failure', () => {
     useLocaleStore.setState({ locale })
     useWorkflowStore.setState({ history: [failedPromptBudget(locale, 'step-guidance')] })
     await act(async () => {
-      root?.render(<AIOutputPanel />)
+      root?.render(<BottomPanel />)
     })
 
     const failedRun = Array.from(container?.querySelectorAll('button') ?? [])
@@ -328,7 +365,7 @@ describe('AIOutputPanel prompt budget failure', () => {
       } as never,
     })
     await act(async () => {
-      root?.render(<AIOutputPanel />)
+      root?.render(<BottomPanel />)
     })
 
     const failedRun = Array.from(container?.querySelectorAll('button') ?? [])

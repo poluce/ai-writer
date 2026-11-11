@@ -14,7 +14,7 @@ import type { ProjectCoreData } from '../repositories/project-core-repository'
 
 /** 助手系统提示的三个可编辑块；项目信息与技能目录由系统自动装配。 */
 export interface AssistantPromptBlocks {
-  /** 四个助手共用的软件硬规则。 */
+  /** 五个助手共用的软件硬规则。 */
   hardRules: string
   /** 当前助手的身份（已包含 {{mode_instruction}} 插值结果）。 */
   identity: string
@@ -23,7 +23,7 @@ export interface AssistantPromptBlocks {
 }
 
 /**
- * 四助手共用的系统提示装配器。
+ * 五助手共用的系统提示装配器。
  *
  * 顺序在代码里固定，UI 不允许调整：
  * 软件硬规则 → 助手身份 → 工作规范 → 技能目录 → 项目信息。

@@ -10,9 +10,12 @@ vi.mock('../../mcp/mcp-manager', () => ({
     }],
   },
 }))
-vi.mock('../../database', () => ({ getCurrentProjectPath: vi.fn() }))
+vi.mock('../../database', () => ({
+  getCurrentProjectPath: vi.fn(() => '/workspace/novel'),
+  getProjectDb: vi.fn(() => ({})),
+}))
 
-import { buildAgentTools, buildArchitectAgentTools, buildBlueprintAgentTools, buildReviewAgentTools, buildToolsForAssistantType, confirmationToolNames, sequentialToolNames } from '../tool-builder'
+import { buildAgentTools, buildArchitectAgentTools, buildBlueprintAgentTools, buildReviewAgentTools, buildToolsForAssistantType, buildWriterAgentTools, confirmationToolNames, sequentialToolNames } from '../tool-builder'
 
 describe('buildAgentTools', () => {
   it('keeps every tool name flat, colon-free and snake case', () => {
@@ -128,6 +131,14 @@ describe('buildAgentTools', () => {
     const withDelegate = buildAgentTools('zh-CN', () => {}, [], [], vi.fn())
     expect(withDelegate.some(t => t.name === 'delegate_to_assistant')).toBe(true)
   })
+
+  it('keeps manage_drafts read-only on the lead general assistant so writing is delegated', async () => {
+    const tools = buildAgentTools('zh-CN', () => {})
+    const manageDrafts = tools.find(tool => tool.name === 'manage_drafts')
+    expect(manageDrafts?.description).toContain('只读草稿工具')
+    await expect(manageDrafts?.execute('c1', { action: 'write', chapter_number: 1, content: 'x' } as never, undefined as never, undefined as never))
+      .rejects.toThrow(/委派写作助手/)
+  })
 })
 
 describe('review assistant tool closure', () => {
@@ -142,11 +153,47 @@ describe('review assistant tool closure', () => {
   })
 
   it('mounts shared read tools for every assistant type', () => {
-    for (const assistantType of ['general', 'architect', 'blueprint', 'review'] as const) {
+    for (const assistantType of ['general', 'architect', 'blueprint', 'writer', 'review'] as const) {
       const names = buildToolsForAssistantType(assistantType, 'zh-CN', () => {}).map(tool => tool.name)
       expect(names, assistantType).toContain('list_files')
       expect(names, assistantType).toContain('read_narrative_threads')
     }
+  })
+})
+
+describe('buildWriterAgentTools', () => {
+  it('mounts prose, character, and narrative-thread tools while blocking config/blueprint/review/OS writes', () => {
+    const tools = buildWriterAgentTools('zh-CN', () => {})
+    const names = tools.map(t => t.name)
+
+    expect(names).toContain('manage_drafts')
+    expect(names).toContain('manage_characters')
+    expect(names).toContain('manage_narrative_threads')
+    expect(names).toContain('read_blueprint')
+    expect(names).toContain('read_continuity_facts')
+    expect(names).toContain('read_architecture')
+    expect(names).toContain('read_narrative_threads')
+    expect(names).toContain('read_project_state')
+    expect(names).toContain('search_knowledge')
+    expect(names).toContain('open_editor')
+    expect(names).toContain('manage_skills')
+
+    const manageDrafts = tools.find(t => t.name === 'manage_drafts')
+    expect(manageDrafts?.description).toContain('全功能草稿中枢工具')
+    expect(manageDrafts?.executionMode).toBe('sequential')
+
+    expect(names).not.toContain('novel_config')
+    expect(names).not.toContain('story_architecture')
+    expect(names).not.toContain('propose_chapter_blueprint')
+    expect(names).not.toContain('submit_chapter_review')
+    expect(names).not.toContain('manage_review_reports')
+    expect(names).not.toContain('delete_review_report')
+    expect(names).not.toContain('manage_knowledge_base')
+    expect(names).not.toContain('manage_mcp')
+    expect(names).not.toContain('delegate_to_assistant')
+    expect(names).not.toContain('write')
+    expect(names).not.toContain('edit')
+    expect(names).not.toContain('bash')
   })
 })
 

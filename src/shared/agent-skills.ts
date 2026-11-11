@@ -61,6 +61,7 @@ export function isAgentSkillCatalog(value: unknown): value is AgentSkillCatalogE
         || record.audience === 'general'
         || record.audience === 'architect'
         || record.audience === 'blueprint'
+        || record.audience === 'writer'
         || record.audience === 'review')
       && (record.stage === undefined
         || record.stage === 'planning'
@@ -75,9 +76,9 @@ export function isAgentSkillCatalog(value: unknown): value is AgentSkillCatalogE
 /** 阶段 → 可见助手的映射；没有 audience / stage 的技能所有助手可见。 */
 const SKILL_STAGE_ASSISTANTS: Record<WritingSkillStage, readonly AssistantType[]> = {
   planning: ['general', 'architect', 'blueprint'],
-  drafting: ['general'],
+  drafting: ['general', 'writer'],
   review: ['general', 'review'],
-  refinement: ['general'],
+  refinement: ['general', 'writer'],
 }
 
 export function isAgentSkillVisibleToAssistant(

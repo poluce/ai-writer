@@ -31,9 +31,10 @@ import {
 } from '../../src/shared/writing-language'
 import { normalizeModelProfiles } from '../../src/shared/model-profile'
 
-/** 助手类型到创作环节模型路由的映射：审稿走 review，架构/蓝图走 planning。 */
-function assistantModelTaskKey(assistantType: AssistantType): 'assistant' | 'planning' | 'review' {
+/** 助手类型到创作环节模型路由的映射：审稿走 review，写作走 drafting，架构/蓝图走 planning。 */
+function assistantModelTaskKey(assistantType: AssistantType): 'assistant' | 'planning' | 'drafting' | 'review' {
   if (assistantType === 'review') return 'review'
+  if (assistantType === 'writer') return 'drafting'
   if (assistantType === 'architect' || assistantType === 'blueprint') return 'planning'
   return 'assistant'
 }

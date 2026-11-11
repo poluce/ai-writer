@@ -90,9 +90,7 @@ export function buildL1AgentContext(
   if (snapshot.layout) {
     const layout = snapshot.layout
     const sidebar = labelSidebar(layout.sidebarView, language)
-    const right = layout.rightView === 'ai-output'
-      ? label('AI 输出', 'AI output')
-      : label('助手对话', 'assistant chat')
+    const right = labelRightView(layout.rightView, language)
     const bottom = layout.bottomPanelOpen
       ? `${label('已打开', 'open')} (${layout.bottomTab})`
       : label('关闭', 'closed')
@@ -165,4 +163,16 @@ function labelSidebar(view: string, language: WritingLanguage): string {
   }
   const pair = map[view]
   return pair ? writingLanguageText(language, pair[0], pair[1]) : view
+}
+
+function labelRightView(view: string, language: WritingLanguage): string {
+  const map: Record<string, [string, string]> = {
+    agent: ['助手对话', 'assistant chat'],
+    architect: ['架构助手', 'architect assistant'],
+    blueprint: ['蓝图助手', 'blueprint assistant'],
+    writer: ['写作助手', 'writing assistant'],
+    review: ['审稿助手', 'review assistant'],
+  }
+  const pair = map[view]
+  return pair ? writingLanguageText(language, pair[0], pair[1]) : writingLanguageText(language, '助手对话', 'assistant chat')
 }

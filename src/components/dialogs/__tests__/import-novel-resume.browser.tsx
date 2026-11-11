@@ -138,6 +138,7 @@ beforeEach(async () => {
     if (channel === 'db:project-core-get') return null
     if (channel === 'db:blueprint-get-all') return []
     if (channel === 'db:draft-list') return []
+    if (channel === 'db:recovery-candidate-list') return []
     return { success: true }
   })
   Object.defineProperty(window, 'velaAPI', {

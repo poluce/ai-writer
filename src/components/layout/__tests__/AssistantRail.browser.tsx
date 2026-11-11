@@ -53,10 +53,16 @@ describe('AssistantRail', () => {
     useProjectStore.setState({ currentProject: project })
     await act(async () => root.render(<AssistantRail />))
 
-    for (const label of ['写作', '架构', '蓝图', '审稿', '输出']) {
+    for (const label of ['助手', '架构', '蓝图', '写作', '审稿']) {
       await expect.element(page.getByRole('button', { name: label, exact: true })).toBeVisible()
     }
+    expect(page.getByRole('button', { name: '输出', exact: true }).query()).toBeNull()
 
+    await act(async () => page.getByRole('button', { name: '写作', exact: true }).click())
+    expect(useLayoutStore.getState().aiPanelOpen).toBe(true)
+    expect(useLayoutStore.getState().rightView).toBe('writer')
+
+    await act(async () => useLayoutStore.setState({ aiPanelOpen: false }))
     await act(async () => page.getByRole('button', { name: '审稿', exact: true }).click())
     expect(useLayoutStore.getState().aiPanelOpen).toBe(true)
     expect(useLayoutStore.getState().rightView).toBe('review')

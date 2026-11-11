@@ -189,8 +189,8 @@ export async function handleRendererAction(action: RendererAction): Promise<Rend
         return {
           ok: true,
           summary: uiText(
-            '当前没有打开的章节草稿；审稿将读取数据库中的最新版本。',
-            'No chapter draft is open; the review reads the latest version from the database.',
+            '当前没有打开的章节草稿；将读取数据库中的最新版本。',
+            'No chapter draft is open; will read the latest version from the database.',
           ),
         }
       }

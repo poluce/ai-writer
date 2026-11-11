@@ -22,6 +22,7 @@ describe('assistant skill visibility', () => {
     expect(isAgentSkillVisibleToAssistant(skill, 'general')).toBe(true)
     expect(isAgentSkillVisibleToAssistant(skill, 'architect')).toBe(true)
     expect(isAgentSkillVisibleToAssistant(skill, 'blueprint')).toBe(true)
+    expect(isAgentSkillVisibleToAssistant(skill, 'writer')).toBe(false)
     expect(isAgentSkillVisibleToAssistant(skill, 'review')).toBe(false)
   })
 
@@ -31,11 +32,13 @@ describe('assistant skill visibility', () => {
     expect(isAgentSkillVisibleToAssistant(skill, 'general')).toBe(true)
     expect(isAgentSkillVisibleToAssistant(skill, 'architect')).toBe(false)
     expect(isAgentSkillVisibleToAssistant(skill, 'blueprint')).toBe(false)
+    expect(isAgentSkillVisibleToAssistant(skill, 'writer')).toBe(false)
   })
 
-  it('shows drafting and refinement skills only to the general assistant', () => {
+  it('shows drafting and refinement skills only to the writer and general assistants', () => {
     for (const stage of ['drafting', 'refinement'] as const) {
       const skill = entry({ stage })
+      expect(isAgentSkillVisibleToAssistant(skill, 'writer')).toBe(true)
       expect(isAgentSkillVisibleToAssistant(skill, 'general')).toBe(true)
       expect(isAgentSkillVisibleToAssistant(skill, 'architect')).toBe(false)
       expect(isAgentSkillVisibleToAssistant(skill, 'blueprint')).toBe(false)
@@ -45,7 +48,7 @@ describe('assistant skill visibility', () => {
 
   it('shows unmarked skills to every assistant', () => {
     const skill = entry({})
-    for (const assistantType of ['general', 'architect', 'blueprint', 'review'] as const) {
+    for (const assistantType of ['general', 'architect', 'blueprint', 'writer', 'review'] as const) {
       expect(isAgentSkillVisibleToAssistant(skill, assistantType)).toBe(true)
     }
   })
@@ -55,8 +58,12 @@ describe('assistant skill visibility', () => {
     expect(isAgentSkillVisibleToAssistant(reviewOnly, 'review')).toBe(true)
     expect(isAgentSkillVisibleToAssistant(reviewOnly, 'architect')).toBe(false)
 
+    const writerOnly = entry({ stage: 'planning', audience: 'writer' })
+    expect(isAgentSkillVisibleToAssistant(writerOnly, 'writer')).toBe(true)
+    expect(isAgentSkillVisibleToAssistant(writerOnly, 'general')).toBe(false)
+
     const all = entry({ stage: 'review', audience: 'all' })
-    for (const assistantType of ['general', 'architect', 'blueprint', 'review'] as const) {
+    for (const assistantType of ['general', 'architect', 'blueprint', 'writer', 'review'] as const) {
       expect(isAgentSkillVisibleToAssistant(all, assistantType)).toBe(true)
     }
   })

@@ -1,6 +1,6 @@
-import type { Locale } from '../../i18n/types'
-import type { PromptBudgetReport } from '../../services/generation/generation-harness'
-import type { WorkflowFailureCode } from '../../stores/workflow-store'
+import type { Locale } from '../../../i18n/types'
+import type { PromptBudgetReport } from '../../../services/generation/generation-harness'
+import type { WorkflowFailureCode } from '../../../stores/workflow-store'
 
 export interface WorkflowFailurePresentation {
   heading: string

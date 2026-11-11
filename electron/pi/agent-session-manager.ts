@@ -272,6 +272,12 @@ export class AgentSessionManager {
             `\n【重要交付规约】\n1. 请调用 read_blueprint、read_continuity_facts、read_architecture 获取前文事实与设定。\n2. 推演确定的细纲必须调用 propose_chapter_blueprint 工具持久化写入项目。\n3. 文字回复保持清晰精炼，侧重场景节拍与冲突设计。`,
             `\n[Crucial Deliverable Contract]\n1. Call read_blueprint, read_continuity_facts, and read_architecture for established facts.\n2. Persist the finalized blueprint using propose_chapter_blueprint.\n3. Keep text response concise and focused on beats and dramatic conflict.`,
           )
+        } else if (params.target === 'writer') {
+          targetGuidance = writingLanguageText(
+            language,
+            `\n【重要交付规约】\n1. 动笔前先调用 read_blueprint、read_continuity_facts、read_architecture、manage_characters、read_narrative_threads 与 manage_drafts（action: "read"）了解本章细纲、前文事实、人物近况与现有草稿批注。\n2. 撰写或修订的章节正文必须直接调用 manage_drafts（write 或 replace_excerpt，并按需 resolve_annotation）持久化落盘；严禁只在对话框输出大段正文而不落盘。\n3. 若本章剧情导致角色状态变化或伏笔推进，同步使用 manage_characters 或 manage_narrative_threads 更新记录；不要篡改大纲、设定或蓝图。\n4. 落盘后可按需调用 open_editor（target: "draft"）打开草稿，文字回复保持精简概要（不超过 150 字）。`,
+            `\n[Crucial Deliverable Contract]\n1. Before drafting or revising, call read_blueprint, read_continuity_facts, read_architecture, manage_characters, read_narrative_threads, and manage_drafts (action: "read") to inspect the blueprint, prior facts, character states, and active annotations.\n2. Persist the drafted or revised prose directly using manage_drafts (write or replace_excerpt, plus resolve_annotation if applicable); never dump long prose only into chat without saving.\n3. If chapter events change character states or advance foreshadowing, update them via manage_characters or manage_narrative_threads without altering outline, worldbuilding, or blueprints.\n4. Optionally open the draft with open_editor (target: "draft") and keep your text summary concise (under 150 words).`,
+          )
         } else {
           targetGuidance = writingLanguageText(
             language,
@@ -465,14 +471,16 @@ export class AgentSessionManager {
       throw new AgentTurnRefusal('no-project', '打开项目后助手才可用')
     }
 
-    // 与工作流同一条生成参数策略：架构/蓝图助手走 planning，审稿助手走 review，通用助手走 general。
+    // 与工作流同一条生成参数策略：架构/蓝图助手走 planning，写作助手走 drafting，审稿助手走 review，主助手走 general。
     const sampling = resolveGenerationParameters(profile, {
       creativeStrategy: this.options.resolveCreativeStrategy?.(),
       reasoningStage: assistantType === 'review'
         ? 'review'
-        : assistantType === 'architect' || assistantType === 'blueprint'
-          ? 'planning'
-          : 'general',
+        : assistantType === 'writer'
+          ? 'drafting'
+          : assistantType === 'architect' || assistantType === 'blueprint'
+            ? 'planning'
+            : 'general',
     })
     const { models, model } = createPiModels(profile, {
       modelSamplingParams: toPiModelSamplingParams(sampling),
@@ -484,11 +492,11 @@ export class AgentSessionManager {
       throw new AgentTurnRefusal('session-store-unavailable', '会话存档不可用')
     }
 
-    // 架构/蓝图/审稿助手不挂载底层 bash/write/edit 沙箱工具：
-    // 审稿必须只读，才能保证审查与创作互不污染。
-    const executionEnv = assistantType === 'architect' || assistantType === 'blueprint' || assistantType === 'review'
-      ? null
-      : (this.options.resolveToolEnvironment?.() ?? null)
+    // 架构/蓝图/写作/审稿助手均不挂载底层 bash/write/edit 沙箱工具：
+    // 写作助手只能走受控 Domain Tool（manage_drafts / manage_characters / manage_narrative_threads）。
+    const executionEnv = assistantType === 'general'
+      ? (this.options.resolveToolEnvironment?.() ?? null)
+      : null
     const tools = buildToolsForAssistantType(assistantType, language, this.options.rendererAction, {
       skills,
       skillRoots: this.options.resolveSkillRoots?.() ?? [],

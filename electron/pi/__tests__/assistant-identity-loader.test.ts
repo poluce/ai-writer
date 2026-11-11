@@ -46,7 +46,7 @@ describe('loadAssistantWritingIdentity', () => {
   it('falls back to the built-in template when no overlays exist', () => {
     const globalPromptsDir = path.join(tempDir('vela-identity-empty-'), 'prompts')
     const template = loadAssistantWritingIdentity('zh-CN', { globalPromptsDir })
-    expect(template.systemRole).toContain('你是一位经验丰富的长篇小说写作助手')
+    expect(template.systemRole).toContain('长篇小说统筹与创作主助手')
   })
 
   it('prefers a global overlay over the built-in template', () => {

@@ -95,7 +95,7 @@ function AITaskCapsule() {
     return (
       <div
         className="ai-task-capsule ai-task-capsule--complete"
-        onClick={() => useLayoutStore.getState().openRightPanel('ai-output')}
+        onClick={() => useLayoutStore.getState().openBottomTab('tasks')}
       >
         <CheckCircle2 size={10} />
         <span className="truncate">
@@ -115,7 +115,7 @@ function AITaskCapsule() {
     return (
       <div
         className="ai-task-capsule"
-        onClick={() => useLayoutStore.getState().openRightPanel('ai-output')}
+        onClick={() => useLayoutStore.getState().openBottomTab('tasks')}
         title={text('点击查看任务进度', 'View task progress')}
       >
         {/* 脉冲圆点 */}
@@ -133,8 +133,8 @@ function AITaskCapsule() {
   return (
     <div
       className="ai-task-capsule"
-      onClick={() => useLayoutStore.getState().openRightPanel('ai-output')}
-      title={text('点击查看 AI 输出详情', 'View AI output')}
+      onClick={() => useLayoutStore.getState().openBottomTab('tasks')}
+      title={text('点击查看任务详情', 'View task details')}
     >
       {/* 脉冲圆点 */}
       <span

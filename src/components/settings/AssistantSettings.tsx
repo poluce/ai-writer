@@ -429,8 +429,8 @@ export default function AssistantSettings(): ReactElement {
               </div>
               <p className="text-[0.7rem] m-0" style={{ color: 'var(--color-text-muted)' }}>
                 {text(
-                  '四个助手都能加载技能；目录按写作阶段过滤，没有阶段标记的技能所有助手可见。',
-                  'All four assistants can load skills; the catalog is filtered by writing stage, and unmarked skills are visible to everyone.',
+                  '五个助手都能加载技能；目录按写作阶段过滤，没有阶段标记的技能所有助手可见。',
+                  'All five assistants can load skills; the catalog is filtered by writing stage, and unmarked skills are visible to everyone.',
                 )}
               </p>
               <pre

@@ -19,7 +19,7 @@ import {
 } from '../prompt-templates'
 import { ASSISTANT_HARD_RULES_KEY, assistantPromptKeys } from './assistant-identity'
 
-export const ASSISTANT_TYPES: readonly AssistantType[] = ['general', 'architect', 'blueprint', 'review']
+export const ASSISTANT_TYPES: readonly AssistantType[] = ['general', 'architect', 'blueprint', 'writer', 'review']
 
 export type AssistantModuleId = 'hard_rules' | 'identity' | 'work_rules'
 
@@ -37,11 +37,13 @@ export function assistantLabel(assistantType: AssistantType, language: WritingLa
       return writingLanguageText(language, '架构助手', 'Architect assistant')
     case 'blueprint':
       return writingLanguageText(language, '蓝图助手', 'Blueprint assistant')
+    case 'writer':
+      return writingLanguageText(language, '写作助手', 'Writing assistant')
     case 'review':
       return writingLanguageText(language, '审稿助手', 'Review assistant')
     case 'general':
     default:
-      return writingLanguageText(language, '主助手', 'Writing assistant')
+      return writingLanguageText(language, '主助手', 'Lead assistant')
   }
 }
 

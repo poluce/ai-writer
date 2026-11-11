@@ -13,7 +13,7 @@ export interface PersistedAgentMessage {
   artifacts?: unknown
 }
 
-export const ASSISTANT_TYPES = ['general', 'architect', 'blueprint', 'review'] as const
+export const ASSISTANT_TYPES = ['general', 'architect', 'blueprint', 'writer', 'review'] as const
 
 export type AssistantType = (typeof ASSISTANT_TYPES)[number]
 
@@ -25,6 +25,7 @@ const ASSISTANT_CONVERSATION_PREFIXES: Record<AssistantType, string> = {
   general: '',
   architect: 'architect-',
   blueprint: 'blueprint-',
+  writer: 'writer-',
   review: 'review-',
 }
 
@@ -54,7 +55,7 @@ export interface PersistedAgentConversation {
   modelId: string | null
   /** 会话级思考等级；缺省表示 Pi 默认（off）。 */
   thinkingLevel?: AssistantThinkingLevel | null
-  /** 助手类型：通用写作助手（general）、架构助手（architect）、章节蓝图助手（blueprint）或审稿助手（review） */
+  /** 助手类型：主助手（general）、架构助手（architect）、章节蓝图助手（blueprint）、写作助手（writer）或审稿助手（review） */
   assistantType?: AssistantType
 }
 

@@ -102,7 +102,9 @@ function formatSkillListingRow(
 
 /** 创建技能的默认 stage：随创建者助手的写作阶段走，主助手默认 planning。 */
 export function defaultSkillStageForAssistant(assistantType: AssistantType): WritingSkillStage {
-  return assistantType === 'review' ? 'review' : 'planning'
+  if (assistantType === 'review') return 'review'
+  if (assistantType === 'writer') return 'drafting'
+  return 'planning'
 }
 
 /** 判定某次 manage_skills 调用是否为写入/变动操作。 */

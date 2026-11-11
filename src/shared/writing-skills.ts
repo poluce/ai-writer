@@ -2,8 +2,8 @@ import type { WritingLanguage } from './writing-language'
 
 export const WRITING_SKILL_STAGES = ['planning', 'drafting', 'review', 'refinement'] as const
 export type WritingSkillStage = typeof WRITING_SKILL_STAGES[number]
-/** 技能可见的助手范围；'all' 表示四个助手都能看到。 */
-export const ASSISTANT_SKILL_AUDIENCES = ['all', 'general', 'architect', 'blueprint', 'review'] as const
+/** 技能可见的助手范围；'all' 表示五个助手都能看到。 */
+export const ASSISTANT_SKILL_AUDIENCES = ['all', 'general', 'architect', 'blueprint', 'writer', 'review'] as const
 export type WritingSkillAudience = typeof ASSISTANT_SKILL_AUDIENCES[number]
 export type WritingSkillLanguage = WritingLanguage | 'bilingual'
 export type WritingSkillSource = 'builtin' | 'user' | 'project'

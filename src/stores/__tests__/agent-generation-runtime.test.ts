@@ -174,6 +174,32 @@ describe('Agent IPC bridge', () => {
     )
   })
 
+  it('sends writer prompts with assistantType writer, isolated id, and routes model selection to drafting', async () => {
+    ipcInvoke.mockResolvedValue({ success: true })
+
+    const writerConv = useAgentStore.getState().createConversation('writer')
+    expect(writerConv.id).toMatch(/^writer-/)
+    expect(writerConv.assistantType).toBe('writer')
+
+    useAgentStore.getState().setModelId('drafting-model-1', 'writer')
+    expect(useLLMStore.getState().taskModelRouting['drafting']?.modelId).toBe('drafting-model-1')
+
+    await useAgentStore.getState().sendMessage('撰写第 4 章正文', 'writer')
+
+    expect(ipcInvoke).toHaveBeenCalledWith(
+      'agent:prompt',
+      writerConv.id,
+      '撰写第 4 章正文',
+      'drafting-model-1',
+      expect.any(Object),
+      [],
+      expect.any(Array),
+      undefined,
+      'plan',
+      'writer',
+    )
+  })
+
   it('ships the skill catalog even when the registry starts loading with this first message', async () => {
     // 清空会话后发第一条：会话是这时才建的，技能注册表也跟着才开始加载。
     // 系统提示词里的技能目录必须在发送前等到加载完成，不能读空注册表。

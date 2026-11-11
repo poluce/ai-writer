@@ -19,8 +19,8 @@ import EditorArea from './components/panels/EditorArea'
 import AIPanel from './components/panels/AIPanel'
 import ArchitectPanel from './components/panels/ArchitectPanel'
 import BlueprintPanel from './components/panels/BlueprintPanel'
+import WriterPanel from './components/panels/WriterPanel'
 import ReviewPanel from './components/panels/ReviewPanel'
-import AIOutputPanel from './components/panels/AIOutputPanel'
 import BottomPanel from './components/panels/BottomPanel'
 import { BottomPanelTabs } from './components/panels/BottomPanelTabs'
 import { AssistantSwitcher } from './components/panels/agent/AssistantSwitcher'
@@ -162,7 +162,7 @@ export default function App() {
       if (!completedRun) return
       actionToast.workflowComplete(
         text(`「${completedRun.title}」已完成`, `“${completedRun.title}” completed`),
-        () => useLayoutStore.getState().openRightPanel('ai-output')
+        () => useLayoutStore.getState().openBottomTab('tasks')
       )
     })
 
@@ -311,22 +311,22 @@ export default function App() {
                   </ErrorBoundary>
                 </Panel>
 
-                {/* 右侧面板（Agent 对话 / 架构助手 / 蓝图助手 / 审稿助手 / AI 输出） */}
+                {/* 右侧面板（助手 / 架构 / 蓝图 / 写作 / 审稿） */}
                 {assistantSurface === 'panel' && (
                   <>
                     <PanelResizeHandle />
                     <Panel id="ai-panel" defaultSize={25} minSize={10}>
                       <ErrorBoundary fallbackLabel={text('AI 面板渲染失败', 'AI panel failed to render')}>
                         <div className="flex h-full w-full flex-col overflow-hidden">
-                          {/* 五个助手视图的切换器：并入面板头部，取代原来的 30px 右侧图标栏 */}
+                          {/* 五个助手视图的切换器 */}
                           <AssistantSwitcher />
                           <div className="min-h-0 flex-1 overflow-hidden">
-                            {rightView === 'ai-output'
-                              ? <AIOutputPanel />
-                              : rightView === 'blueprint'
-                                ? <BlueprintPanel />
-                                : rightView === 'architect'
-                                  ? <ArchitectPanel />
+                            {rightView === 'blueprint'
+                              ? <BlueprintPanel />
+                              : rightView === 'architect'
+                                ? <ArchitectPanel />
+                                : rightView === 'writer'
+                                  ? <WriterPanel />
                                   : rightView === 'review'
                                     ? <ReviewPanel />
                                     : <AIPanel />}

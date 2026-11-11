@@ -206,11 +206,13 @@ function generateDescription(
       const assistant = args.assistant
       const label = assistant === 'review'
         ? text('审稿助手', 'Review Assistant')
-        : assistant === 'blueprint'
-          ? text('蓝图助手', 'Blueprint Assistant')
-          : assistant === 'architect'
-            ? text('架构助手', 'Architecture Assistant')
-            : text('专门助手', 'Specialized Assistant')
+        : assistant === 'writer'
+          ? text('写作助手', 'Writing Assistant')
+          : assistant === 'blueprint'
+            ? text('蓝图助手', 'Blueprint Assistant')
+            : assistant === 'architect'
+              ? text('架构助手', 'Architecture Assistant')
+              : text('专门助手', 'Specialized Assistant')
       const task = typeof args.task === 'string' ? preview(args.task, 60) : ''
       return text(
         `向${label}委派任务：${task}`,
