@@ -15,12 +15,9 @@ export type GlobalEventType =
   // --- 工作流相关 ---
   | 'WORKFLOW_COMPLETE'
   | 'WORKFLOW_ERROR'
-  // --- 架构后处理 ---
-  | 'ARCH_POSTPROCESS_UPDATED'
-  | 'CHARACTER_EXTRACT_FAILED'
-  // --- 架构文件单步更新（每步生成完触发） ---
+  // --- 架构文件单步更新 ---
   | 'ARCH_FILE_UPDATED'
-  // --- 定稿完成（替代原 vela:finalize-complete） ---
+  // --- 定稿完成 ---
   | 'FINALIZE_COMPLETE'
   // --- 章节删除收据变化（包括待人工确认和部分清理失败） ---
   | 'CHAPTER_DELETION_UPDATED'
@@ -51,17 +48,6 @@ export interface EventPayloadMap {
     error: string
     stack?: string
   }
-  'ARCH_POSTPROCESS_UPDATED': {
-    projectPath: string
-    projectSession: ProjectSessionContext
-    runId: string
-  }
-  'CHARACTER_EXTRACT_FAILED': {
-    projectPath: string
-    projectSession: ProjectSessionContext
-    runId: string
-    error?: string
-  }
   'ARCH_FILE_UPDATED': {
     fileName: string
     projectPath: string
@@ -85,8 +71,6 @@ export interface EventPayloadMap {
     /** 绝不从数据库回读来替换编辑器；只用这个不可变快照结算。 */
     snapshotContent: string
     publicationStatus: 'pending' | 'published'
-    /** 定稿来源；批量任务不应弹出单章的“下一章创作”对话框 */
-    source?: 'manual' | 'batch'
   }
   'CHAPTER_DELETION_UPDATED': {
     projectPath: string

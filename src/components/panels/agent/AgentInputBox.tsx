@@ -35,9 +35,25 @@ const MAX_HEIGHT = 200
  */
 export default function AgentInputBox({ assistantType = 'general' }: { assistantType?: AssistantType }) {
   const text = useLocaleStore(s => s.text)
-  const [inputText, setInputText] = useState('')
+  const [inputText, setInputText] = useState(() => useAgentStore.getState().composerDrafts[assistantType] ?? '')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const { sendMessage, cancelGeneration, setModelId, setThinkingLevel, removeComposerCitation, setExecutionMode } = useAgentStore()
+  const { sendMessage, cancelGeneration, setModelId, setThinkingLevel, removeComposerCitation, setExecutionMode, setComposerDraft } = useAgentStore()
+
+  useEffect(() => {
+    const consumeDraft = (draft: string | undefined) => {
+      if (!draft) return
+      setComposerDraft(assistantType, '')
+      textareaRef.current?.focus()
+    }
+    consumeDraft(useAgentStore.getState().composerDrafts[assistantType])
+    return useAgentStore.subscribe((state) => {
+      const nextDraft = state.composerDrafts[assistantType]
+      if (!nextDraft) return
+      setInputText(nextDraft)
+      setComposerDraft(assistantType, '')
+      requestAnimationFrame(() => textareaRef.current?.focus())
+    })
+  }, [assistantType, setComposerDraft])
   // 助手只在项目内工作：没有打开项目时输入框整体不可用。
   const hasProject = useProjectStore(s => s.currentProject !== null)
   const composerCitations = useAgentStore(s => s.composerCitations)

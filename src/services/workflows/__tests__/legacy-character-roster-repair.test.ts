@@ -4,7 +4,7 @@ import { useLLMStore } from '../../../stores/llm-store'
 import { useProjectStore } from '../../../stores/project-store'
 import { useWorkflowStore } from '../../../stores/workflow-store'
 import type { CharacterRosterEntry, CharacterRosterSnapshot } from '../../../shared/character-roster'
-import { migrateLegacyCharacterRoster } from '../architecture-workflow'
+import { migrateLegacyCharacterRoster } from '../../character-roster-migration'
 
 const projectPath = 'C:\\novels\\legacy-roster'
 

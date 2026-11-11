@@ -1,21 +1,16 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Sparkles, CheckCircle2, Circle, RefreshCw, FileText, BookOpen, AlertTriangle, FolderTree } from 'lucide-react'
 import { useProjectStore } from '../../stores/project-store'
-import { useWorkflowStore } from '../../stores/workflow-store'
 import { useLocaleStore } from '../../stores/locale-store'
-
-import ArchitectureConfirmDialog from '../dialogs/ArchitectureConfirmDialog'
 
 import { Button } from '../ui/Button'
 import { EmptyState } from '../ui/EmptyState'
 import { ipc } from '../../services/ipc-client'
-import { toast } from '../ui/Toast'
 
-import { launchCreativeWorkflow } from '../../services/workflows/creative-workflow-launcher'
+import { handoffToArchitect } from '../../services/agent/assistant-handoff'
 import { globalEventBus } from '../../shared/event-bus'
 import {
   createProjectArchTabId,
-  shouldRefreshArchOnWorkflowComplete,
   shouldSyncProjectArchTab,
 } from './arch-file-refresh-policy'
 import { LatestRequestGate } from './latest-request-gate'
@@ -63,10 +58,7 @@ export default function WorldBuildingEditor({ projectKey }: { projectKey: string
   const [wordCounts, setWordCounts] = useState<Record<string, number>>({})
   const [archTexts, setArchTexts] = useState<Record<string, string>>({})
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({})
-  const [generatingBlock, setGeneratingBlock] = useState<ArchStepKey | null>(null)
   const [loading, setLoading] = useState(true)
-  const [showArchDialog, setShowArchDialog] = useState(false)
-  const lastCompletedArchitectureRunRef = useRef<string | null>(null)
   const archStatusRequestGate = useRef(new LatestRequestGate())
   const saveTimerRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
   const {
@@ -76,8 +68,6 @@ export default function WorldBuildingEditor({ projectKey }: { projectKey: string
     refresh: loadCharacterRosterStatus,
     migrate: handleRepairCharacterRoster,
   } = useCharacterRosterRepair({ projectKey, enabled: projectMatches })
-
-  const isArchRunning = useWorkflowStore(s => s.isTypeRunning('architecture_generation'))
 
   /** 加载各架构文件状态（通过 Service 层获取，不直接调 IPC） */
   const loadStatus = useCallback(async () => {
@@ -148,21 +138,7 @@ export default function WorldBuildingEditor({ projectKey }: { projectKey: string
       loadStatus()
       loadCharacterRosterStatus()
     })
-    // 整个工作流完成后也刷新一次
-    const unsub4 = globalEventBus.on('WORKFLOW_COMPLETE', (payload) => {
-      const projectSession = captureProjectSession(currentProject)
-      if (!projectSession || !isProjectSessionCurrent(projectSession)) return
-      if (!shouldRefreshArchOnWorkflowComplete(
-        payload,
-        projectSession,
-        lastCompletedArchitectureRunRef.current,
-      )) return
-      lastCompletedArchitectureRunRef.current = payload.runId
-      setGeneratingBlock(null)
-      loadStatus()
-      loadCharacterRosterStatus()
-    })
-    return () => { unsub3(); unsub4() }
+    return () => { unsub3() }
   }, [currentProject, loadCharacterRosterStatus, loadStatus, projectKey])
 
   /** 打开单个架构文件（arch-file 类型；若 tab 已存在则刷新磁盘内容） */
@@ -215,38 +191,15 @@ export default function WorldBuildingEditor({ projectKey }: { projectKey: string
     }
   }
 
-  /** 确认后启动架构工作流（仅前提 / 角色图谱 / 世界观） */
-  const handleConfirm = async (
-    selectedSteps: ArchStepKey[],
-    stepGuidance: Record<string, string>,
-  ) => {
-    const projectSession = captureProjectSession(currentProject)
-    if (!projectMatches || !projectSession || !isProjectSessionPath(projectSession, projectKey)) throw new Error(text('项目会话已切换，未启动架构生成', 'The project session changed, so architecture generation was not started.'))
-    if (!isProjectSessionCurrent(projectSession)) throw new Error(text('项目会话已切换，未启动架构生成', 'The project session changed, so architecture generation was not started.'))
-    await launchCreativeWorkflow({
-      workflow: 'generate_architecture',
-      selectedSteps,
-      stepGuidance,
-    }, projectSession)
-  }
-
-  /** 单块 AI 生成（故事前提 / 角色图谱 / 世界观，按顺序解锁） */
-  const handleGenerateBlock = async (key: ArchStepKey) => {
+  /** 单块 AI 辅助构思：切入架构助手并携带当前板块上下文 */
+  const handleGenerateBlock = (key: ArchStepKey) => {
     const projectSession = captureProjectSession(currentProject)
     if (!projectMatches || !projectSession || !isProjectSessionPath(projectSession, projectKey)) return
     if (!isProjectSessionCurrent(projectSession)) return
-    if (generatingBlock || isArchRunning) return
-    setGeneratingBlock(key)
-    try {
-      await launchCreativeWorkflow({
-        workflow: 'generate_architecture',
-        selectedSteps: [key],
-      }, projectSession)
-    } catch (error) {
-      const detail = error instanceof Error ? error.message : String(error)
-      toast.error(text(`生成启动失败：${detail}`, `Failed to start generation: ${detail}`))
-      if (isProjectSessionCurrent(projectSession)) setGeneratingBlock(null)
-    }
+    handoffToArchitect({
+      section: key,
+      regenerate: Boolean(archStatus[key]),
+    })
   }
 
   /** 内联编辑保存（防抖写回 project_core） */
@@ -271,9 +224,15 @@ export default function WorldBuildingEditor({ projectKey }: { projectKey: string
     saveTimerRef.current.set(key, timer)
   }
 
-  /** 打开「AI 生成架构」入口（选择前提 / 角色图谱 / 世界观）。 */
-  const openGenerateDialog = () => {
-    setShowArchDialog(true)
+  /** 打开架构助手进行整体构思或完善 */
+  const openArchitectAssistant = () => {
+    const projectSession = captureProjectSession(currentProject)
+    if (!projectMatches || !projectSession || !isProjectSessionPath(projectSession, projectKey)) return
+    if (!isProjectSessionCurrent(projectSession)) return
+    handoffToArchitect({
+      section: 'all',
+      regenerate: generatedCount > 0,
+    })
   }
 
   if (!projectMatches) {
@@ -307,15 +266,6 @@ export default function WorldBuildingEditor({ projectKey }: { projectKey: string
   )
   const canRepairRoster = canExplicitlyRepairCharacterRoster(rosterPresentation)
 
-  /** 首次严格顺序；已生成的块可任意重新生成。 */
-  const canGenerate = (key: 'premise' | 'characters' | 'worldbuilding'): boolean => {
-    if (generatingBlock || isArchRunning || loading) return false
-    if (archStatus[key]) return true
-    if (key === 'premise') return true
-    if (key === 'worldbuilding') return Boolean(archStatus.premise)
-    return Boolean(archStatus.worldbuilding)
-  }
-
   const sectionProps = (key: 'premise' | 'characters' | 'worldbuilding') => ({
     collapseKey: key,
     title: text(
@@ -327,8 +277,8 @@ export default function WorldBuildingEditor({ projectKey }: { projectKey: string
       ARCH_FILES.find(f => f.key === key)!.descEn,
     ),
     generated: archStatus[key] ?? false,
-    generating: generatingBlock === key,
-    disabled: !canGenerate(key),
+    generating: false,
+    disabled: loading || !projectMatches,
     wordCount: wordCounts[key] ?? 0,
   })
 
@@ -357,23 +307,22 @@ export default function WorldBuildingEditor({ projectKey }: { projectKey: string
           >
             <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
           </Button>
-          {/* AI 生成架构 — 与小说配置/章节蓝图保持一致的按钮位置 */}
           <Button
             variant="ai"
             size="sm"
-            onClick={openGenerateDialog}
-            disabled={isArchRunning}
-            title={text('AI 生成故事架构（选择要生成的步骤）', 'Generate story architecture (choose steps to generate)')}
+            onClick={openArchitectAssistant}
+            disabled={loading || !projectMatches}
+            title={text('交给架构助手共同构思与完善故事架构', 'Collaborate with the Architect assistant on story architecture')}
           >
             <Sparkles size={12} />
-            {text('AI 生成架构', 'Generate story architecture')}
+            {text('架构助手构思', 'Plan with architect')}
           </Button>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
         <div className="w-full px-8 py-6">
-          {/* 前三块：与小说配置同款设置文档 + 单块 AI 生成 */}
+          {/* 前三块：与小说配置同款设置文档 + 单块助手协作 */}
           <SettingDocument>
             {GENERATABLE_STEPS.map(key => {
               const s = sectionProps(key)
@@ -386,21 +335,9 @@ export default function WorldBuildingEditor({ projectKey }: { projectKey: string
                   title={s.title}
                   collapsed={Boolean(collapsedSections[s.collapseKey])}
                   onToggle={() => setCollapsedSections(current => ({ ...current, [s.collapseKey]: !current[s.collapseKey] }))}
-                  generating={s.generating}
+                  generating={false}
                   generateDisabled={s.disabled}
-                  generateTitle={!s.disabled ? undefined : text(
-                    key === 'worldbuilding'
-                      ? '请先完成「前提概要」生成'
-                      : key === 'characters'
-                        ? '请先完成「环境」生成'
-                        : '正在生成中…',
-                    key === 'worldbuilding'
-                      ? 'Generate the premise summary first'
-                      : key === 'characters'
-                        ? 'Generate setting first'
-                        : 'Generating…',
-                  )}
-                  onGenerate={s.generating || s.disabled ? undefined : () => void handleGenerateBlock(key)}
+                  onGenerate={s.disabled ? undefined : () => handleGenerateBlock(key)}
                 >
                   <div className="flex items-center justify-between gap-3 pt-1 pb-1">
                     <div className="flex items-center gap-2 min-w-0">
@@ -448,15 +385,15 @@ export default function WorldBuildingEditor({ projectKey }: { projectKey: string
                       ? text('（内容已生成，可直接编辑）', '(Generated — edit directly)')
                       : text(
                         key === 'worldbuilding'
-                          ? '点击右上角「AI 生成」或先完成前提概要'
+                          ? '点击右上角「架构助手构思」或右侧「AI 生成」一起梳理世界观'
                           : key === 'characters'
-                            ? '点击右上角「AI 生成」或先完成环境'
-                            : '点击右上角「AI 生成」生成内容',
+                            ? '点击「架构助手构思」创建角色档案'
+                            : '点击右上角「架构助手构思」或直接编写前提概要',
                         key === 'worldbuilding'
-                          ? 'Click “AI 生成” above, or generate the premise first'
+                          ? 'Click “Plan with architect” above or “Generate” to collaborate on worldbuilding'
                           : key === 'characters'
-                            ? 'Click “AI 生成” above, or generate setting first'
-                            : 'Click “AI 生成” above to generate content',
+                            ? 'Click “Plan with architect” to create character profiles'
+                            : 'Click “Plan with architect” above or start drafting the premise here',
                       )}
                     onChange={key === 'characters'
                       ? () => {}
@@ -485,14 +422,6 @@ export default function WorldBuildingEditor({ projectKey }: { projectKey: string
 
         </div>
       </div>
-
-      {/* AI 生成架构确认弹窗 */}
-      <ArchitectureConfirmDialog
-        isOpen={showArchDialog}
-        onClose={() => setShowArchDialog(false)}
-        archStatus={archStatus}
-        onConfirm={handleConfirm}
-      />
     </div>
   )
 }

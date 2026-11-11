@@ -20,7 +20,7 @@ describe('getAutoNextChapterPrefill', () => {
       role: '发展',
       purpose: '推进调查',
       keyEvents: '收到密信',
-      characters: '林舟、苏雨',
+      characters: ['林舟', '苏雨'],
       userGuidance: '保留悬念',
     })
   })

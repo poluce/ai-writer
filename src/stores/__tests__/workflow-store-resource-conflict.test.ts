@@ -21,7 +21,7 @@ function definition(
   readResourceKeys: string[] = [],
 ): WorkflowDefinition {
   return {
-    type: 'chapter_creation',
+    type: 'chapter_finalize',
     title,
     projectPath,
     projectSession,

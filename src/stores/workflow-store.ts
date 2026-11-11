@@ -67,10 +67,8 @@ export interface WorkflowRun {
   projectPath: string
   /** 启动时从当前项目冻结；缺失时该 run 只能失败，不能执行项目级副作用。 */
   projectSession: ProjectSessionContext | null
-  /** Agent 明确选择并随本次写稿工作流冻结的模型；缺失时使用默认模型。 */
+  /** Agent 明确选择并随本次工作流冻结的模型；缺失时使用默认模型。 */
   generationModelId?: string
-  /** 本次写作冻结的每章目标可见单位；不得在执行中重新读取全局配置。 */
-  chapterWordsTarget?: number
   /** 该运行将生成或改写的逻辑资源；同项目内写入与任何其他声明互斥。 */
   resourceKeys?: readonly string[]
   /** 该运行只读取的逻辑资源；多个读取者可以并发。 */
@@ -97,16 +95,11 @@ export interface WorkflowRun {
   pauseRequested?: boolean
 }
 
-/** 工作流类型 */
+/** 工作流类型（仅保留导入建库、章节定稿索引与后处理） */
 export type WorkflowType =
-  | 'new_project_setup'       // 新项目初始化（配置→架构→目录）
-  | 'architecture_generation' // 架构生成（故事前提→角色图谱→世界观→情节大纲）
-  | 'directory'               // 目录/蓝图生成
-  | 'chapter_creation'        // 章节创作（写稿→修稿→审稿→定稿）
-  | 'batch_generate'          // 批量生成
-  | 'config_generation'       // 智能配置生成
-  | 'post_process'            // 后处理任务（角色卡提取等）
-  | 'novel_import'            // 导入已有小说（逆向推演全流程）
+  | 'chapter_finalize'        // 章节定稿与后处理修复
+  | 'post_process'            // 后处理任务（资料导入、角色名录修复等）
+  | 'novel_import'            // 导入已有小说（逆向推演建库）
 
 /** 工作流步骤执行器 */
 export type StepExecutor = (
@@ -123,10 +116,8 @@ export interface WorkflowContext {
   projectPath: string
   /** 工作流启动时冻结的 IPC 会话，禁止在执行器内重新读取 currentProject。 */
   projectSession: ProjectSessionContext
-  /** Agent 明确选择并随本次写稿工作流冻结的模型；缺失时使用默认模型。 */
+  /** Agent 明确选择并随本次工作流冻结的模型；缺失时使用默认模型。 */
   generationModelId?: string
-  /** 本次写作冻结的每章目标可见单位。 */
-  chapterWordsTarget?: number
   /** Project writing language frozen when the workflow starts. */
   writingLanguage: WritingLanguage
   /** Visible interface locale frozen when the workflow starts. */
@@ -182,8 +173,6 @@ export interface WorkflowDefinition {
    * populated from LLM tool arguments.
    */
   generationModelId?: string
-  /** 本次写作冻结的每章目标可见单位。 */
-  chapterWordsTarget?: number
   /** 同一项目内由本工作流写入的逻辑资源。 */
   resourceKeys?: readonly string[]
   /** 同一项目内由本工作流读取的逻辑资源。 */
@@ -216,11 +205,6 @@ function isCurrentWorkflowSession(
 
 function normalizeGenerationModelId(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined
-}
-
-function normalizeChapterWordsTarget(value: unknown): number | undefined {
-  const parsed = Math.trunc(Number(value))
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined
 }
 
 export function workflowResourceKey(
@@ -423,7 +407,6 @@ export const useWorkflowStore = create<WorkflowState>()((set, get) => ({
       : null
     const runId = definition.runId ?? randomUUID()
     const generationModelId = normalizeGenerationModelId(definition.generationModelId)
-    const chapterWordsTarget = normalizeChapterWordsTarget(definition.chapterWordsTarget)
     const resourceKeys = normalizeWorkflowResourceKeys(definition.resourceKeys)
     const readResourceKeys = normalizeWorkflowResourceKeys(definition.readResourceKeys)
     const writingLanguage = resolveWritingLanguage(currentProject?.novelConfig.writingLanguage)
@@ -481,7 +464,6 @@ export const useWorkflowStore = create<WorkflowState>()((set, get) => ({
         writingLanguage,
         uiLocale,
         ...(generationModelId ? { generationModelId } : {}),
-        ...(chapterWordsTarget ? { chapterWordsTarget } : {}),
         ...(resourceKeys ? { resourceKeys } : {}),
         ...(readResourceKeys ? { readResourceKeys } : {}),
         type: definition.type,
@@ -510,7 +492,6 @@ export const useWorkflowStore = create<WorkflowState>()((set, get) => ({
       writingLanguage,
       uiLocale,
       ...(generationModelId ? { generationModelId } : {}),
-      ...(chapterWordsTarget ? { chapterWordsTarget } : {}),
       ...(resourceKeys ? { resourceKeys } : {}),
       ...(readResourceKeys ? { readResourceKeys } : {}),
       type: definition.type,
@@ -554,7 +535,6 @@ export const useWorkflowStore = create<WorkflowState>()((set, get) => ({
       writingLanguage,
       uiLocale,
       ...(generationModelId ? { generationModelId } : {}),
-      ...(chapterWordsTarget ? { chapterWordsTarget } : {}),
       data: {},
       cancelled: false,
       pauseRequested: false,

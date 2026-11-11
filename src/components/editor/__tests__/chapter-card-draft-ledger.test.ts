@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it, vi } from 'vitest'
 
 import { normalizeSourceEol } from '../../../../test/source-contract'
-import type { ChapterBlueprint } from '../../../services/workflows/directory-workflow'
+import type { ChapterBlueprint } from '../../../services/blueprint-domain'
 import {
   CHAPTER_CARD_TAB_ID,
   captureBlueprintSnapshots,
@@ -278,7 +278,7 @@ describe('chapter-card draft ledger', () => {
   it('binds chapter-card IPC reads and writes to the loaded project identity', () => {
     const componentSource = chapterCardSurface()
     const workflowSource = normalizeSourceEol(
-      readFileSync('src/services/workflows/directory-workflow.ts', 'utf8'),
+      readFileSync('src/services/blueprint-domain.ts', 'utf8'),
     )
 
     // A path is only a location.  The editor must bind reads/writes to the

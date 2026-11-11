@@ -35,7 +35,7 @@ const CREATION_TASKS: TaskMeta[] = [
     titleEn: 'Story Planning & Beat Sheets',
     badge: '剧情规划',
     badgeEn: 'Story Planning',
-    desc: '故事全书剧情架构推演、分卷剧情规划、主支线情节编排与章节细纲批量拆解。负责全书节奏与长篇框架构建。',
+    desc: '故事全书剧情架构推演、分卷剧情规划、主支线情节编排与章节细纲规划。负责全书节奏与长篇框架构建。',
     descEn: 'Architects multi-volume story arcs, plotline progressions, and chapter beat sheets. Responsible for long-form pacing and plot structure.',
     icon: Compass,
   },

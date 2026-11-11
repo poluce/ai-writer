@@ -199,7 +199,7 @@ describe('project close lifecycle', () => {
       throw new Error(`unexpected IPC: ${channel}`)
     })
     const workflow = useWorkflowStore.getState().startWorkflow({
-      type: 'chapter_creation',
+      type: 'chapter_finalize',
       title: 'A background task',
       projectPath: project('A').path,
       projectSession: projectSession('A'),
@@ -306,7 +306,7 @@ describe('project close lifecycle', () => {
       throw new Error(`unexpected IPC: ${channel}`)
     })
     const workflow = useWorkflowStore.getState().startWorkflow({
-      type: 'chapter_creation',
+      type: 'chapter_finalize',
       title: 'A background task',
       projectPath: project('A').path,
       projectSession: projectSession('A'),
@@ -358,7 +358,7 @@ describe('project close lifecycle', () => {
       throw new Error(`unexpected IPC: ${channel}`)
     })
     const workflow = useWorkflowStore.getState().startWorkflow({
-      type: 'chapter_creation',
+      type: 'chapter_finalize',
       title: 'A background task',
       projectPath: project('A').path,
       projectSession: projectSession('A'),
@@ -414,7 +414,7 @@ describe('project close lifecycle', () => {
       throw new Error(`unexpected IPC: ${channel}`)
     })
     const workflow = useWorkflowStore.getState().startWorkflow({
-      type: 'chapter_creation',
+      type: 'chapter_finalize',
       title: 'A background task',
       projectPath: project('A').path,
       projectSession: projectSession('A'),

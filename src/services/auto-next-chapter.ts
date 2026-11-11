@@ -9,15 +9,15 @@ export interface NextChapterBlueprint {
 }
 
 /**
- * 定稿后的自动操作只负责打开紧邻的、尚未开始的章节创作窗口。
- * 它不会直接调用模型，也不会覆盖已有草稿。
+ * 定稿后的自动操作只负责定位紧邻的、尚未开始创作的下一章蓝图，
+ * 供调用方打开空白草稿编辑器并带入写作助手上下文；不会直接调用模型。
  */
 export function getAutoNextChapterPrefill(
   enabled: boolean,
   completedChapter: number,
   blueprint: NextChapterBlueprint | null,
   hasExistingDraft: boolean,
-): Record<string, unknown> | null {
+): NextChapterBlueprint | null {
   if (!enabled || hasExistingDraft || !blueprint || blueprint.chapterNumber !== completedChapter + 1) {
     return null
   }
@@ -28,7 +28,7 @@ export function getAutoNextChapterPrefill(
     role: blueprint.role,
     purpose: blueprint.purpose,
     keyEvents: blueprint.keyEvents,
-    characters: blueprint.characters.join('、'),
+    characters: [...blueprint.characters],
     userGuidance: blueprint.userGuidance || '',
   }
 }

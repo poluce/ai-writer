@@ -54,16 +54,14 @@ const editorFiles = [
   'src/components/editor/ReviewBoard.tsx',
   'src/components/editor/review-annotations.ts',
   'src/components/editor/ReviewSeverityBadge.tsx',
-  'src/components/editor/ConfirmedRevisionDialog.tsx',
   'src/components/panels/sidebar/CharactersView.tsx',
   'src/components/editor/CodeMirrorEditor.tsx',
   'src/components/editor/ThreeWayMerge.tsx',
 ]
 
 const workflowFiles = [
-  'src/services/workflows/architecture-workflow.ts',
+  'src/services/agent/assistant-handoff.ts',
   'src/services/workflows/chapter-workflow.ts',
-  'src/services/workflows/directory-workflow.ts',
 ]
 
 const visibleWorkflowPropertyNames = new Set([

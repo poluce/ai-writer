@@ -113,7 +113,7 @@ describe('workflow generation prompt budget diagnostics', () => {
     const command = new BudgetedGenerationCommand(finishReason)
 
     await useWorkflowStore.getState().startWorkflow({
-      type: 'architecture_generation',
+      type: 'post_process',
       title: 'Budget diagnostics',
       projectPath,
       projectSession,
@@ -147,7 +147,7 @@ describe('workflow generation prompt budget diagnostics', () => {
     const command = new BudgetedGenerationCommand('stop', 2)
 
     await useWorkflowStore.getState().startWorkflow({
-      type: 'architecture_generation',
+      type: 'post_process',
       title: 'Repeated budget diagnostics',
       projectPath,
       projectSession,

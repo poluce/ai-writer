@@ -6,7 +6,6 @@ import { useProjectStore } from '../project-store'
 import { useLocaleStore } from '../locale-store'
 import { createBoundedCompletionError } from '../../services/workflows/bounded-completion'
 import { PromptBudgetExceededError } from '../../services/generation/generation-harness'
-import { SourceDraftChangedError } from '../../services/workflows/source-draft-changed'
 
 const projectPath = 'C:\\test-project'
 
@@ -170,7 +169,7 @@ describe('workflow pause at a safe step boundary', () => {
     const observedLanguages: unknown[] = []
 
     await useWorkflowStore.getState().startWorkflow({
-      type: 'chapter_creation',
+      type: 'chapter_finalize',
       title: 'Frozen writing language',
       projectPath,
       projectSession: frozenSession(),
@@ -217,7 +216,7 @@ describe('workflow pause at a safe step boundary', () => {
       const observed: Array<{ writingLanguage: unknown; uiLocale: unknown }> = []
 
       await useWorkflowStore.getState().startWorkflow({
-        type: 'chapter_creation',
+        type: 'chapter_finalize',
         title: 'Frozen language seams',
         projectPath,
         projectSession: frozenSession(),
@@ -265,7 +264,7 @@ describe('workflow pause at a safe step boundary', () => {
     let finishFirstStep: (() => void) | undefined
 
     const completion = useWorkflowStore.getState().startWorkflow({
-      type: 'batch_generate',
+      type: 'novel_import',
       title: 'Frozen UI copy',
       projectPath,
       projectSession: frozenSession(),
@@ -306,7 +305,7 @@ describe('workflow pause at a safe step boundary', () => {
     useLocaleStore.setState({ locale: 'en-US' })
     let finishStep: (() => void) | undefined
     const completion = useWorkflowStore.getState().startWorkflow({
-      type: 'chapter_creation',
+      type: 'chapter_finalize',
       title: 'Frozen cancellation copy',
       projectPath,
       projectSession: frozenSession(),
@@ -337,7 +336,7 @@ describe('workflow pause at a safe step boundary', () => {
     useLocaleStore.setState({ locale: 'en-US' })
 
     await useWorkflowStore.getState().startWorkflow({
-      type: 'chapter_creation',
+      type: 'chapter_finalize',
       title: 'Frozen failure copy',
       projectPath,
       projectSession: frozenSession(),
@@ -361,7 +360,7 @@ describe('workflow pause at a safe step boundary', () => {
     const failure = createBoundedCompletionError('content_filter')
 
     await useWorkflowStore.getState().startWorkflow({
-      type: 'chapter_creation',
+      type: 'chapter_finalize',
       title: '内容策略失败测试',
       projectPath,
       projectSession: frozenSession(),
@@ -384,13 +383,14 @@ describe('workflow pause at a safe step boundary', () => {
     })
   })
 
-  it('preserves a stale-source error code on the failed step and final run', async () => {
-    const failure = new SourceDraftChangedError(
-      'The source draft changed during AI refinement. The revision was not saved.',
+  it('preserves a typed error code on the failed step and final run', async () => {
+    const failure = Object.assign(
+      new Error('The source draft changed during processing.'),
+      { code: 'SOURCE_DRAFT_CHANGED' },
     )
 
     await useWorkflowStore.getState().startWorkflow({
-      type: 'chapter_creation',
+      type: 'chapter_finalize',
       title: 'Stale source test',
       projectPath,
       projectSession: frozenSession(),
@@ -428,7 +428,7 @@ describe('workflow pause at a safe step boundary', () => {
     })
 
     await useWorkflowStore.getState().startWorkflow({
-      type: 'architecture_generation',
+      type: 'post_process',
       title: '角色图谱生成',
       projectPath,
       projectSession: frozenSession(),
@@ -458,7 +458,7 @@ describe('workflow pause at a safe step boundary', () => {
   it('atomically replaces provisional output and reconciles it to the terminal step result', async () => {
     let finishStep: (() => void) | undefined
     const completion = useWorkflowStore.getState().startWorkflow({
-      type: 'chapter_creation',
+      type: 'chapter_finalize',
       title: '流式草稿对账测试',
       projectPath,
       projectSession: frozenSession(),
@@ -487,7 +487,7 @@ describe('workflow pause at a safe step boundary', () => {
     let callbacksRef: Parameters<WorkflowDefinition['steps'][number]['executor']>[2] | undefined
     let finishStep: (() => void) | undefined
     const completion = useWorkflowStore.getState().startWorkflow({
-      type: 'chapter_creation',
+      type: 'chapter_finalize',
       title: '取消后的流式输出测试',
       projectPath,
       projectSession: frozenSession(),
@@ -520,7 +520,7 @@ describe('workflow pause at a safe step boundary', () => {
     const executor = vi.fn(async () => undefined)
 
     const runId = await useWorkflowStore.getState().startWorkflow({
-      type: 'chapter_creation',
+      type: 'chapter_finalize',
       title: 'Legacy workflow without a session',
       projectPath: 'C:\\test-project',
       steps: [{ name: 'write', description: 'write', executor }],
@@ -538,7 +538,7 @@ describe('workflow pause at a safe step boundary', () => {
     let finishFirstStep: (() => void) | undefined
     const secondStep = vi.fn(async () => undefined)
     const workflow: WorkflowDefinition = {
-      type: 'batch_generate',
+      type: 'novel_import',
       title: '批量创作测试',
       projectPath,
       projectSession: frozenSession(),
@@ -582,7 +582,7 @@ describe('workflow pause at a safe step boundary', () => {
     expect(useWorkflowStore.getState().history[0]).toMatchObject({ status: 'completed', title: '批量创作测试' })
     await vi.waitFor(() => {
       expect(completedPayloads).toContainEqual(expect.objectContaining({
-        type: 'batch_generate',
+        type: 'novel_import',
         projectPath: 'C:\\test-project',
       }))
     })
@@ -602,7 +602,7 @@ describe('workflow pause at a safe step boundary', () => {
     })
 
     await useWorkflowStore.getState().startWorkflow({
-      type: 'chapter_creation',
+      type: 'chapter_finalize',
       title: 'A project workflow',
       projectPath,
       projectSession: frozenSession(),
@@ -630,7 +630,7 @@ describe('workflow pause at a safe step boundary', () => {
     })
 
     const runId = await useWorkflowStore.getState().startWorkflow({
-      type: 'chapter_creation',
+      type: 'chapter_finalize',
       title: 'Older same-path workflow',
       projectPath,
       projectSession: frozenSession(),
@@ -653,7 +653,7 @@ describe('workflow pause at a safe step boundary', () => {
     })
 
     const completion = useWorkflowStore.getState().startWorkflow({
-      type: 'chapter_creation',
+      type: 'chapter_finalize',
       title: '取消竞态测试',
       projectPath,
       projectSession: frozenSession(),
@@ -674,7 +674,7 @@ describe('workflow pause at a safe step boundary', () => {
       id: runId,
       status: 'cancelling',
     }))
-    expect(useWorkflowStore.getState().isTypeRunning('chapter_creation')).toBe(true)
+    expect(useWorkflowStore.getState().isTypeRunning('chapter_finalize')).toBe(true)
     expect(useWorkflowStore.getState().history).toHaveLength(0)
 
     finishExecutor!()
@@ -697,7 +697,7 @@ describe('workflow pause at a safe step boundary', () => {
     const seenLeases: string[] = []
     const openResult = vi.fn()
     const completion = useWorkflowStore.getState().startWorkflow({
-      type: 'directory',
+      type: 'novel_import',
       title: '同路径重开测试',
       projectPath,
       projectSession: frozenSession(),

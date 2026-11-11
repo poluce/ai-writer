@@ -70,11 +70,11 @@ afterEach(async () => {
 
 describe('ArchFileViewer locale', () => {
   it.each([
-    ['premise', '前提概要', 'AI 生成「前提概要」'],
-    ['characters', '人物', 'AI 生成「人物」'],
-    ['worldbuilding', '环境', 'AI 生成「环境」'],
-    ['synopsis', '情节', '在「情节」页面生成或续批'],
-  ])('recognizes the actual core protocol %s and restores generation controls', async (key, label, actionTitle) => {
+    ['premise', '前提概要', '交给架构助手构思「前提概要」'],
+    ['characters', '人物', '交给架构助手构思「人物」'],
+    ['worldbuilding', '环境', '交给架构助手构思「环境」'],
+    ['synopsis', '情节', '在「情节」页面构思或编辑'],
+  ])('recognizes the actual core protocol %s and restores assistant handoff controls', async (key, label, actionTitle) => {
     useLocaleStore.setState({ locale: 'zh-CN' })
     await act(async () => root.render(
       <ArchFileViewer tabId={`arch-${key}`} filePath={`vela://core/${key}`}
@@ -162,11 +162,11 @@ describe('ArchFileViewer locale', () => {
 
     await vi.waitFor(() => expect(container.textContent).toContain('characters'))
     expect(container.textContent).toContain('Save')
-    expect(container.textContent).toContain('AI Regenerate')
+    expect(container.textContent).toContain('AI refine')
     expect(container.querySelector('[title="Unsaved changes"]')).not.toBeNull()
     expect(container.querySelector('[title="Save (Cmd+S)"]')).not.toBeNull()
-    expect(container.querySelector('[title="AI Regenerate “Premise”"]')).not.toBeNull()
-    expect(container.textContent).not.toMatch(/字|保存|重新生成/)
+    expect(container.querySelector('[title="Refine “Premise” with architect"]')).not.toBeNull()
+    expect(container.textContent).not.toMatch(/字|保存|完善|重新生成/)
 
     let finishSave: ((value: { success: true }) => void) | undefined
     invoke.mockImplementation(() => new Promise(resolve => { finishSave = resolve }))
@@ -187,9 +187,9 @@ describe('ArchFileViewer locale', () => {
       />,
     ))
 
-    await vi.waitFor(() => expect(container.textContent).toContain('AI Generate'))
-    expect(container.querySelector('[title="AI Generate “Premise”"]')).not.toBeNull()
-    expect(container.textContent).toContain('No content yet. Click “AI Generate” in the top-right or start editing here...')
-    expect(container.textContent).not.toMatch(/尚未生成内容|AI 生成/)
+    await vi.waitFor(() => expect(container.textContent).toContain('AI plan'))
+    expect(container.querySelector('[title="Plan “Premise” with architect"]')).not.toBeNull()
+    expect(container.textContent).toContain('No content yet. Click “AI plan” in the top-right or start editing here...')
+    expect(container.textContent).not.toMatch(/尚未填写内容|尚未生成内容|AI 构思|AI 生成/)
   })
 })

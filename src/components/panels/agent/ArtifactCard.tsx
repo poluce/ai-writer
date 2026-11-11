@@ -1,10 +1,10 @@
 /**
  * ArtifactCard — 产物卡片
  *
- * 当 Agent 创建/修改文件或触发工作流时，
+ * 当 Agent 创建/修改文件或打开编辑器标签时，
  * 显示可点击的产物卡片，用户可直接跳转到对应资源。
  */
-import { FileText, FolderOpen, Play, ExternalLink } from 'lucide-react'
+import { FileText, FolderOpen, ExternalLink } from 'lucide-react'
 import type { ToolArtifact } from '../../../shared/agent-artifacts'
 import { useLocaleStore } from '../../../stores/locale-store'
 import { openArtifactInEditor } from './artifact-open'
@@ -20,8 +20,6 @@ function ArtifactIcon({ type }: { type: ToolArtifact['type'] }) {
       return <FileText size={13} />
     case 'file_modified':
       return <FolderOpen size={13} />
-    case 'workflow_started':
-      return <Play size={13} />
     case 'tab_opened':
       return <ExternalLink size={13} />
     default:
@@ -37,7 +35,6 @@ function typeLabel(
   switch (type) {
     case 'file_created': return text('新建文件', 'New file')
     case 'file_modified': return text('已修改', 'Modified')
-    case 'workflow_started': return text('工作流', 'Workflow')
     case 'tab_opened': return text('已打开', 'Opened')
     default: return ''
   }

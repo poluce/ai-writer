@@ -29,9 +29,6 @@ const SETTINGS_SECTION_IDS = [
 /** 设置弹窗分类 */
 export type SettingsSection = (typeof SETTINGS_SECTION_IDS)[number]
 
-/** 章节创建对话框的预填参数 */
-export type ChapterCreationPrefill = Record<string, unknown> | null
-
 interface LayoutState {
   // ===== 侧边栏 =====
   sidebarOpen: boolean
@@ -65,10 +62,6 @@ interface LayoutState {
   authorManuscriptImportOpen: boolean
   /** 小说拆解研习对话框是否打开 */
   novelDeconstructionOpen: boolean
-  /** 章节创建对话框是否打开 */
-  chapterCreationOpen: boolean
-  /** 章节创建对话框的预填参数 */
-  chapterCreationPrefill: ChapterCreationPrefill
 
   // ===== Actions =====
   toggleSidebar: () => void
@@ -99,8 +92,6 @@ interface LayoutState {
   closeAuthorManuscriptImport: () => void
   openNovelDeconstruction: () => void
   closeNovelDeconstruction: () => void
-  openChapterCreation: (prefill?: ChapterCreationPrefill) => void
-  closeChapterCreation: () => void
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -153,8 +144,6 @@ export const useLayoutStore = create<LayoutState>()((set) => ({
   importNovelOpen: false,
   authorManuscriptImportOpen: false,
   novelDeconstructionOpen: false,
-  chapterCreationOpen: false,
-  chapterCreationPrefill: null,
 
   // Actions
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
@@ -205,6 +194,4 @@ export const useLayoutStore = create<LayoutState>()((set) => ({
   closeAuthorManuscriptImport: () => set({ authorManuscriptImportOpen: false }),
   openNovelDeconstruction: () => set(novelImportState(true)),
   closeNovelDeconstruction: () => set(novelImportState(false)),
-  openChapterCreation: (prefill = null) => set({ chapterCreationOpen: true, chapterCreationPrefill: prefill }),
-  closeChapterCreation: () => set({ chapterCreationOpen: false, chapterCreationPrefill: null }),
 }))

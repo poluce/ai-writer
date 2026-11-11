@@ -1,6 +1,3 @@
-import type { ProjectSessionContext } from '../../shared/ipc-channels'
-import { sameProjectSessionContext } from '../../shared/project-session-context'
-
 export interface ArchFileSnapshot {
   savedContent: string
   currentContent: string
@@ -56,25 +53,6 @@ export function shouldSyncProjectArchTab(
   projectKey: string,
 ): boolean {
   return tab.projectKey === projectKey && !tab.dirty
-}
-
-export function shouldRefreshArchOnWorkflowComplete(
-  payload: {
-    type: string
-    projectPath: string
-    projectSession: ProjectSessionContext
-    runId: string
-  },
-  projectSession: ProjectSessionContext,
-  lastHandledRunId?: string | null,
-): boolean {
-  return payload.type === 'architecture_generation'
-    && sameProjectSessionContext(
-      payload.projectSession,
-      projectSession,
-    )
-    && payload.runId.length > 0
-    && payload.runId !== lastHandledRunId
 }
 
 export type ArchExternalRefreshDecision =

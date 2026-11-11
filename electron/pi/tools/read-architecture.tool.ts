@@ -60,8 +60,8 @@ function emptyArchitectureMessage(
 ): string {
   if (requested === 'all') {
     return text(
-      '⚠️ 架构为空，暂无故事前提、世界观与情节大纲。建议通过工作流生成故事架构。',
-      '⚠️ The architecture is empty: no premise, worldbuilding, or plot outline yet. Generate the story architecture with the workflow first.',
+      '架构为空，暂无故事前提、世界观与情节大纲。可由「架构」助手通过 story_architecture / manage_characters 与作者共同讨论并写入。',
+      'The architecture is empty: no premise, worldbuilding, or plot outline yet. Plan and write them with the Architect assistant via story_architecture and manage_characters.',
     )
   }
   return text(

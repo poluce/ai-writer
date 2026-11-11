@@ -5,8 +5,8 @@ import { PromptCatalog, type PromptPersistence } from '../prompt-catalog'
 import type { PromptTemplate } from '../prompt-templates'
 
 const builtin: PromptTemplate = {
-  key: 'first_chapter_draft',
-  name: 'First chapter',
+  key: 'generate_chapter_notes',
+  name: 'Chapter notes',
   description: 'Built in',
   content: 'builtin prompt',
   variables: {},
@@ -142,17 +142,17 @@ describe('PromptCatalog lifecycle', () => {
   it('fails closed only for the key whose project override is damaged', async () => {
     const adapter = persistence({
       loadProject: vi.fn(async () => ({
-        templates: [{ ...builtin, key: 'next_chapter_draft', content: 'valid project prompt' }],
-        diagnostics: [{ key: builtin.key, path: 'first_chapter_draft.json', error: 'JSON 格式损坏' }],
+        templates: [{ ...builtin, key: 'update_character_cards', content: 'valid project prompt' }],
+        diagnostics: [{ key: builtin.key, path: 'generate_chapter_notes.json', error: 'JSON 格式损坏' }],
       })),
     })
     const catalog = new PromptCatalog([
       builtin,
-      { ...builtin, key: 'next_chapter_draft', content: 'next builtin' },
+      { ...builtin, key: 'update_character_cards', content: 'next builtin' },
     ], adapter, () => session)
 
-    await expect(catalog.resolve(builtin.key, session)).rejects.toThrow('first_chapter_draft.json')
-    await expect(catalog.resolve('next_chapter_draft', session)).resolves.toMatchObject({
+    await expect(catalog.resolve(builtin.key, session)).rejects.toThrow('generate_chapter_notes.json')
+    await expect(catalog.resolve('update_character_cards', session)).resolves.toMatchObject({
       template: { content: 'valid project prompt' },
       source: 'project',
     })
@@ -162,20 +162,20 @@ describe('PromptCatalog lifecycle', () => {
     const adapter = persistence({
       loadGlobal: vi.fn(async () => ({
         templates: [],
-        diagnostics: [{ key: builtin.key, path: 'first_chapter_draft.json', error: '内容结构无效' }],
+        diagnostics: [{ key: builtin.key, path: 'generate_chapter_notes.json', error: '内容结构无效' }],
       })),
     })
     const catalog = new PromptCatalog([
       builtin,
-      { ...builtin, key: 'next_chapter_draft', content: 'next builtin' },
+      { ...builtin, key: 'update_character_cards', content: 'next builtin' },
     ], adapter, () => null)
 
     await expect(catalog.resolve(builtin.key)).rejects.toThrow('内容结构无效')
-    await expect(catalog.resolve('next_chapter_draft')).resolves.toMatchObject({
+    await expect(catalog.resolve('update_character_cards')).resolves.toMatchObject({
       template: { content: 'next builtin' },
       source: 'builtin',
     })
-    await expect(catalog.list()).rejects.toThrow('first_chapter_draft.json')
+    await expect(catalog.list()).rejects.toThrow('generate_chapter_notes.json')
   })
 
   it('isolates a damaged localized override from the same prompt in another language', async () => {
@@ -185,7 +185,7 @@ describe('PromptCatalog lifecycle', () => {
         diagnostics: [{
           key: builtin.key,
           writingLanguage: 'en-US' as const,
-          path: 'first_chapter_draft.en-US.json',
+          path: 'generate_chapter_notes.en-US.json',
           error: 'invalid JSON',
         }],
       })),
@@ -205,7 +205,7 @@ describe('PromptCatalog lifecycle', () => {
         diagnostics: [{
           key: builtin.key,
           writingLanguage: 'en-US' as const,
-          path: 'first_chapter_draft.en-US.json',
+          path: 'generate_chapter_notes.en-US.json',
           error: 'English override is damaged',
         }],
       })),
@@ -226,7 +226,7 @@ describe('PromptCatalog lifecycle', () => {
         diagnostics: [{
           key: builtin.key,
           writingLanguage: 'en-US' as const,
-          path: 'project/first_chapter_draft.en-US.json',
+          path: 'project/generate_chapter_notes.en-US.json',
           error: 'English project override is damaged',
         }],
       })),
@@ -241,7 +241,7 @@ describe('PromptCatalog lifecycle', () => {
     const adapter = persistence({
       loadProject: vi.fn(async () => ({
         templates: [],
-        diagnostics: [{ key: builtin.key, path: 'project/first_chapter_draft.json', error: 'project damaged' }],
+        diagnostics: [{ key: builtin.key, path: 'project/generate_chapter_notes.json', error: 'project damaged' }],
       })),
     })
     const catalog = new PromptCatalog([builtin], adapter, () => session)

@@ -1,9 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { Save, RefreshCw, Sparkles, Loader2, AlertTriangle, FileText, Pencil, Check } from 'lucide-react'
+import { Save, RefreshCw, Sparkles, AlertTriangle, FileText, Pencil, Check } from 'lucide-react'
 import { renderIcon } from '../panels/sidebar/sidebar-icons'
 
 import { registerEditorExitSaveHandler, useEditorStore } from '../../stores/editor-store'
-import ArchitectureConfirmDialog from '../dialogs/ArchitectureConfirmDialog'
 import { Button } from '../ui/Button'
 import { SettingDocument, SettingSection, MarkdownDocumentBody } from './SettingSections'
 import {
@@ -20,8 +19,7 @@ import { CharacterCardImportButton } from '../characters/CharacterCardImportButt
 import CodeMirrorEditor from './CodeMirrorEditor'
 import { useProjectStore } from '../../stores/project-store'
 import { useLocaleStore } from '../../stores/locale-store'
-import { launchCreativeWorkflow } from '../../services/workflows/creative-workflow-launcher'
-import { useWorkflowStore } from '../../stores/workflow-store'
+import { handoffToArchitect } from '../../services/agent/assistant-handoff'
 import { globalEventBus } from '../../shared/event-bus'
 import {
   ARCH_REFRESH_BLOCKED_MESSAGE,
@@ -33,7 +31,6 @@ import {
   hasUnsavedArchEdit,
   isArchProjectCurrent,
   reassertBlockedArchEdit,
-  shouldRefreshArchOnWorkflowComplete,
   writeArchEditState} from './arch-file-refresh-policy'
 import {
   canExplicitlyRepairCharacterRoster,
@@ -136,14 +133,9 @@ function ArchFileViewerSession({
 
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [showDialog, setShowDialog] = useState(false)
-  const [checkingArch, setCheckingArch] = useState(false)
-  const [fullArchStatus, setFullArchStatus] = useState<Record<string, boolean>>({})
-  const lastCompletedArchitectureRunRef = useRef<string | null>(null)
   const [refreshBlockedMessage, setRefreshBlockedMessage] = useState<string | null>(null)
   const reloadGateRef = useRef(new ArchReloadGate())
 
-  const isArchRunning = useWorkflowStore(s => s.isTypeRunning('architecture_generation'))
   const {
     snapshot: rosterSnapshot,
     repairError: rosterRepairError,
@@ -403,20 +395,8 @@ function ArchFileViewerSession({
     }
   }, [])
 
-  // 监听架构生成完成或工具直接更新事件，自动刷新当前页面
+  // 监听架构更新事件，自动刷新当前页面
   useEffect(() => {
-    const unsubWorkflow = globalEventBus.on('WORKFLOW_COMPLETE', (payload) => {
-      const projectSession = captureProjectSession(useProjectStore.getState().currentProject)
-      if (!projectSession || !isProjectSessionCurrent(projectSession)) return
-      if (!shouldRefreshArchOnWorkflowComplete(
-        payload,
-        projectSession,
-        lastCompletedArchitectureRunRef.current,
-      )) return
-      lastCompletedArchitectureRunRef.current = payload.runId
-      void handleReload()
-      void loadCharacterRosterStatus()
-    })
     const unsubArchUpdated = globalEventBus.on('ARCH_FILE_UPDATED', (payload) => {
       const projectSession = captureProjectSession(useProjectStore.getState().currentProject)
       if (!projectSession || !isProjectSessionCurrent(projectSession)) return
@@ -425,65 +405,23 @@ function ArchFileViewerSession({
       void loadCharacterRosterStatus()
     })
     return () => {
-      unsubWorkflow()
       unsubArchUpdated()
     }
   }, [handleReload, loadCharacterRosterStatus, projectKey])
 
-  /** 确认后启动架构生成工作流 */
-  const handleConfirm = async (
-    selectedSteps: ArchStepKey[],
-    stepGuidance: Record<string, string>,
-    synopsisRange?: { from: number; to: number },
-  ) => {
-    const projectSession = captureProjectSession(useProjectStore.getState().currentProject)
-    if (!projectSession || !isProjectSessionPath(projectSession, projectKey)) {
-      throw new Error('项目会话已切换，未启动架构生成')
-    }
-    if (!isProjectSessionCurrent(projectSession)) throw new Error('项目会话已切换，未启动架构生成')
-    await launchCreativeWorkflow({
-      workflow: 'generate_architecture',
-      selectedSteps,
-      stepGuidance,
-      synopsisRange}, projectSession)
-  }
+  const generated = initialContent.length > 50 && !initialContent.includes('待生成')
 
-  const handleOpenDialog = async () => {
+  const handleOpenArchitect = () => {
     const projectSession = captureProjectSession(currentProject)
-    if (!stepKey || !projectMatches || !projectSession || !isProjectSessionPath(projectSession, projectKey)) {
+    if (!architectureStepKey || !projectMatches || !projectSession || !isProjectSessionPath(projectSession, projectKey)) {
       return
     }
-    setCheckingArch(true)
-    try {
-      const core = await ipc.invokeWithProjectSession(
-        projectSession,
-        'db:project-core-get',
-        projectSession.projectPath,
-      )
-      if (!isProjectSessionCurrent(projectSession)) return
-      const status: Record<string, boolean> = {
-        premise: !!core?.premise && core.premise.length > 50 && !core.premise.includes('待生成'),
-        characters: rosterSnapshot?.status === 'ready',
-        worldbuilding: !!core?.worldbuilding && core.worldbuilding.length > 50 && !core.worldbuilding.includes('待生成'),
-        synopsis: !!core?.synopsis && core.synopsis.length > 50 && !core.synopsis.includes('待生成')}
-
-      // 对于当前文件，如果编辑器内已修改但未保存，也暂时以前面的基准为准即可
-      const EditorContentLen = currentContentRef.current.length;
-      if (EditorContentLen > 50 && !currentContentRef.current.includes('待生成')) {
-        status[stepKey] = true
-      }
-      setFullArchStatus(status)
-      setShowDialog(true)
-    } catch (error) {
-      if (isProjectSessionCurrent(projectSession)) {
-        console.warn('[ArchFileViewer] 检查架构状态失败:', error)
-      }
-    } finally {
-      if (isProjectSessionCurrent(projectSession)) setCheckingArch(false)
-    }
+    if (!isProjectSessionCurrent(projectSession)) return
+    handoffToArchitect({
+      section: architectureStepKey,
+      regenerate: generated,
+    })
   }
-
-  const generated = initialContent.length > 50 && !initialContent.includes('待生成')
 
   const rosterPresentation = stepKey === 'characters'
     ? getCharacterRosterRepairPresentation(rosterSnapshot, text, rosterRepairError)
@@ -564,19 +502,19 @@ function ArchFileViewerSession({
                 <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
               </Button>
 
-              {/* AI 生成按钮 */}
+              {/* AI 助手按钮 */}
               {architectureStepKey && (
                 <Button
                   variant="ai"
                   size="sm"
-                  onClick={handleOpenDialog}
-                  disabled={checkingArch || !projectMatches}
+                  onClick={handleOpenArchitect}
+                  disabled={!projectMatches}
                   title={generated
-                    ? text(`AI 重新生成「${meta?.label}」`, `AI Regenerate “${meta?.labelEn}”`)
-                    : text(`AI 生成「${meta?.label}」`, `AI Generate “${meta?.labelEn}”`)}
+                    ? text(`交给架构助手完善「${meta?.label}」`, `Refine “${meta?.labelEn}” with architect`)
+                    : text(`交给架构助手构思「${meta?.label}」`, `Plan “${meta?.labelEn}” with architect`)}
                 >
-                  {checkingArch ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                  {generated ? text('AI 重新生成', 'AI Regenerate') : text('AI 生成', 'AI Generate')}
+                  <Sparkles size={12} />
+                  {generated ? text('AI 完善', 'AI refine') : text('AI 构思', 'AI plan')}
                 </Button>
               )}
 
@@ -611,8 +549,8 @@ function ArchFileViewerSession({
           {currentContentRef.current.trim() === '' && (
             <div className="p-3 mb-4 rounded-lg text-xs" style={{ backgroundColor: 'var(--color-editor-bg)', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)' }}>
               {text(
-                '尚未生成内容，点击右上角「AI 生成」或直接在此编辑...',
-                'No content yet. Click “AI Generate” in the top-right or start editing here...',
+                '尚未填写内容，点击右上角「AI 构思」或直接在此编辑...',
+                'No content yet. Click “AI plan” in the top-right or start editing here...',
               )}
             </div>
           )}
@@ -655,17 +593,6 @@ function ArchFileViewerSession({
             })}
           </SettingDocument>
         </div>
-
-        {/* AI 生成确认弹窗 */}
-        {architectureStepKey && (
-          <ArchitectureConfirmDialog
-            isOpen={showDialog}
-            onClose={() => setShowDialog(false)}
-            archStatus={fullArchStatus}
-            initialSelectedSteps={[architectureStepKey]}
-            onConfirm={handleConfirm}
-          />
-        )}
       </div>
     )
   }
@@ -759,7 +686,7 @@ function ArchFileViewerSession({
           )}
 
           {/* 旧项目只可显式安全修复；不再从 Markdown 标题/排版提取角色卡。 */}
-          {stepKey === 'characters' && canRepairRoster && !isArchRunning && rosterPresentation?.actionLabel && (
+          {stepKey === 'characters' && canRepairRoster && rosterPresentation?.actionLabel && (
             <Button
               size="sm"
               disabled={extracting || !projectMatches}
@@ -775,19 +702,19 @@ function ArchFileViewerSession({
             </Button>
           )}
 
-          {/* AI 生成按钮：架构三块打开架构弹窗；情节大纲跳到独立的「情节大纲」页面 */}
+          {/* 助手带入按钮：架构三块切入右侧架构助手；情节大纲跳到独立的「情节」页面 */}
           {stepKey && meta && architectureStepKey && (
             <Button
               variant="ai"
               size="sm"
-              onClick={handleOpenDialog}
-              disabled={checkingArch || !projectMatches}
+              onClick={handleOpenArchitect}
+              disabled={!projectMatches}
               title={generated
-                ? text(`AI 重新生成「${meta.label}」`, `AI Regenerate “${meta.labelEn}”`)
-                : text(`AI 生成「${meta.label}」`, `AI Generate “${meta.labelEn}”`)}
+                ? text(`交给架构助手完善「${meta.label}」`, `Refine “${meta.labelEn}” with architect`)
+                : text(`交给架构助手构思「${meta.label}」`, `Plan “${meta.labelEn}” with architect`)}
             >
-              {checkingArch ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-              {generated ? text('AI 重新生成', 'AI Regenerate') : text('AI 生成', 'AI Generate')}
+              <Sparkles size={12} />
+              {generated ? text('AI 完善', 'AI refine') : text('AI 构思', 'AI plan')}
             </Button>
           )}
           {stepKey === 'synopsis' && (
@@ -800,10 +727,10 @@ function ArchFileViewerSession({
                 'synopsis',
               )}
               disabled={!projectMatches}
-              title={text('在「情节」页面生成或续批', 'Generate or continue it on the Plot page')}
+              title={text('在「情节」页面构思或编辑', 'Plan or edit it on the Plot page')}
             >
               <Sparkles size={12} />
-              {text('生成情节', 'Generate plot')}
+              {text('编辑情节', 'Open plot')}
             </Button>
           )}
         </div>
@@ -879,22 +806,11 @@ function ArchFileViewerSession({
           onCharCountChange={setCharCount}
           hideStatusBar
           placeholder={text(
-            '尚未生成内容，点击右上角「AI 生成」或直接在此编辑...',
-            'No content yet. Click “AI Generate” in the top-right or start editing here...',
+            '尚未填写内容，点击右上角「AI 构思」或直接在此编辑...',
+            'No content yet. Click “AI plan” in the top-right or start editing here...',
           )}
         />
       </div>
-
-      {/* AI 生成确认弹窗（仅架构三块） */}
-      {architectureStepKey && (
-        <ArchitectureConfirmDialog
-          isOpen={showDialog}
-          onClose={() => setShowDialog(false)}
-          archStatus={fullArchStatus}
-          initialSelectedSteps={[architectureStepKey]}
-          onConfirm={handleConfirm}
-        />
-      )}
     </div>
   )
 }

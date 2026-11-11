@@ -40,8 +40,8 @@ const replacementSessionA: ProjectSessionContext = {
 
 function customTemplate(content: string): PromptTemplate {
   return {
-    key: 'first_chapter_draft',
-    name: '第一章草稿',
+    key: 'generate_chapter_notes',
+    name: '章节要点生成',
     description: '项目覆盖',
     variables: {},
     content,
@@ -78,8 +78,8 @@ describe('project custom prompt session ownership', () => {
     ['zh-CN', true],
     ['en-US', false],
   ] as const)('%s project save migrates the untagged file only for Chinese', async (writingLanguage, migratesLegacy) => {
-    const legacyPath = `${sessionA.projectPath}/.vela/prompts/first_chapter_draft.json`
-    const localizedPath = `${sessionA.projectPath}/.vela/prompts/first_chapter_draft.${writingLanguage}.json`
+    const legacyPath = `${sessionA.projectPath}/.vela/prompts/generate_chapter_notes.json`
+    const localizedPath = `${sessionA.projectPath}/.vela/prompts/generate_chapter_notes.${writingLanguage}.json`
     const files = new Map<string, string>([[legacyPath, '{invalid json']])
     vi.mocked(ipc.invoke).mockResolvedValue({ templates: [], diagnostics: [] } as never)
     vi.mocked(ipc.invokeWithProjectSession).mockImplementation((async (
@@ -130,8 +130,8 @@ describe('project custom prompt session ownership', () => {
       if (channel === 'fs:check-exists') return true
       if (channel === 'fs:list-dir') {
         return [{
-          name: 'first_chapter_draft.json',
-          path: `${session.projectPath}/.vela/prompts/first_chapter_draft.json`,
+          name: 'generate_chapter_notes.json',
+          path: `${session.projectPath}/.vela/prompts/generate_chapter_notes.json`,
           isDir: false,
           size: 1,
           modifiedAt: '',
@@ -152,13 +152,13 @@ describe('project custom prompt session ownership', () => {
 
     setActiveProjectSessionContext(sessionB)
     await expect(loadProjectCustomPrompts(sessionB)).resolves.toBe(true)
-    expect(getPromptTemplate('first_chapter_draft', sessionB)?.content).toBe('project B override')
+    expect(getPromptTemplate('generate_chapter_notes', sessionB)?.content).toBe('project B override')
 
     delayedARead.resolve({ success: true, content: JSON.stringify(customTemplate('project A override')) })
     await expect(loadA).resolves.toBe(false)
 
-    expect(getPromptTemplate('first_chapter_draft', sessionB)?.content).toBe('project B override')
-    expect(getPromptTemplate('first_chapter_draft', sessionA)?.content).not.toBe('project A override')
+    expect(getPromptTemplate('generate_chapter_notes', sessionB)?.content).toBe('project B override')
+    expect(getPromptTemplate('generate_chapter_notes', sessionA)?.content).not.toBe('project A override')
   })
 
   it('keeps project prompt overrides when the same book is reopened', async () => {
@@ -169,8 +169,8 @@ describe('project custom prompt session ownership', () => {
       if (channel === 'fs:check-exists') return true
       if (channel === 'fs:list-dir') {
         return [{
-          name: 'first_chapter_draft.json',
-          path: `${session.projectPath}/.vela/prompts/first_chapter_draft.json`,
+          name: 'generate_chapter_notes.json',
+          path: `${session.projectPath}/.vela/prompts/generate_chapter_notes.json`,
           isDir: false,
           size: 1,
           modifiedAt: '',
@@ -186,11 +186,11 @@ describe('project custom prompt session ownership', () => {
     }) as never)
 
     await expect(loadProjectCustomPrompts(sessionA)).resolves.toBe(true)
-    expect(getPromptTemplate('first_chapter_draft', sessionA)?.content).toBe('override for project-a')
+    expect(getPromptTemplate('generate_chapter_notes', sessionA)?.content).toBe('override for project-a')
 
     setActiveProjectSessionContext(replacementSessionA)
-    expect(getPromptTemplate('first_chapter_draft', replacementSessionA)?.content).toBe('override for project-a')
-    expect(getPromptTemplate('first_chapter_draft', sessionA)?.content).toBe('override for project-a')
+    expect(getPromptTemplate('generate_chapter_notes', replacementSessionA)?.content).toBe('override for project-a')
+    expect(getPromptTemplate('generate_chapter_notes', sessionA)?.content).toBe('override for project-a')
   })
 
   it('isolates one damaged project prompt while publishing the remaining valid overrides', async () => {
@@ -203,22 +203,22 @@ describe('project custom prompt session ownership', () => {
       if (channel === 'fs:list-dir') {
         return [
           {
-            name: 'first_chapter_draft.json',
-            path: `${session.projectPath}/.vela/prompts/first_chapter_draft.json`,
+            name: 'generate_chapter_notes.json',
+            path: `${session.projectPath}/.vela/prompts/generate_chapter_notes.json`,
             isDir: false,
             size: 1,
             modifiedAt: '',
           },
           {
-            name: 'next_chapter_draft.json',
-            path: `${session.projectPath}/.vela/prompts/next_chapter_draft.json`,
+            name: 'update_character_cards.json',
+            path: `${session.projectPath}/.vela/prompts/update_character_cards.json`,
             isDir: false,
             size: 1,
             modifiedAt: '',
           },
         ]
       }
-      if (channel === 'fs:read-file' && String(args[0]).includes('first_chapter')) {
+      if (channel === 'fs:read-file' && String(args[0]).includes('generate_chapter_notes')) {
         return { success: true, content: JSON.stringify(customTemplate('partial override')) }
       }
       if (channel === 'fs:read-file') {
@@ -227,9 +227,9 @@ describe('project custom prompt session ownership', () => {
       throw new Error(`unexpected channel: ${channel}`)
     }) as never)
 
-    await expect(loadProjectCustomPrompts(sessionA)).rejects.toThrow('next_chapter_draft.json')
+    await expect(loadProjectCustomPrompts(sessionA)).rejects.toThrow('update_character_cards.json')
 
-    expect(getPromptTemplate('first_chapter_draft', sessionA)?.content).toBe('partial override')
+    expect(getPromptTemplate('generate_chapter_notes', sessionA)?.content).toBe('partial override')
     expect(ipc.invokeWithProjectSession).toHaveBeenCalledWith(
       sessionA,
       'fs:check-exists',
@@ -250,8 +250,8 @@ describe('project custom prompt session ownership', () => {
       if (channel === 'fs:check-exists') return true
       if (channel === 'fs:list-dir') {
         return [{
-          name: 'first_chapter_draft.json',
-          path: `${session.projectPath}/.vela/prompts/first_chapter_draft.json`,
+          name: 'generate_chapter_notes.json',
+          path: `${session.projectPath}/.vela/prompts/generate_chapter_notes.json`,
           isDir: false,
           size: 1,
           modifiedAt: '',
@@ -264,11 +264,11 @@ describe('project custom prompt session ownership', () => {
     }) as never)
 
     await expect(loadProjectCustomPrompts(sessionA)).resolves.toBe(true)
-    expect(getPromptTemplate('first_chapter_draft', sessionA)?.content).toBe('old workflow override')
+    expect(getPromptTemplate('generate_chapter_notes', sessionA)?.content).toBe('old workflow override')
 
     setActiveProjectSessionContext(sessionB)
 
-    expect(getPromptTemplate('first_chapter_draft', sessionA)?.content).not.toBe('old workflow override')
+    expect(getPromptTemplate('generate_chapter_notes', sessionA)?.content).not.toBe('old workflow override')
   })
 
   it('requires every workflow prompt lookup to await catalog hydration with its frozen project session', () => {
@@ -315,15 +315,15 @@ describe('project custom prompt session ownership', () => {
     }
 
     expect(getPromptVariableDescription(
-      BUILTIN_PROMPTS.find((template) => template.key === 'generate_global_config')!,
-      'user_idea',
+      BUILTIN_PROMPTS.find((template) => template.key === 'generate_novel_config_field')!,
+      'existing_config',
       'en-US',
-    )).toBe('Idea or premise provided by the author')
+    )).toBe('Existing author-confirmed novel configuration')
     expect(getPromptVariableDescription(
-      BUILTIN_PROMPTS.find((template) => template.key === 'next_chapter_draft')!,
-      'filtered_context',
+      BUILTIN_PROMPTS.find((template) => template.key === 'update_character_cards')!,
+      'existing_cards_json',
       'en-US',
-    )).toBe('Knowledge-base search results')
+    )).toBe('Existing character records as JSON')
     expect(getPromptVariableDescription(
       BUILTIN_PROMPTS.find((template) => template.key === 'consistency_check')!,
       'review_focus',

@@ -223,7 +223,7 @@ export function createReadProjectStateTool(
 
       if (wants('blueprints')) {
         if (blueprints.length === 0) {
-          parts.push(text('## 蓝图清单\n⚠️ 蓝图为空。建议先通过工作流生成章节蓝图。', '## Blueprints\n⚠️ There are no blueprints yet. Generate chapter blueprints with the workflow first.'))
+          parts.push(text('## 蓝图清单\n蓝图为空。可由「蓝图」助手通过 propose_chapter_blueprint 工具与作者共同规划并写入。', '## Blueprints\nThere are no blueprints yet. Plan and write chapter blueprints with the Blueprint assistant via propose_chapter_blueprint.'))
         } else {
           const sorted = [...blueprints].sort((a, b) => a.chapterNumber - b.chapterNumber)
           const shown = sorted.slice(0, MAX_CHAPTER_ROWS)

@@ -177,4 +177,23 @@ describe('assistant composer runtime pickers', () => {
     expect(useLLMStore.getState().taskModelRouting['drafting']?.modelId).toBe('p3')
     expect(useLLMStore.getState().taskModelRouting['assistant']?.modelId).toBe('p1')
   })
+
+  it('populates the writer textarea from composerDrafts without auto-sending and clears the consumed draft', async () => {
+    const sendMessage = vi.fn(async () => {})
+    useAgentStore.setState({ sendMessage: sendMessage as never })
+    useAgentStore.getState().setComposerDraft('writer', '请按第 1 章蓝图起草初稿')
+
+    await act(async () => root.render(<AgentInputBox assistantType="writer" />))
+    const textarea = container.querySelector<HTMLTextAreaElement>('textarea')
+    expect(textarea?.value).toBe('请按第 1 章蓝图起草初稿')
+    expect(useAgentStore.getState().composerDrafts.writer).toBe('')
+    expect(sendMessage).not.toHaveBeenCalled()
+
+    await act(async () => {
+      useAgentStore.getState().setComposerDraft('writer', '追加后续场景要求')
+    })
+    expect(textarea?.value).toBe('追加后续场景要求')
+    expect(useAgentStore.getState().composerDrafts.writer).toBe('')
+    expect(sendMessage).not.toHaveBeenCalled()
+  })
 })

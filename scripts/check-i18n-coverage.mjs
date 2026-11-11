@@ -39,7 +39,8 @@ export const I18N_COVERAGE_BOUNDARIES = Object.freeze({
     'src/components/ui/Confirm.tsx',
     'src/components/ui/Dialog.tsx',
     'src/services/project-service.ts',
-    'src/services/workflows/architecture-workflow.ts',
+    'src/services/agent/assistant-handoff.ts',
+    'src/services/workflows/chapter-workflow.ts',
   ],
   rendererErrorBoundaries: [
     'src/stores/project-store.ts',
@@ -85,7 +86,8 @@ const enhancedCoverageFiles = new Set([
   'src/components/editor/ReviewReport.tsx',
   'src/components/panels/sidebar/CharactersView.tsx',
   'src/services/project-service.ts',
-  'src/services/workflows/architecture-workflow.ts',
+  'src/services/agent/assistant-handoff.ts',
+  'src/services/workflows/chapter-workflow.ts',
 ])
 
 const localizationCallees = new Set([

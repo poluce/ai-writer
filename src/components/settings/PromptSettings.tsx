@@ -34,17 +34,7 @@ type PromptSource = keyof typeof SOURCE_CONFIG
 
 const PROMPT_META_EN: Record<string, { name: string; description: string }> = {
   generate_novel_config_field: { name: 'Single configuration field', description: 'Complete one novel setting from existing author facts' },
-  generate_global_config: { name: 'Full configuration', description: 'Generate a complete novel configuration from a short idea' },
-  premise: { name: 'Story premise', description: 'Distill the central hook and chain of conflicts' },
-  character_dynamics: { name: 'Character map', description: 'Build character arcs, relationships, and conflicts' },
-  world_building: { name: 'World building', description: 'Build a world matrix that naturally creates conflict' },
-  synopsis: { name: 'Plot synopsis', description: 'Combine the architecture into a structured plot outline' },
-  chapter_blueprint_chunk: { name: 'Blueprint segment', description: 'Plan a selected range of chapter-level events' },
-  first_chapter_draft: { name: 'First chapter draft', description: 'Generate the complete first chapter' },
-  next_chapter_draft: { name: 'Next chapter draft', description: 'Generate the next chapter from context and its blueprint' },
-  refine_chapter: { name: 'Chapter revision', description: 'Improve a draft for clarity, craft, and impact' },
   analyze_writing_style: { name: 'Style analysis', description: 'Extract an actionable style profile from sample text' },
-  refine_from_review: { name: 'Review-driven revision', description: 'Revise a draft using findings from a review report' },
   generate_chapter_notes: { name: 'Chapter notes', description: 'Extract continuity notes from a completed chapter' },
   update_character_cards: { name: 'Character state update', description: 'Update character records from chapter facts' },
   infer_novel_config: { name: 'Infer novel configuration', description: 'Infer a configuration from imported prose' },

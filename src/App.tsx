@@ -28,7 +28,6 @@ import NewProjectDialog from './components/dialogs/NewProjectDialog'
 import ImportNovelDialog from './components/dialogs/ImportNovelDialog'
 import AuthorManuscriptImportDialog from './components/dialogs/AuthorManuscriptImportDialog'
 import NovelDeconstructionDialog from './components/dialogs/NovelDeconstructionDialog'
-import ChapterCreationDialog from './components/dialogs/ChapterCreationDialog'
 import ExportDialog from './components/dialogs/ExportDialog'
 import SettingsModal from './components/settings/SettingsModal'
 import { ANIME_SKIN_URL } from './components/settings/AppearanceSettings'
@@ -40,6 +39,7 @@ import {
   projectSessionContextFromProject,
   sameProjectSessionContext,
 } from './shared/project-session-context'
+import { openChapterWritingWorkspace } from './services/agent/assistant-handoff'
 import { getAutoNextChapterPrefill, type NextChapterBlueprint } from './services/auto-next-chapter'
 import type { SkinId } from './shared/skin-types'
 
@@ -121,9 +121,6 @@ export default function App() {
   const closeAuthorManuscriptImport = useLayoutStore(s => s.closeAuthorManuscriptImport)
   const novelDeconstructionOpen = useLayoutStore(s => s.novelDeconstructionOpen)
   const closeNovelDeconstruction = useLayoutStore(s => s.closeNovelDeconstruction)
-  const chapterCreationOpen = useLayoutStore(s => s.chapterCreationOpen)
-  const chapterCreationPrefill = useLayoutStore(s => s.chapterCreationPrefill)
-  const closeChapterCreation = useLayoutStore(s => s.closeChapterCreation)
   const initLLM = useLLMStore((s) => s.init)
   const loadRecentProjects = useProjectStore((s) => s.loadRecentProjects)
   const skinState = useSkinStore((s) => s.skinState)
@@ -169,11 +166,9 @@ export default function App() {
     const unsubAutoOpenNextChapter = globalEventBus.on('FINALIZE_COMPLETE', ({
       chapterNumber,
       projectSession,
-      source,
     }) => {
       void (async () => {
         try {
-          if (source === 'batch') return
           const isCurrentProjectSession = () => sameProjectSessionContext(
             projectSession,
             projectSessionContextFromProject(useProjectStore.getState().currentProject),
@@ -199,15 +194,17 @@ export default function App() {
             ),
           ])
           if (!isCurrentProjectSession()) return
-          const prefill = getAutoNextChapterPrefill(
+          const nextChapter = getAutoNextChapterPrefill(
             true,
             chapterNumber,
             blueprint as NextChapterBlueprint | null,
             existingDraft !== null,
           )
-          if (prefill) useLayoutStore.getState().openChapterCreation(prefill)
+          if (nextChapter) {
+            await openChapterWritingWorkspace(nextChapter, projectSession)
+          }
         } catch (error) {
-          console.warn('[AutoNextChapter] 无法打开下一章创作窗口:', error)
+          console.warn('[AutoNextChapter] 无法打开下一章写作工作区:', error)
         }
       })()
     })
@@ -385,11 +382,6 @@ export default function App() {
         <ImportNovelDialog
           open={importNovelOpen && !novelDeconstructionOpen && !authorManuscriptImportOpen}
           onClose={closeImportNovel}
-        />
-        <ChapterCreationDialog
-          isOpen={chapterCreationOpen}
-          prefill={chapterCreationPrefill}
-          onClose={closeChapterCreation}
         />
         <ExportDialog
           isOpen={exportOpen}

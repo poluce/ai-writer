@@ -98,7 +98,6 @@ export function buildL1AgentContext(
     if (layout.settingsOpen) dialogs.push(label('设置', 'settings'))
     if (layout.newProjectOpen) dialogs.push(label('新建项目', 'new project'))
     if (layout.importNovelOpen) dialogs.push(label('导入小说', 'import novel'))
-    if (layout.chapterCreationOpen) dialogs.push(label('创建章节', 'create chapter'))
     parts.push(
       `${label('左侧栏', 'Sidebar')}: ${sidebar}`,
       `${label('右侧栏', 'Right panel')}: ${right}`,

@@ -4,7 +4,8 @@ import { createRoot, type Root } from 'react-dom/client'
 
 import type { ProjectData } from '../../../shared/ipc-channels'
 import type { AuthoritativeChapterSequence } from '../../../shared/author-manuscript-import'
-import type { ChapterBlueprint } from '../../../services/workflows/directory-workflow'
+import type { ChapterBlueprint } from '../../../services/blueprint-domain'
+import { useAgentStore } from '../../../stores/agent-store'
 import { resetEditorSessionStores, useEditorStore } from '../../../stores/editor-store'
 import { useLayoutStore } from '../../../stores/layout-store'
 import { useProjectStore } from '../../../stores/project-store'
@@ -12,6 +13,7 @@ import { toast } from '../../ui/Toast'
 import ChapterCardEditor from '../ChapterCardEditor'
 
 const PROJECT_PATH = 'C:\\novels\\chapter-write-entry'
+const originalAgentState = useAgentStore.getState()
 const originalEditorState = useEditorStore.getState()
 const originalLayoutState = useLayoutStore.getState()
 const originalProjectState = useProjectStore.getState()
@@ -67,6 +69,8 @@ function installIpc(options: {
   onClearGeneratedText?: () => void
   authoritySequence?: AuthoritativeChapterSequence | (() => AuthoritativeChapterSequence)
 } = {}) {
+  const drafts = new Map<number, { id: number; chapterNumber: number; chapterTitle?: string; version: number; status: string; source: string; content: string }>()
+  let nextDraftId = 101
   const invoke = vi.fn(async (channel: string, ...args: unknown[]) => {
     if (channel === 'db:blueprint-get-all') return options.blueprints ?? [blueprint(1)]
     if (channel === 'db:draft-authority-sequence') return typeof options.authoritySequence === 'function'
@@ -81,6 +85,36 @@ function installIpc(options: {
     if (channel === 'db:draft-get-finalized') {
       const chapterNumber = args[0] as number
       return options.finalizedChapter?.(chapterNumber) ?? null
+    }
+    if (channel === 'db:draft-get-latest') {
+      const chapterNumber = args[0] as number
+      return Array.from(drafts.values()).find(d => d.chapterNumber === chapterNumber) ?? null
+    }
+    if (channel === 'db:draft-create') {
+      const input = args[0] as { chapterNumber: number; version: number; source: string; content: string }
+      const id = nextDraftId++
+      const row = {
+        id,
+        chapterNumber: input.chapterNumber,
+        chapterTitle: '雨夜启程',
+        version: input.version,
+        status: 'draft',
+        source: input.source,
+        content: input.content,
+      }
+      drafts.set(id, row)
+      return { success: true, id }
+    }
+    if (channel === 'db:draft-get-meta') {
+      return drafts.get(args[0] as number) ?? null
+    }
+    if (channel === 'db:draft-get-full') {
+      const row = drafts.get(args[0] as number)
+      return row ? { id: row.id, content: row.content } : null
+    }
+    if (channel === 'db:draft-list') {
+      const chapterNumber = args[0] as number
+      return Array.from(drafts.values()).filter(d => d.chapterNumber === chapterNumber)
     }
     if (channel === 'db:project-clear-generated-data') {
       options.onClearGeneratedText?.()
@@ -112,7 +146,8 @@ async function renderEditor() {
 
 beforeEach(() => {
   resetEditorSessionStores()
-  useLayoutStore.setState({ chapterCreationOpen: false, chapterCreationPrefill: null })
+  useAgentStore.setState({ composerDrafts: {} })
+  useLayoutStore.setState({ aiPanelOpen: false, rightView: 'agent' })
   useProjectStore.setState({ currentProject: project(), fileTree: [], loading: false })
   installIpc()
   container = document.createElement('div')
@@ -126,6 +161,7 @@ afterEach(async () => {
   root = undefined
   container = undefined
   Reflect.deleteProperty(window, 'velaAPI')
+  useAgentStore.setState(originalAgentState)
   useEditorStore.setState(originalEditorState)
   useLayoutStore.setState(originalLayoutState)
   useProjectStore.setState(originalProjectState)
@@ -148,7 +184,7 @@ describe('ChapterCardEditor writing entry', () => {
 
     await vi.waitFor(() => {
       expect(container?.textContent).toContain('写作第10章')
-      expect(container?.textContent).toContain('批量创作')
+      expect(container?.textContent).not.toContain('批量创作')
     })
   })
 
@@ -221,7 +257,7 @@ describe('ChapterCardEditor writing entry', () => {
     expect(container?.textContent).not.toContain('批量创作')
   })
 
-  it('shows Write Chapter 1 after blueprints are available and opens the chapter-creation workbench', async () => {
+  it('shows Write Chapter 1 after blueprints are available and hands off to the draft editor and writer assistant', async () => {
     await renderEditor()
 
     await vi.waitFor(() => {
@@ -233,9 +269,21 @@ describe('ChapterCardEditor writing entry', () => {
     expect(writeButton).toBeDefined()
     await act(async () => writeButton?.click())
 
-    expect(useLayoutStore.getState()).toMatchObject({
-      chapterCreationOpen: true,
-      chapterCreationPrefill: expect.objectContaining({ chapterNumber: 1, title: '雨夜启程' }),
+    await vi.waitFor(() => {
+      expect(useLayoutStore.getState()).toMatchObject({
+        aiPanelOpen: true,
+        rightView: 'writer',
+      })
+      expect(useEditorStore.getState().tabs).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          type: 'chapter',
+          chapterNumber: 1,
+          draftId: 101,
+          projectKey: PROJECT_PATH,
+        }),
+      ]))
+      expect(useAgentStore.getState().composerDrafts.writer).toContain('雨夜启程')
+      expect(useAgentStore.getState().composerDrafts.writer).toContain('建立主角的首个目标')
     })
   })
 

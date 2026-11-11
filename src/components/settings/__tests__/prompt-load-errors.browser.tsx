@@ -24,8 +24,8 @@ it('checks project prompt diagnostics for the language selected in settings', as
     if (channel === 'prompt:load-global') throw new Error('global unavailable in project diagnostic fixture')
     if (channel === 'fs:check-exists') return true
     if (channel === 'fs:list-dir') return [{
-      name: 'premise.zh-CN.json',
-      path: 'C:/novels/english/.vela/prompts/premise.zh-CN.json',
+      name: 'generate_novel_config_field.zh-CN.json',
+      path: 'C:/novels/english/.vela/prompts/generate_novel_config_field.zh-CN.json',
       isDir: false,
     }]
     if (channel === 'fs:read-file') return { success: true, content: '{invalid json' }

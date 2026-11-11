@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto'
 import type { StepCallbacks, WorkflowContext } from '../../../stores/workflow-store'
 import { useLocaleStore } from '../../../stores/locale-store'
 import { useProjectStore } from '../../../stores/project-store'
-import { createChapterWorkflow, createRepairFinalizeWorkflow } from '../chapter-workflow'
+import { createFinalizeWorkflow, createRepairFinalizeWorkflow } from '../chapter-workflow'
 
 const postProcess = vi.hoisted(() => ({
   params: [] as Array<Record<string, unknown>>,
@@ -72,22 +72,23 @@ afterEach(() => {
 })
 
 describe('createRepairFinalizeWorkflow', () => {
-  it('scopes direct writing and repair to the target chapter', () => {
-    const writing = createChapterWorkflow({
+  it('scopes finalization and repair to the target chapter', () => {
+    const finalize = createFinalizeWorkflow({
       projectPath: PROJECT_PATH,
       chapterNumber: 3,
-      title: '第三章',
-      role: '发展',
-      purpose: '推进冲突',
-      characters: [],
-      keyEvents: '冲突升级',
-      wordsTarget: 4200,
+      chapterTitle: '第三章',
+      draftPath: 'vela://draft/17',
+      draftContent: '已定稿正文',
     }, PROJECT_SESSION)
     const repair = createRepairFinalizeWorkflow(3, PROJECT_PATH, PROJECT_SESSION)
 
-    expect(writing).toMatchObject({
-      chapterWordsTarget: 4200,
-      resourceKeys: ['chapter:3'],
+    expect(finalize).toMatchObject({
+      resourceKeys: [
+        'chapter:3',
+        'character-roster',
+        'continuity',
+        'chapter-summary',
+      ],
       readResourceKeys: ['novel-config', 'architecture', 'blueprints'],
     })
     expect(repair).toMatchObject({

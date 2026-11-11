@@ -19,7 +19,6 @@ import { readActiveProject } from './active-project'
 import { useCharacterStore } from '../stores/character-store'
 import { useDraftStore } from '../stores/draft-store'
 import { useEditorStore } from '../stores/editor-store'
-import { useWorkflowStore } from '../stores/workflow-store'
 import { useLocaleStore } from '../stores/locale-store'
 import { useAgentStore } from '../stores/agent-store'
 import { skillRegistry } from './agent/skill-registry'
@@ -66,16 +65,6 @@ function isProjectSessionCurrent(projectSession: ProjectSessionContext): boolean
   )
 }
 
-function isActiveWorkflowForProjectSession(
-  runId: string,
-  projectSession: ProjectSessionContext,
-): boolean {
-  return useWorkflowStore.getState().activeRuns.some(run => (
-    run.id === runId
-    && sameProjectSessionContext(run.projectSession, projectSession)
-  ))
-}
-
 /**
  * 初始化 ProjectService — 注册所有事件监听与项目生命周期钩子
  * 应在 App 挂载时调用一次
@@ -100,14 +89,9 @@ export function initProjectService(): void {
     globalEventBus.on('WORKFLOW_COMPLETE', (payload) => runProjectEventTask(
       () => text('工作流完成后的项目刷新失败', 'Could not refresh project data after workflow completion'),
       async () => {
+      // 工作流完成 → 刷新文件树 + 草稿（覆盖保留工作流类型）
       console.log('[ProjectService] WORKFLOW_COMPLETE 事件触发:', payload.type)
       if (!isProjectSessionCurrent(payload.projectSession)) return
-
-      // config_generation 类型只需要轻量刷新（避免不必要的文件扫描）
-      if (payload.type === 'config_generation') {
-        console.log('[ProjectService] config_generation 完成，跳过资源刷新')
-        return
-      }
 
       // 刷新文件树（所有工作流完成后都需要）
       console.log('[ProjectService] 开始刷新文件树...')
@@ -120,8 +104,8 @@ export function initProjectService(): void {
       console.log('[ProjectService] 文件树刷新完成')
 
       // 根据工作流类型精准刷新
-      if (payload.type === 'chapter_creation') {
-        // 章节创作完成 → 刷新草稿 + 角色卡（定稿后处理会更新角色状态）
+      if (payload.type === 'chapter_finalize') {
+        // 章节定稿完成 → 刷新草稿 + 角色卡（定稿后处理会更新角色状态）
         console.log('[ProjectService] 刷新草稿和角色卡...')
         await Promise.all([
           useDraftStore.getState().loadAllDrafts(payload.projectPath, payload.projectSession),
@@ -129,12 +113,6 @@ export function initProjectService(): void {
         ])
         if (!isProjectSessionCurrent(payload.projectSession)) return
         console.log('[ProjectService] 草稿和角色卡刷新完成')
-      } else if (payload.type === 'architecture_generation') {
-        // 架构生成完成 → 角色卡可能被提取
-        console.log('[ProjectService] 刷新角色卡...')
-        await useCharacterStore.getState().load(payload.projectPath, payload.projectSession)
-        if (!isProjectSessionCurrent(payload.projectSession)) return
-        console.log('[ProjectService] 角色卡刷新完成')
       }
       },
     ))
@@ -168,36 +146,6 @@ export function initProjectService(): void {
           payload.projectSession,
         ),
       ])
-      if (!isProjectSessionCurrent(payload.projectSession)) return
-      },
-    ))
-  )
-
-  // 架构后处理完成 → 刷新角色卡
-  disposers.push(
-    globalEventBus.on('ARCH_POSTPROCESS_UPDATED', (payload) => runProjectEventTask(
-      () => text('架构后处理刷新失败', 'Could not refresh character cards after architecture post-processing'),
-      async () => {
-      if (
-        !isProjectSessionCurrent(payload.projectSession)
-        || !isActiveWorkflowForProjectSession(payload.runId, payload.projectSession)
-      ) return
-      await useCharacterStore.getState().load(payload.projectPath, payload.projectSession)
-      if (!isProjectSessionCurrent(payload.projectSession)) return
-      },
-    ))
-  )
-
-  // 角色卡提取失败 → 也刷新角色卡（确保 UI 状态一致）
-  disposers.push(
-    globalEventBus.on('CHARACTER_EXTRACT_FAILED', (payload) => runProjectEventTask(
-      () => text('角色卡失败状态刷新失败', 'Could not refresh character-card failure status'),
-      async () => {
-      if (
-        !isProjectSessionCurrent(payload.projectSession)
-        || !isActiveWorkflowForProjectSession(payload.runId, payload.projectSession)
-      ) return
-      await useCharacterStore.getState().load(payload.projectPath, payload.projectSession)
       if (!isProjectSessionCurrent(payload.projectSession)) return
       },
     ))

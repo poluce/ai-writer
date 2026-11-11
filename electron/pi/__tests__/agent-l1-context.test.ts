@@ -20,7 +20,6 @@ describe('buildL1AgentContext', () => {
         settingsOpen: false,
         newProjectOpen: false,
         importNovelOpen: false,
-        chapterCreationOpen: false,
       },
     }, 'zh-CN')
 
@@ -52,7 +51,7 @@ describe('buildL1AgentContext', () => {
   it('localizes labels and uses the workflow type in English', () => {
     const text = buildL1AgentContext({
       tabs: [{ name: 'Chapter 1', type: 'chapter', active: true, unsaved: false }],
-      workflow: { title: '起草第一章', type: 'chapter_creation', currentStepIndex: 0, stepCount: 3 },
+      workflow: { title: '定稿第一章', type: 'chapter_finalize', currentStepIndex: 0, stepCount: 1 },
       project: { open: true, name: 'Book' },
       changes: [{ kind: 'project', from: 'closed', to: 'open:/tmp/book' }],
     }, 'en-US')
@@ -61,10 +60,10 @@ describe('buildL1AgentContext', () => {
     expect(text).toContain('Editor state')
     expect(text).toContain('[active]')
     expect(text).toContain('Workflow status')
-    expect(text).toContain('chapter_creation')
+    expect(text).toContain('chapter_finalize')
     expect(text).toContain('progress')
     expect(text).toContain('UI changes since the last turn')
-    expect(text).not.toContain('起草第一章')
+    expect(text).not.toContain('定稿第一章')
     expect(text).not.toContain('编辑器状态')
   })
 })

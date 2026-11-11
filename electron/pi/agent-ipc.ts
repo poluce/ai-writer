@@ -135,21 +135,10 @@ function mainWindow(): BrowserWindow | null {
   return BrowserWindow.getAllWindows()[0] ?? null
 }
 
-function isWorkflowLaunchReceipt(value: unknown): boolean {
-  if (!value || typeof value !== 'object') return false
-  const record = value as { runId?: unknown; status?: unknown; name?: unknown }
-  return typeof record.runId === 'string'
-    && typeof record.status === 'string'
-    && typeof record.name === 'string'
-}
-
 function isRendererActionResult(value: unknown): value is RendererActionResult {
   if (!value || typeof value !== 'object') return false
   const result = value as RendererActionResult
-  if (result.ok === true) {
-    return typeof result.summary === 'string'
-      && (result.workflow === undefined || isWorkflowLaunchReceipt(result.workflow))
-  }
+  if (result.ok === true) return typeof result.summary === 'string'
   if (result.ok === false) return typeof result.error === 'string'
   return false
 }
@@ -162,14 +151,14 @@ export function registerAgentController(): void {
       const language = resolveLanguage()
       return language === 'en-US'
         ? {
-          noWindow: 'The application window is not available, so the workflow was not started.',
-          timeout: 'Workflow start timed out before the task panel registered the run.',
-          aborted: 'Workflow start was aborted before the task panel registered the run.',
+          noWindow: 'The application window is not available, so the editor action could not run.',
+          timeout: 'The editor action timed out before returning a result.',
+          aborted: 'The editor action was aborted before returning a result.',
         }
         : {
-          noWindow: '应用窗口不可用，工作流未启动。',
-          timeout: '工作流启动超时，任务中心未确认注册。',
-          aborted: '工作流启动已中止，任务中心未确认注册。',
+          noWindow: '应用窗口不可用，编辑器操作未能执行。',
+          timeout: '编辑器操作超时，未能收到确认结果。',
+          aborted: '编辑器操作已中止。',
         }
     },
   })

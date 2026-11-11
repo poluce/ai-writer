@@ -13,7 +13,6 @@ import {
   type GenerationSession,
   type GenerationTask,
 } from '../../generation/generation-harness'
-import { planBlueprintGenerationCost } from '../blueprint-batch-policy'
 import { StructuredContractDiagnostic } from '../../../shared/structured-contract-diagnostic'
 
 type Blueprint = {
@@ -242,7 +241,7 @@ describe('StructuredBatchExecutor seam', () => {
       items: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
       limits: {
         maxBatchItems: 5,
-        maxCompactSingleFallbacks: planBlueprintGenerationCost(11).maxCompactSingleFallbacks,
+        maxCompactSingleFallbacks: 11,
       },
     })
 

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { useProjectStore } from '../../stores/project-store'
 import { ipc } from '../../services/ipc-client'
-import { migrateLegacyCharacterRoster } from '../../services/workflows/architecture-workflow'
+import { migrateLegacyCharacterRoster } from '../../services/character-roster-migration'
 import {
   captureProjectSession,
   isProjectSessionCurrent,

@@ -3,12 +3,11 @@
  *
  * 这是渲染层的 UI 模型，不是工具协议：主进程的工具通过 Pi 的
  * `AgentToolResult.details` 返回结构化结果，渲染层用
- * `artifactFromToolResult` 把 details 映射成卡片（文件已写入 / 工作流已启动 /
- * 已打开标签页），保持 Pi 迁移前的用户可见行为。
+ * `artifactFromToolResult` 把 details 映射成卡片（文件已写入 /
+ * 已打开标签页），保持用户可见反馈。
  */
 
 import type { ProjectSessionContext } from './ipc-channels'
-import type { WorkflowStatus } from './workflow-status'
 
 export interface ToolArtifactBase {
   /** 显示名称 */
@@ -19,21 +18,11 @@ export interface ToolArtifactBase {
   readonly projectSession: ProjectSessionContext
 }
 
-export type ToolArtifact =
-  | (ToolArtifactBase & {
-    readonly type: 'file_created' | 'file_modified' | 'tab_opened'
-    /** 文件路径或资源标识 */
-    readonly path?: string
-    readonly runId?: never
-    readonly status?: never
-  })
-  | (ToolArtifactBase & {
-    readonly type: 'workflow_started'
-    /** A workflow artifact is itself an observable launch receipt. */
-    readonly runId: string
-    readonly status: WorkflowStatus
-    readonly path?: never
-  })
+export type ToolArtifact = ToolArtifactBase & {
+  readonly type: 'file_created' | 'file_modified' | 'tab_opened'
+  /** 文件路径或资源标识 */
+  readonly path?: string
+}
 
 export function createToolArtifact<T extends ToolArtifact>(artifact: T): T {
   return Object.freeze({
@@ -56,8 +45,7 @@ function detailText(details: Record<string, unknown>, key: string): string | und
 /**
  * 把主进程工具的 details 映射成产物卡片；不产生产物的工具返回 null。
  *
- * 与 Pi 迁移前的行为一致：只有真正提交成功的文件写入、已完成注册的工作流
- * 启动，以及打开编辑器才会出现卡片。
+ * 只有真正提交成功的文件写入以及打开编辑器才会出现卡片。
  */
 export function artifactFromToolResult(
   toolName: string,

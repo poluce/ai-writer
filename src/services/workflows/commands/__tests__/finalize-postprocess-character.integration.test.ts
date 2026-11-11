@@ -23,7 +23,6 @@ import type { StepCallbacks, WorkflowContext } from '../../../../stores/workflow
 import { useLLMStore } from '../../../../stores/llm-store'
 import { useProjectStore } from '../../../../stores/project-store'
 import { RunFinalizePostProcessCommand } from '../finalize-chapter.command'
-import { GenerateDraftCommand } from '../generate-draft.command'
 import { workflowRuntimeDependencies } from './workflow-generation-runtime.fixture'
 
 let projectPath = ''
@@ -429,39 +428,10 @@ describe('RunFinalizePostProcessCommand character-state persistence', () => {
       },
     })
     expect(CharacterRosterRepository.read().revision).toBe(2)
-
-    let nextChapterPrompt = ''
-    const draftDependencies = {
-      createRuntime: async () => ({
-        execute: async (operation: (scope: { session: unknown }) => Promise<unknown>) => operation({
-          session: {
-            complete: async (task: { messages: Array<{ role: string; content: string }> }) => {
-              nextChapterPrompt = task.messages.find(message => message.role === 'user')?.content ?? ''
-              throw new Error('next-chapter-prompt-captured')
-            },
-          },
-        }),
-        close: async () => {},
-      }),
-    }
-    await expect(new GenerateDraftCommand({
-      projectPath,
-      chapterNumber: 3,
-      title: 'After the Handoff',
-      role: 'development',
-      purpose: 'continue after the handoff',
-      keyEvents: 'Zhou Yan leaves with the key',
-      characters: ['Lin Lan'],
-      userGuidance: '',
-      wordsTarget: 100,
-    }, { dependencies: draftDependencies as never }).execute({
-      step: {},
-      context: { ...workflowContext, runId: 'next-chapter-probe' },
-      callbacks: { ...callbacks(), replaceText: vi.fn() },
-    })).rejects.toThrow('next-chapter-prompt-captured')
-    expect(nextChapterPrompt).toContain('Lin Lan (protagonist)')
-    expect(nextChapterPrompt).toContain('keyItems@chapter1: brass key')
-    expect(nextChapterPrompt).not.toContain('handed the brass key to Zhou Yan')
+    expect(CharacterRosterRepository.read().entries[0]?.currentState?.provenance?.keyItems).toMatchObject({
+      kind: 'author',
+      chapterNumber: 1,
+    })
   })
 
   it('keeps protected author and legacy state while retaining source-only lookup candidates', async () => {
@@ -509,40 +479,10 @@ describe('RunFinalizePostProcessCommand character-state persistence', () => {
       }),
     ]))
     insertFinalizedDraft(8, 3, 'Chapter 3 ends with Lin Lan opening the tide ledger before dawn.')
-
-    let nextChapterPrompt = ''
-    const draftDependencies = {
-      createRuntime: async () => ({
-        execute: async (operation: (scope: { session: unknown }) => Promise<unknown>) => operation({
-          session: {
-            complete: async (task: { messages: Array<{ role: string; content: string }> }) => {
-              nextChapterPrompt = task.messages.find(message => message.role === 'user')?.content ?? ''
-              throw new Error('candidate-source-prompt-captured')
-            },
-          },
-        }),
-        close: async () => {},
-      }),
-    }
-    await expect(new GenerateDraftCommand({
-      projectPath,
-      chapterNumber: 4,
-      title: 'Before Dawn',
-      role: 'development',
-      purpose: 'continue the tide investigation',
-      keyEvents: 'Lin Lan reads the ledger two chapters after the handoff',
-      characters: ['Lin Lan'],
-      userGuidance: '',
-      wordsTarget: 100,
-    }, { dependencies: draftDependencies as never }).execute({
-      step: {},
-      context: { ...workflowContext, runId: 'candidate-source-probe' },
-      callbacks: { ...callbacks(), replaceText: vi.fn() },
-    })).rejects.toThrow('candidate-source-prompt-captured')
-    expect(nextChapterPrompt).toContain('Lin Lan places the brass key in Zhou Yan\'s palm at New Harbor.')
-    expect(nextChapterPrompt).toContain('keyItems@chapter1: brass key')
-    expect(nextChapterPrompt).not.toContain('"field":"keyItems"')
-    expect(nextChapterPrompt).not.toContain('finalized#2:evidence-not-locatable')
+    const laterProjection = SummaryRepository.listFinalizedContinuityBefore(4)
+    expect(laterProjection[0]?.characterStateCandidates).toEqual(expect.arrayContaining([
+      expect.objectContaining({ characterName: 'Lin Lan', field: 'keyItems', value: '' }),
+    ]))
   })
 
   it('rejects an older Chinese chapter retry after a newer character state is committed', async () => {

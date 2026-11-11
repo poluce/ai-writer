@@ -120,6 +120,8 @@ export interface AgentState {
   dataProjectSession: ProjectSessionContext | null
   /** 待随下一句用户消息发送的草稿选区引用 */
   composerCitations: DraftPassageCitation[]
+  /** 按助手类型预填到输入框的草稿上下文文本（不自动发送） */
+  composerDrafts: Partial<Record<AssistantType, string>>
   /** 助手执行模式：'plan'（审查计划）| 'writing'（全自动写作） */
   executionMode: 'plan' | 'writing'
 
@@ -166,6 +168,7 @@ export interface AgentState {
   hydrateFromArchive: (projectSession: ProjectSessionContext, archive: AgentConversationArchive) => void
   addComposerCitation: (citation: DraftPassageCitation) => void
   removeComposerCitation: (id: string) => void
+  setComposerDraft: (assistantType: AssistantType, draft: string) => void
 }
 
 // ===== 工具函数 =====
@@ -421,6 +424,7 @@ export const useAgentStore = create<AgentState>()((set, get) => ({
   toolsInitialized: false,
   dataProjectSession: null,
   composerCitations: [],
+  composerDrafts: {},
 
   setExecutionMode: (mode) => {
     try {
@@ -558,6 +562,7 @@ export const useAgentStore = create<AgentState>()((set, get) => ({
       activeRequestId: null,
       dataProjectSession: null,
       composerCitations: [],
+      composerDrafts: {},
     }
     for (const type of ASSISTANT_TYPES) {
       Object.assign(patch, activeConversationPatch(type, null))
@@ -577,6 +582,15 @@ export const useAgentStore = create<AgentState>()((set, get) => ({
   removeComposerCitation: (id) => {
     set(state => ({
       composerCitations: state.composerCitations.filter(item => item.id !== id),
+    }))
+  },
+
+  setComposerDraft: (assistantType, draft) => {
+    set(state => ({
+      composerDrafts: {
+        ...state.composerDrafts,
+        [assistantType]: draft,
+      },
     }))
   },
 

@@ -3,7 +3,6 @@ import {
   AlertTriangle,
   BookOpen,
   Check,
-  ListChecks,
   MoreHorizontal,
   PenLine,
   Plus,
@@ -14,8 +13,6 @@ import {
   X,
 } from 'lucide-react'
 import { useProjectStore } from '../../stores/project-store'
-import { useWorkflowStore } from '../../stores/workflow-store'
-import { useLayoutStore } from '../../stores/layout-store'
 import { useCharacterStore } from '../../stores/character-store'
 import { ipc } from '../../services/ipc-client'
 import { clearProjectData } from '../../services/project-clear-service'
@@ -30,12 +27,11 @@ import {
   saveChapterBlueprint,
   saveAllBlueprints,
   type ChapterBlueprint,
-  type DirectoryWorkflowParams,
-} from '../../services/workflows/directory-workflow'
-import { launchCreativeWorkflow } from '../../services/workflows/creative-workflow-launcher'
-import { guardDirectoryGeneration } from '../../services/workflow-guards'
-import DirectoryConfigDialog from '../dialogs/DirectoryConfigDialog'
-import BatchChapterCreationDialog from '../dialogs/BatchChapterCreationDialog'
+} from '../../services/blueprint-domain'
+import {
+  handoffToBlueprint,
+  openChapterWritingWorkspace,
+} from '../../services/agent/assistant-handoff'
 import { Button } from '../ui/Button'
 import { MenuItem } from '../ui/MenuItem'
 import { toast } from '../ui/Toast'
@@ -99,7 +95,6 @@ export default function ChapterCardEditor({
   const characterCards = useCharacterStore(s => s.characters)
   const characterLoaded = useCharacterStore(s => s.loaded)
   const characterProjectSession = useCharacterStore(s => s.dataProjectSession)
-  const addLog = useWorkflowStore.getState().addLog
 
   const [blueprints, setBlueprints] = useState<ChapterBlueprint[]>([])
   const [saving, setSaving] = useState(false)
@@ -138,8 +133,6 @@ export default function ChapterCardEditor({
   const [nextWriteChapter, setNextWriteChapter] = useState<number | null>(null)
   const [authorityError, setAuthorityError] = useState<string | null>(null)
   const [legacyImportedTextRecoveryChapter, setLegacyImportedTextRecoveryChapter] = useState<number | null>(null)
-  const [showBlueprintDialog, setShowBlueprintDialog] = useState(false)
-  const [showBatchCreationDialog, setShowBatchCreationDialog] = useState(false)
   const [recoveringLegacyImportedText, setRecoveringLegacyImportedText] = useState(false)
 
   const characterSuggestions = useMemo(() => {
@@ -288,13 +281,13 @@ export default function ChapterCardEditor({
     } catch (err) {
       if (!isCurrentProjectSession(projectSession)) return
       const message = errorMessage(err)
-      addLog('error', text(`自动保存蓝图失败：${message}`, 'Could not save chapter blueprints.'))
+      toast.error(text(`自动保存蓝图失败：${message}`, 'Could not save chapter blueprints.'))
       if (mountedRef.current) setAutoSaveState('error')
     } finally {
       saveInFlightRef.current = false
       if (mountedRef.current) setSaving(false)
     }
-  }, [addLog, currentWorkingState, persistProjectDraftState, projectKey, projectMatches, text])
+  }, [currentWorkingState, persistProjectDraftState, projectKey, projectMatches, text])
 
   const persistRef = useRef(persistDirtyBlueprints)
   useEffect(() => {
@@ -406,7 +399,7 @@ export default function ChapterCardEditor({
     } catch (error) {
       if (isLatestProjectRequest()) {
         setAuthorityError(errorMessage(error))
-        addLog('error', text('读取章节蓝图失败', 'Could not load chapter blueprints'))
+        toast.error(text('读取章节蓝图失败', 'Could not load chapter blueprints'))
       }
     } finally {
       if (isLatestProjectRequest()) setLoading(false)
@@ -416,7 +409,6 @@ export default function ChapterCardEditor({
     projectMatches,
     renderedProjectId,
     renderedProjectPath,
-    addLog,
     text,
     locale,
     applyVisibleDraftState,
@@ -432,17 +424,6 @@ export default function ChapterCardEditor({
 
   useEffect(() => {
     const unsubscribers = [
-      globalEventBus.on('WORKFLOW_COMPLETE', (payload) => {
-        if (
-          payload.type === 'directory'
-          && sameProjectSessionContext(
-            payload.projectSession,
-            currentProjectSessionForPath(projectKey),
-          )
-        ) {
-          loadBlueprints()
-        }
-      }),
       globalEventBus.on('FINALIZE_COMPLETE', ({ projectPath, projectSession }) => {
         if (
           !sameProjectPathKey(projectPath, projectKey)
@@ -641,47 +622,22 @@ export default function ChapterCardEditor({
     toast.success(text('已清空全部蓝图', 'All chapter blueprints cleared'))
   }
 
-  async function handleBatchGenerate(params: DirectoryWorkflowParams): Promise<void> {
+  function handlePlanBlueprints(): void {
     const projectSession = currentProjectSessionForPath(projectKey)
-    if (!projectMatches || !projectSession) {
-      throw new Error(text('项目会话已切换，未启动章节蓝图生成', 'The project changed, so blueprint generation was not started.'))
-    }
-
-    const guard = await guardDirectoryGeneration(projectKey, projectSession)
-    if (!isCurrentProjectSession(projectSession)) return
-    if (!guard.ok) {
-      addLog('error', text(`前置条件未满足：${guard.message}`, 'A required precondition is not met.'))
-      throw new Error(guard.message || text('章节蓝图生成前置条件未满足', 'Blueprint prerequisites are not met.'))
-    }
-    if (guard.message) {
-      const yes = await confirm(text(
-        `${guard.message}\n\n是否仍要继续生成？`,
-        'A precondition warning was reported. Continue generating anyway?',
-      ), {
-        title: text('前置条件警告', 'Precondition warning'),
-        confirmText: text('继续生成', 'Continue'),
-      })
-      if (!yes) throw new Error(text('已取消启动章节蓝图生成', 'Blueprint generation was cancelled.'))
-    }
-
-    if (!isCurrentProjectSession(projectSession)) {
-      addLog('error', text('项目已切换，未启动章节蓝图生成', 'The project changed, so chapter blueprint generation was not started.'))
-      throw new Error(text('项目已切换，未启动章节蓝图生成', 'The project changed, so chapter blueprint generation was not started.'))
-    }
-    await launchCreativeWorkflow({ workflow: 'generate_blueprint', params }, projectSession)
-    addLog('info', text('已启动章节蓝图生成', 'Chapter blueprint generation started'))
+    if (!projectMatches || !projectSession) return
+    handoffToBlueprint({
+      existingCount: blueprintsRef.current.length,
+      nextChapterNumber: nextWriteChapter ?? blueprintsRef.current.length + 1,
+      totalChapters: currentProject?.novelConfig.totalChapters,
+    })
   }
 
   function handleWriteChapter(bp: ChapterBlueprint): void {
-    if (!matchingDataProjectSession(projectKey, dataProjectSessionRef.current)) return
-    useLayoutStore.getState().openChapterCreation({
-      chapterNumber: bp.chapterNumber,
-      title: bp.title,
-      role: bp.role,
-      purpose: bp.purpose,
-      keyEvents: bp.keyEvents,
-      characters: bp.characters.join('、'),
-      userGuidance: bp.userGuidance || '',
+    const projectSession = matchingDataProjectSession(projectKey, dataProjectSessionRef.current)
+    if (!projectSession) return
+    void openChapterWritingWorkspace(bp, projectSession).catch((error) => {
+      const message = errorMessage(error)
+      toast.error(text(`无法打开章节写作区：${message}`, `Could not open the chapter writing workspace: ${message}`))
     })
   }
 
@@ -862,28 +818,13 @@ export default function ChapterCardEditor({
               <Button
                 variant="ai"
                 size="default"
-                onClick={() => setShowBlueprintDialog(true)}
+                onClick={handlePlanBlueprints}
                 disabled={!projectDataReady || Boolean(authorityError)}
-                title={text('AI 生成章节蓝图', 'Generate chapter blueprints with AI')}
+                title={text('交给蓝图助手共同规划章节细纲', 'Collaborate with the Blueprint assistant on chapter outlines')}
               >
                 <Sparkles size={12} />
-                {text('AI 生成蓝图', 'AI generate blueprints')}
+                {text('AI 规划蓝图', 'Plan with AI')}
               </Button>
-
-              {projectDataReady && nextWritableBlueprint && (
-                <Button
-                  variant="outline"
-                  size="default"
-                  onClick={() => setShowBatchCreationDialog(true)}
-                  title={text(
-                    '按连续章节蓝图启动受控批量创作任务（最高10章）',
-                    'Start a controlled batch writing task from consecutive chapter blueprints (maximum 10 chapters).',
-                  )}
-                >
-                  <ListChecks size={12} />
-                  {text('批量创作', 'Batch write')}
-                </Button>
-              )}
 
               <Button
                 variant="ghost"
@@ -1053,18 +994,6 @@ export default function ChapterCardEditor({
           </div>
         )}
 
-        <DirectoryConfigDialog
-          isOpen={showBlueprintDialog}
-          onClose={() => setShowBlueprintDialog(false)}
-          existingCount={visibleBlueprints.length}
-          onConfirm={handleBatchGenerate}
-        />
-        <BatchChapterCreationDialog
-          isOpen={showBatchCreationDialog}
-          startChapterNumber={nextWritableBlueprint?.chapterNumber ?? null}
-          onClose={() => setShowBatchCreationDialog(false)}
-        />
-
         {visibleBlueprints.length === 0 ? (
           <div className="chapter-ledger-empty-sheet">
             <BookOpen size={30} style={{ opacity: 0.45 }} />
@@ -1073,19 +1002,19 @@ export default function ChapterCardEditor({
             </div>
             <p className="max-w-md text-xs leading-relaxed">
               {text(
-                '可用「AI 生成蓝图」按故事架构批量拆解细纲，或点击右上角手动新建一章。',
-                'Use AI generate blueprints to outline from your story architecture, or create a chapter manually.',
+                '可用「AI 规划蓝图」交给蓝图助手一起拆解细纲，或点击右上角手动新建一章。',
+                'Use “Plan with AI” to outline with the Blueprint assistant, or create a chapter manually.',
               )}
             </p>
             <div className="flex items-center gap-2 pt-1">
               <Button
                 variant="ai"
                 size="default"
-                onClick={() => setShowBlueprintDialog(true)}
+                onClick={handlePlanBlueprints}
                 disabled={!projectDataReady || Boolean(authorityError)}
               >
                 <Sparkles size={12} />
-                {text('AI 生成蓝图', 'AI generate blueprints')}
+                {text('AI 规划蓝图', 'Plan with AI')}
               </Button>
               <Button
                 variant="outline"

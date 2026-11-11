@@ -1,6 +1,6 @@
 import type { BlueprintData } from '../shared/blueprint'
 
-/** 章节卡草稿使用的蓝图类型，与 directory-workflow 的 ChapterBlueprint 同源。 */
+/** 章节卡草稿使用的蓝图类型，与 blueprint-domain 的 ChapterBlueprint 同源。 */
 type ChapterBlueprint = BlueprintData
 
 export const CHAPTER_CARD_TAB_ID = 'chapter-card-editor'

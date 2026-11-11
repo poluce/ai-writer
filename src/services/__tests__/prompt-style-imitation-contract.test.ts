@@ -33,19 +33,4 @@ describe('reference style imitation prompt contract', () => {
     expect(enUS?.content).not.toContain('two to four concise items per field')
     expect(enUS?.content).not.toContain('Hard constraints for drafting prompts')
   })
-
-  it.each(['first_chapter_draft', 'next_chapter_draft', 'refine_chapter'] as const)(
-    'keeps writing style subordinate to story truth in the %s prompt',
-    (key) => {
-      const zhCN = getBuiltinPromptTemplate(key, 'zh-CN')
-      const enUS = getBuiltinPromptTemplate(key, 'en-US')
-
-      expect(zhCN?.systemSuffix).toContain('文风仅用于选择表达方式')
-      expect(zhCN?.systemSuffix).toContain('作者明确事实与指导、实际前文、本章关键因果和本章篇幅优先')
-      expect(zhCN?.systemSuffix).toContain('不得把作者明确事实或要求降格为推测')
-      expect(enUS?.systemSuffix).toContain('Writing style selects expression only')
-      expect(enUS?.systemSuffix).toContain('actual prior prose')
-      expect(enUS?.systemSuffix).toContain('relabel explicit author facts or requirements as guesses')
-    },
-  )
 })

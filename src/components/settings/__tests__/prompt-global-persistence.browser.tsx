@@ -36,10 +36,10 @@ afterEach(async () => {
 
 describe('global prompt persistence at the settings boundary', () => {
   it('shows a globally saved template after a cold renderer start', async () => {
-    const builtin = BUILTIN_PROMPTS.find((template) => template.key === 'generate_global_config')
+    const builtin = BUILTIN_PROMPTS.find((template) => template.key === 'generate_novel_config_field')
     if (!builtin) throw new Error('Missing built-in prompt fixture')
 
-    const persistedContent = '这是重启后仍应生效的全局提示词 {{user_idea}} {{number_of_chapters}} {{word_number}}'
+    const persistedContent = '这是重启后仍应生效的全局提示词 {{existing_config}} {{field_label}} {{field_requirements}}'
     const invoke = vi.fn(async (channel: string) => {
       if (channel === 'prompt:load-global') {
         return { templates: [{ ...builtin, content: persistedContent }], diagnostics: [] }
@@ -65,7 +65,7 @@ describe('global prompt persistence at the settings boundary', () => {
       root?.render(<PromptSettings />)
     })
     await act(async () => {
-      await page.getByRole('button', { name: /全文配置生成/ }).click()
+      await page.getByRole('button', { name: /小说配置单字段生成/ }).click()
     })
 
     await vi.waitFor(() => {

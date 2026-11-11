@@ -188,7 +188,7 @@ function DraftEditorSession({ tabId, filePath, content, projectKey }: Props) {
   const activeRuns = useWorkflowStore(s => s.activeRuns)
   const activeChapterRun = activeRuns.find(r =>
     r.projectPath === projectKey
-    && r.type === 'chapter_creation'
+    && r.type === 'chapter_finalize'
     && meta
     && (r.title.includes(`第${meta.chapterNumber}章`) || r.title.includes(`第 ${meta.chapterNumber} 章`))
   )

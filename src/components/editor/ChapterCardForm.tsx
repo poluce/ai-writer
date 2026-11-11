@@ -11,7 +11,7 @@ import { MenuItem } from '../ui/MenuItem'
 import { NativeSelect } from '../ui/NativeSelect'
 import { cn } from '../../lib/utils'
 import { useLocaleStore } from '../../stores/locale-store'
-import type { ChapterBlueprint } from '../../services/workflows/directory-workflow'
+import type { ChapterBlueprint } from '../../services/blueprint-domain'
 import type { EditableChapterBlueprintField } from '../../stores/chapter-card-draft-ledger'
 import { roleLabel, roleOptionsFor, roleToneClass } from './chapter-card-shared'
 

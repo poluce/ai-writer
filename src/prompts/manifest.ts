@@ -31,136 +31,6 @@ export const BUILTIN_PROMPT_STRUCTURES: readonly BuiltinPromptStructure[] = [
     requiredContextVariables: ["existing_config"],
   },
   {
-    key: "generate_global_config",
-    variables: {
-      "user_idea": "用户输入的灵感/想法",
-      "number_of_chapters": "计划总章数",
-      "word_number": "每章计划字数",
-    },
-  },
-  {
-    key: "premise",
-    variables: {
-      "genre": "小说类型",
-      "sub_genre": "细分类型",
-      "topic": "核心主题/故事简介",
-      "target_audience": "目标受众",
-      "number_of_chapters": "总章数",
-      "word_number": "每章字数",
-      "core_setting": "世界观基盘设定",
-      "golden_finger": "核心金手指/卖点",
-      "protagonist_profile": "主角人设",
-      "global_guidance": "全局写作要求",
-      "step_guidance": "作者对本步骤的补充指导（可选）",
-      "reference_works": "参考作品（可选）",
-    },
-    requiredContextVariables: ["genre", "sub_genre", "topic", "target_audience", "number_of_chapters", "word_number", "core_setting", "golden_finger", "protagonist_profile", "global_guidance", "reference_works"],
-  },
-  {
-    key: "character_dynamics",
-    variables: {
-      "premise": "故事前提",
-      "genre": "小说类型",
-      "protagonist_profile": "主角人设",
-      "golden_finger": "金手指体系",
-      "world_building": "世界观设定",
-      "number_of_chapters": "总章数",
-      "global_guidance": "全局写作要求",
-      "step_guidance": "作者对本步骤的补充指导（可选）",
-      "reference_works": "参考作品（可选）",
-    },
-    requiredContextVariables: ["premise", "genre", "protagonist_profile", "golden_finger", "world_building", "number_of_chapters", "global_guidance", "reference_works"],
-  },
-  {
-    key: "world_building",
-    variables: {
-      "premise": "故事前提",
-      "genre": "小说类型",
-      "core_setting": "世界观基盘",
-      "golden_finger": "金手指体系",
-      "protagonist_profile": "主角人设",
-      "global_guidance": "全局写作要求",
-      "step_guidance": "作者对本步骤的补充指导（可选）",
-    },
-    requiredContextVariables: ["premise", "genre", "core_setting", "golden_finger", "protagonist_profile", "global_guidance"],
-  },
-  {
-    key: "synopsis",
-    variables: {
-      "premise": "故事前提",
-      "character_dynamics": "角色图谱",
-      "world_building": "世界观",
-      "genre": "小说类型",
-      "number_of_chapters": "总章数",
-      "word_number": "每章字数",
-      "plot_structure_guide": "故事结构详细指导（由系统根据用户选择的结构模式动态注入）",
-      "narrative_pov": "叙事视角描述",
-      "global_guidance": "全局写作要求",
-      "step_guidance": "作者对本步骤的补充指导（可选）",
-    },
-    requiredContextVariables: ["premise", "character_dynamics", "world_building", "genre", "number_of_chapters", "word_number", "plot_structure_guide", "narrative_pov", "global_guidance"],
-  },
-  {
-    key: "chapter_blueprint_chunk",
-    variables: {
-      "novel_architecture": "全书设定与大纲（故事前提+角色图谱+世界观+情节大纲）",
-      "chapter_list": "已生成的章节列表（最近100章）",
-      "number_of_chapters": "总章数",
-      "n": "起始章节号",
-      "m": "结束章节号",
-      "global_guidance": "全局写作要求",
-      "genre": "小说类型",
-      "pacing_guidance": "节奏/风格指导（可选）",
-    },
-    requiredContextVariables: ["novel_architecture", "chapter_list", "number_of_chapters", "n", "m", "global_guidance", "genre", "pacing_guidance"],
-  },
-  {
-    key: "first_chapter_draft",
-    variables: {
-      "architecture": "故事架构（故事前提+角色图谱+世界观+情节大纲）",
-      "novel_config": "作者确认的小说配置（权威约束）",
-      "chapter_info": "本章信息（JSON）",
-      "future_blueprints": "后续章节蓝图（防止剧情提前）",
-      "global_guidance": "全局写作要求",
-      "word_number": "目标字数",
-      "writing_style": "文风描述（可选）",
-      "user_guidance": "作者本章微操指导（可选）",
-    },
-    requiredContextVariables: ["architecture", "novel_config", "global_guidance", "writing_style"],
-  },
-  {
-    key: "next_chapter_draft",
-    variables: {
-      "architecture": "故事架构（故事前提+角色图谱+世界观+情节大纲）",
-      "novel_config": "作者确认的小说配置（权威约束）",
-      "global_summary": "章节要点时间线（从蓝图按序拼装）",
-      "character_states": "角色状态",
-      "short_summary": "近期三章简要",
-      "previous_ending": "上章结尾800字",
-      "chapter_info": "本章蓝图信息（JSON）",
-      "future_blueprints": "后续章节蓝图（防止剧情提前）",
-      "user_guidance": "作者本章微操指导（可选）",
-      "filtered_context": "知识库检索结果",
-      "global_guidance": "全局写作要求",
-      "word_number": "目标字数",
-      "writing_style": "文风描述（可选）",
-    },
-    requiredContextVariables: ["architecture", "novel_config", "global_guidance", "writing_style"],
-  },
-  {
-    key: "refine_chapter",
-    variables: {
-      "draft_content": "章节草稿内容",
-      "chapter_info": "章节信息",
-      "global_guidance": "写作要求",
-      "global_summary": "近章要点（蓝图摘要）",
-      "short_summary": "近章摘要",
-      "word_number": "目标字数",
-      "user_refine_prompt": "用户自定义修稿指导（可选）",
-      "writing_style": "文风描述（可选）",
-    },
-  },
-  {
     key: "consistency_check",
     variables: {
       "chapter_content": "章节内容",
@@ -174,15 +44,6 @@ export const BUILTIN_PROMPT_STRUCTURES: readonly BuiltinPromptStructure[] = [
     key: "analyze_writing_style",
     variables: {
       "sample_text": "正文采样文本（3-5章拼接）",
-    },
-  },
-  {
-    key: "refine_from_review",
-    variables: {
-      "review_report": "审稿报告内容",
-      "draft_content": "待修稿内容",
-      "global_guidance": "全局写作要求",
-      "user_refine_prompt": "用户额外修稿指导（可选）",
     },
   },
   {
@@ -281,17 +142,7 @@ export const BUILTIN_PROMPT_STRUCTURES: readonly BuiltinPromptStructure[] = [
 /** 允许用户自定义编辑的模板 Key 列表（其余为系统模板，不可编辑） */
 export const EDITABLE_PROMPT_KEYS: readonly string[] = [
   "generate_novel_config_field",
-  "generate_global_config",
-  "premise",
-  "character_dynamics",
-  "world_building",
-  "synopsis",
-  "chapter_blueprint_chunk",
-  "first_chapter_draft",
-  "next_chapter_draft",
-  "refine_chapter",
   "analyze_writing_style",
-  "refine_from_review",
   "generate_chapter_notes",
   "update_character_cards",
   "infer_novel_config",
@@ -300,23 +151,13 @@ export const EDITABLE_PROMPT_KEYS: readonly string[] = [
 ]
 
 /**
- * Built-in templates used by the forward-writing lifecycle. Every key in this
+ * Built-in templates used by the runtime lifecycle. Every key in this
  * list must provide an English overlay; commands may not silently fall back to
  * the historical Chinese template for an English project.
  */
 export const CORE_LOCALIZED_BUILTIN_PROMPT_KEYS: readonly string[] = [
   "generate_novel_config_field",
-  "generate_global_config",
-  "premise",
-  "character_dynamics",
-  "world_building",
-  "synopsis",
-  "chapter_blueprint_chunk",
-  "first_chapter_draft",
-  "next_chapter_draft",
-  "refine_chapter",
   "consistency_check",
-  "refine_from_review",
   "generate_chapter_notes",
   "update_character_cards",
   "analyze_writing_style",

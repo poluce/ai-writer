@@ -32,7 +32,7 @@ function failedRun(id: string): WorkflowRun {
     projectSession: null,
     writingLanguage: 'zh-CN',
     uiLocale: 'en-US',
-    type: 'chapter_creation',
+    type: 'chapter_finalize',
     title: 'Chapter 1',
     status: 'failed',
     steps: [{

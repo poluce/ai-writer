@@ -96,7 +96,7 @@ export function TaskRunView() {
                   const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
                   const runningStep = run.steps.find(s => s.status === 'running')
                   const isActive = isRunActiveStatus(run.status)
-                  const isBatchTask = run.type === 'batch_generate'
+                  const isBatchTask = run.steps.length > 1
                   const runText = (zh: string, en: string) => runLocaleText(run.uiLocale, zh, en)
 
                   return (
@@ -144,7 +144,7 @@ export function TaskRunView() {
                             onClick={e => { e.stopPropagation(); pauseWorkflow(run.id) }}
                             className="icon-btn"
                             style={{ width: 18, height: 18 }}
-                            title={runText('暂停（将在当前章节完成后生效）', 'Pause (takes effect after the current chapter finishes)')}
+                            title={runText('暂停（将在当前步骤完成后生效）', 'Pause (takes effect after the current step finishes)')}
                           >
                             <Pause size={11} />
                           </button>
@@ -153,7 +153,7 @@ export function TaskRunView() {
                           <span
                             className="text-[0.62rem] whitespace-nowrap"
                             style={{ color: 'var(--color-warning-text)' }}
-                            title={runText('暂停将在当前章节完成后生效', 'Pause takes effect after the current chapter finishes')}
+                            title={runText('暂停将在当前步骤完成后生效', 'Pause takes effect after the current step finishes')}
                           >
                             {runText('暂停中', 'Pausing')}
                           </span>
@@ -164,7 +164,7 @@ export function TaskRunView() {
                             onClick={e => { e.stopPropagation(); resumeWorkflow(run.id) }}
                             className="icon-btn"
                             style={{ width: 18, height: 18 }}
-                            title={runText('继续批量创作', 'Resume batch writing')}
+                            title={runText('继续任务', 'Resume task')}
                           >
                             <Play size={11} />
                           </button>
@@ -277,7 +277,7 @@ function RunDetailPane({
   const prevLenRef = useRef(0)
 
   const isActive = isRunActiveStatus(run.status)
-  const isBatchTask = run.type === 'batch_generate'
+  const isBatchTask = run.steps.length > 1
   const currentStep = run.steps[run.currentStepIndex] || run.steps[0]
   const rawText = currentStep ? rawStepResultText(currentStep) : ''
   const { content } = splitThinkAndContent(rawText)
@@ -375,7 +375,7 @@ function RunDetailPane({
             }}
           >
             <Play size={11} />
-            {runText('继续批量创作', 'Resume batch writing')}
+            {runText('继续任务', 'Resume task')}
           </button>
         )}
 

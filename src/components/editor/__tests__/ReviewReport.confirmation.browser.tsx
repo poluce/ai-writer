@@ -3,13 +3,13 @@ import { page } from 'vitest/browser'
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 
-import type { ModelProfile, ProjectData } from '../../../shared/ipc-channels'
+import type { ProjectData } from '../../../shared/ipc-channels'
 import { parseHumanConfirmedReviewSnapshot } from '../../../shared/human-confirmed-review'
 import { setActiveProjectSessionContext } from '../../../shared/project-session-context'
-import { useLLMStore } from '../../../stores/llm-store'
+import { useAgentStore } from '../../../stores/agent-store'
+import { useLayoutStore } from '../../../stores/layout-store'
 import { useLocaleStore } from '../../../stores/locale-store'
 import { useProjectStore } from '../../../stores/project-store'
-import { useWorkflowStore } from '../../../stores/workflow-store'
 import ReviewReport from '../ReviewReport'
 
 const PROJECT_PATH = 'C:\\novels\\confirmed-review'
@@ -48,18 +48,17 @@ const REVIEW_SOURCE_DRAFT = Object.freeze({
   content: '这是尚未合并的原始草稿正文。',
 })
 
-const originalLLMState = useLLMStore.getState()
+const originalAgentState = useAgentStore.getState()
+const originalLayoutState = useLayoutStore.getState()
 const originalLocaleState = useLocaleStore.getState()
 const originalProjectState = useProjectStore.getState()
-const originalWorkflowState = useWorkflowStore.getState()
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
 let root: Root | undefined
 let container: HTMLDivElement | undefined
 let invoke: ReturnType<typeof vi.fn>
-let startWorkflow: ReturnType<typeof vi.fn>
-let setDefaultModel: ReturnType<typeof vi.fn>
+let sendMessage: ReturnType<typeof vi.fn>
 
 function project(writingLanguage: 'zh-CN' | 'en-US' = 'zh-CN'): ProjectData {
   return {
@@ -84,22 +83,6 @@ function project(writingLanguage: 'zh-CN' | 'en-US' = 'zh-CN'): ProjectData {
     characterStates: '',
     createdAt: '',
     updatedAt: '',
-  }
-}
-
-function model(overrides: Partial<ModelProfile>): ModelProfile {
-  return {
-    id: 'generation-model',
-    name: 'Generation model',
-    provider: 'custom',
-    protocol: 'openai',
-    modelName: 'generation-model',
-    apiKey: 'test-only-key',
-    baseUrl: 'https://models.example/v1',
-    temperature: 0.7,
-    maxTokens: 4096,
-    purposes: ['generation'],
-    ...overrides,
   }
 }
 
@@ -181,12 +164,6 @@ function confirmationCreateParams() {
   }
 }
 
-function selectedModel(): HTMLSelectElement {
-  const select = document.getElementById('review-revision-model')
-  if (!(select instanceof HTMLSelectElement)) throw new Error('Missing review revision model selector')
-  return select
-}
-
 async function renderReport(reportText = RAW_AI_REPORT) {
   await act(async () => {
     root?.render(
@@ -224,34 +201,12 @@ async function fillTextarea(selector: string, value: string, index = 0) {
 }
 
 beforeEach(() => {
-  startWorkflow = vi.fn(async () => 'confirmed-review-run')
-  setDefaultModel = vi.fn(async () => true)
+  sendMessage = vi.fn(async () => {})
   useLocaleStore.setState({ locale: 'zh-CN' })
   useProjectStore.setState({ currentProject: project() })
+  useLayoutStore.setState({ aiPanelOpen: false, rightView: 'agent' })
+  useAgentStore.setState({ sendMessage: sendMessage as never })
   setActiveProjectSessionContext(PROJECT_SESSION)
-  useLLMStore.setState({
-    models: [
-      model({ id: 'glm', name: 'GLM', modelName: 'GLM-4-Flash' }),
-      model({ id: 'grok', name: 'Grok', modelName: 'grok-4' }),
-      model({ id: 'embedding', name: 'Embedding only', purposes: ['embedding'] }),
-    ],
-    defaultModelId: 'glm',
-    defaultEmbeddingModelId: 'embedding',
-    activeRequests: new Map(),
-    loaded: true,
-    setDefaultModel: setDefaultModel as never,
-  })
-  useWorkflowStore.setState({
-    activeRuns: [],
-    history: [],
-    globalLogs: [],
-    waitingRuns: {},
-    currentRun: null,
-    waitingForConfirm: false,
-    waitingAfterStepIndex: -1,
-    startWorkflow: startWorkflow as never,
-    addLog: vi.fn() as never,
-  })
   container = document.createElement('div')
   document.body.append(container)
   root = createRoot(container)
@@ -264,10 +219,10 @@ afterEach(async () => {
   container = undefined
   Reflect.deleteProperty(window, 'velaAPI')
   setActiveProjectSessionContext(null)
-  useLLMStore.setState(originalLLMState)
+  useAgentStore.setState(originalAgentState)
+  useLayoutStore.setState(originalLayoutState)
   useLocaleStore.setState(originalLocaleState)
   useProjectStore.setState(originalProjectState)
-  useWorkflowStore.setState(originalWorkflowState)
 })
 
 describe('ReviewReport human-confirmed revision flow', () => {
@@ -345,7 +300,7 @@ describe('ReviewReport human-confirmed revision flow', () => {
     expect(container!.textContent).toContain('确认相册完成 — 待核实')
   })
 
-  it('preserves the raw AI report while an author edits, ignores, restores, adds, confirms, and routes a Grok revision without changing the global default', async () => {
+  it('preserves the raw AI report while an author edits, ignores, restores, adds, confirms, and hands off confirmed checklist to the writer assistant', async () => {
     installIpc(91)
     await renderReport()
 
@@ -398,19 +353,12 @@ describe('ReviewReport human-confirmed revision flow', () => {
 
     await act(async () => {
       await page.getByRole('button', { name: '按确认意见修稿' }).click()
-      await vi.waitFor(() => expect(selectedModel().value).toBe('glm'))
+      await vi.waitFor(() => expect(sendMessage).toHaveBeenCalledOnce())
     })
-    await changeSelect(selectedModel(), 'grok')
-    await act(async () => {
-      await page.getByRole('button', { name: '开始修稿' }).click()
-      await vi.waitFor(() => expect(startWorkflow).toHaveBeenCalledOnce())
-    })
-    expect(startWorkflow.mock.calls[0]?.[0]).toMatchObject({
-      generationModelId: 'grok',
-      projectPath: PROJECT_PATH,
-    })
-    expect(useLLMStore.getState().defaultModelId).toBe('glm')
-    expect(setDefaultModel).not.toHaveBeenCalled()
+    expect(useLayoutStore.getState()).toMatchObject({ aiPanelOpen: true, rightView: 'writer' })
+    expect(sendMessage.mock.calls[0]?.[1]).toBe('writer')
+    expect(String(sendMessage.mock.calls[0]?.[0])).toContain('角色离开港口后又在同一场景出现（作者已校正描述）。')
+    expect(String(sendMessage.mock.calls[0]?.[0])).toContain('保留第一段的悬念，不要扩写背景设定。')
     expect(container?.textContent).toContain(RAW_AI_REPORT)
   })
 
@@ -434,13 +382,12 @@ describe('ReviewReport human-confirmed revision flow', () => {
     ipc.setDraftContent(`${REVIEW_SOURCE_DRAFT.content}确认后保存的新正文。`)
 
     await act(async () => page.getByRole('button', { name: '按确认意见修稿' }).click())
-    await act(async () => page.getByRole('button', { name: '开始修稿' }).click())
 
     await expect.element(page.getByRole('alert')).toHaveTextContent('源草稿已变化')
-    expect(startWorkflow).not.toHaveBeenCalled()
+    expect(sendMessage).not.toHaveBeenCalled()
   })
 
-  it('previews the confirmed checklist in the project writing language before starting revision', async () => {
+  it('sends the confirmed checklist brief in the project writing language to the writer assistant', async () => {
     installIpc(94)
     useLocaleStore.setState({ locale: 'en-US' })
     useProjectStore.setState({ currentProject: project('en-US') })
@@ -451,16 +398,20 @@ describe('ReviewReport human-confirmed revision flow', () => {
       await page.getByRole('button', { name: 'Confirm review checklist' }).click()
       await vi.waitFor(() => expect(invoke.mock.calls.some(([channel]) => channel === 'db:review-create')).toBe(true))
     })
-    await act(async () => page.getByRole('button', { name: 'Revise from confirmed checklist' }).click())
+    await act(async () => {
+      await page.getByRole('button', { name: 'Revise from confirmed checklist' }).click()
+      await vi.waitFor(() => expect(sendMessage).toHaveBeenCalledOnce())
+    })
 
-    await expect.element(page.getByText('Confirmed guidance sent to revision')).toBeVisible()
-    expect(document.body.textContent).toContain('[Confirmed review items included in this revision]')
-    expect(document.body.textContent).toContain('[Confirmed author guidance]')
-    expect(document.body.textContent).not.toContain('【已确认纳入本次修稿的审稿项】')
-    expect(document.body.textContent).not.toContain('【作者补充修稿指导】')
+    const sentPrompt = String(sendMessage.mock.calls[0]?.[0] ?? '')
+    expect(sendMessage.mock.calls[0]?.[1]).toBe('writer')
+    expect(sentPrompt).toContain('[Confirmed review items included in this revision]')
+    expect(sentPrompt).toContain('[Confirmed author guidance]')
+    expect(sentPrompt).not.toContain('【已确认纳入本次修稿的审稿项】')
+    expect(sentPrompt).not.toContain('【作者补充修稿指导】')
   })
 
-  it('does not open a revision workflow when every item is ignored, even if author guidance is non-empty', async () => {
+  it('does not hand off to the writer assistant when every item is ignored, even if author guidance is non-empty', async () => {
     installIpc(92)
     await renderReport()
 
@@ -481,8 +432,7 @@ describe('ReviewReport human-confirmed revision flow', () => {
       await vi.waitFor(() => expect(document.querySelector('[role="alert"]')?.textContent).toContain('未纳入任何审稿项'))
     })
     await expect.element(page.getByRole('alert')).toHaveTextContent('未纳入任何审稿项')
-    expect(document.getElementById('review-revision-model')).toBeNull()
-    expect(startWorkflow).not.toHaveBeenCalled()
+    expect(sendMessage).not.toHaveBeenCalled()
     expect(container?.textContent).toContain(RAW_AI_REPORT)
   })
 

@@ -1,8 +1,7 @@
 /**
  * 章节蓝图解析与提交 — 从 LLM 文本响应解码蓝图并提交数据库的叶子模块。
  *
- * 从 directory-workflow 拆出：directory 命令与工作流编排都会消费这些函数；
- * 独立成模块后命令只依赖本文件，不再形成 command <-> workflow 的运行时环。
+ * 供导入建库工作流与 blueprint-domain 共用，保持依赖单向无环。
  */
 
 import type { ProjectSessionContext } from '../../shared/ipc-channels'
@@ -20,7 +19,7 @@ import type {
   BlueprintRangeCommitReceipt,
 } from '../../shared/contracts/blueprint-commit'
 
-/** 与 directory-workflow 的 ChapterBlueprint 同源的蓝图类型。 */
+/** 章节蓝图类型（由 blueprint-domain 定义）。 */
 type ChapterBlueprint = BlueprintData
 
 function extractJsonPayload(content: string): string | null {

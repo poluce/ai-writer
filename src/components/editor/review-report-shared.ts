@@ -1,8 +1,8 @@
 /**
- * 审稿报告共享纯逻辑 — 问题解析、确认快照映射与生成模型选择。
- * 从 ReviewReport 拆出：查看器、对话框与单测共用。
+ * 审稿报告共享纯逻辑 — 问题解析与确认快照映射。
+ * 从 ReviewReport 拆出：查看器与单测共用。
  */
-import type { ExpectedDraftSource, ModelProfile } from '../../shared/ipc-channels'
+import type { ExpectedDraftSource } from '../../shared/ipc-channels'
 import { parseChapterGoalReview, type ChapterGoalReview } from '../../shared/chapter-goal-review'
 import type {
   HumanConfirmedReviewItem,
@@ -114,27 +114,6 @@ export function parseReport(text: string, fallbackCategory: string): { issues: R
   }
 
   return { issues: [], summary: text.trim() }
-}
-
-export function isGenerationModel(model: ModelProfile): boolean {
-  return Array.isArray(model?.purposes)
-    ? model.purposes.includes('generation')
-    : true
-}
-
-export function availableGenerationModelId(
-  models: ModelProfile[],
-  modelId: string | null | undefined,
-): string | null {
-  return modelId && models.some(model => model.id === modelId && isGenerationModel(model))
-    ? modelId
-    : null
-}
-
-export function preferredGenerationModelId(models: ModelProfile[], defaultModelId: string | null): string | null {
-  return availableGenerationModelId(models, defaultModelId)
-    ?? models.find(isGenerationModel)?.id
-    ?? null
 }
 
 export function isReviewId(value: number | undefined): value is number {

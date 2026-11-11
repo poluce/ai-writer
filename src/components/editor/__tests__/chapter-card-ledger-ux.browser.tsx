@@ -5,7 +5,7 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 
 import type { ProjectData } from '../../../shared/ipc-channels'
-import type { ChapterBlueprint } from '../../../services/workflows/directory-workflow'
+import type { ChapterBlueprint } from '../../../services/blueprint-domain'
 import { setActiveProjectSessionContext } from '../../../shared/project-session-context'
 import { resetEditorSessionStores, useEditorStore } from '../../../stores/editor-store'
 import { useCharacterStore } from '../../../stores/character-store'
@@ -161,7 +161,6 @@ async function mountEditor(blueprints?: ChapterBlueprint[]) {
 
 beforeEach(() => {
   resetEditorSessionStores()
-  useLayoutStore.setState({ chapterCreationOpen: false, chapterCreationPrefill: null })
 })
 
 afterEach(async () => {

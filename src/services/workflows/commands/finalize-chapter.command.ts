@@ -30,7 +30,6 @@ import type {
   FinalizedContinuityFactCategory,
   FinalizedSourceIdentity,
 } from '../../../shared/finalized-continuity'
-import { readWorkflowDraftMeta } from '../workflow-draft-meta'
 import {
   requireWorkflowProjectSession,
   workflowUiLocale,
@@ -52,11 +51,7 @@ export interface FinalizeChapterParams {
   draftContent: string
   chapterNumber: number
   chapterInfo: ChapterInfo
-  /** 批量任务中任一后处理失败即停止，不再继续后续章节 */
-  stopOnPostProcessFailure?: boolean
-  /** 标记定稿来源，避免批量任务触发单章的自动打开下一章对话框 */
-  eventSource?: 'manual' | 'batch'
-  /** 手动定稿由 DraftEditor 在确认时冻结；batch 则在 workflow session 内构造同等快照。 */
+  /** 手动定稿由 DraftEditor 在确认时冻结。 */
   snapshot?: FinalizationSnapshot
 }
 
@@ -684,7 +679,13 @@ export class FinalizeChapterCommand extends BaseWorkflowCommand<void> {
       '\n===== Starting finalization and post-processing analysis =====',
     ))
 
-    const snapshot = this.params.snapshot ?? await this.createBatchSnapshot(context, project.path)
+    const snapshot = this.params.snapshot
+    if (!snapshot) {
+      throw new Error(uiText(
+        '定稿缺少冻结的草稿快照',
+        'Finalization is missing its frozen draft snapshot.',
+      ))
+    }
     if (snapshot.projectPath !== project.path) {
       throw new Error(uiText(
         '定稿快照属于已切换的项目会话',
@@ -720,7 +721,6 @@ export class FinalizeChapterCommand extends BaseWorkflowCommand<void> {
       contentRevision: commit.contentRevision ?? snapshot.contentRevision,
       snapshotContent: snapshot.content,
       publicationStatus: commit.publicationStatus ?? 'pending',
-      source: this.params.eventSource ?? 'manual',
     })
     if (!commit.success) {
       const publicationError = commit.error || uiText(
@@ -753,7 +753,7 @@ export class FinalizeChapterCommand extends BaseWorkflowCommand<void> {
           snapshot.chapterNumber,
           project.path,
         ))?.characters ?? []
-    const postProcessStatus = await new RunFinalizePostProcessCommand({
+    await new RunFinalizePostProcessCommand({
       project,
       chapterNumber: snapshot.chapterNumber,
       chapterTitle: snapshot.chapterTitle,
@@ -766,48 +766,15 @@ export class FinalizeChapterCommand extends BaseWorkflowCommand<void> {
         contentHash: commit.contentHash,
       },
       sourceLabel,
-      stopOnFailure: this.params.stopOnPostProcessFailure,
       chapterEntities,
     }).execute({ step: {}, context, callbacks })
     this.assertNotCancelled(context)
 
-    if (this.params.stopOnPostProcessFailure) {
-      const failedLabels = Object.values(postProcessStatus.steps)
-        .filter((step) => !step.ok)
-        .map((step) => step.label)
-      if (failedLabels.length > 0) {
-        throw new Error(uiText(
-          `后处理失败，批量创作已停止：${failedLabels.join('、')}`,
-          `Post-processing failed, so batch creation was stopped: ${failedLabels.join(', ')}`,
-        ))
-      }
-    }
-
     callbacks.log(uiText(
-      `\n第${snapshot.chapterNumber}章创作全流程彻底完成`,
-      `\nChapter ${snapshot.chapterNumber} creation workflow fully completed`,
+      `\n第${snapshot.chapterNumber}章定稿与后处理完成`,
+      `\nChapter ${snapshot.chapterNumber} finalization and post-processing completed`,
     ))
     this.assertNotCancelled(context)
     await useProjectStore.getState().refreshFileTree(project.path, undefined, projectSession)
-  }
-
-  private async createBatchSnapshot(
-    context: WorkflowContext,
-    projectPath: string,
-  ): Promise<FinalizationSnapshot> {
-    const projectSession = requireWorkflowProjectSession(context)
-    const dbDraft = await readWorkflowDraftMeta(this.params.draftPath, projectPath, projectSession)
-    this.assertNotCancelled(context)
-    if (!dbDraft) throw new Error('内部状态流转异常：无法定位待定稿草稿')
-    return Object.freeze({
-      tabId: `batch:${context.runId}:${dbDraft.id}`,
-      projectPath,
-      projectSession: Object.freeze({ ...projectSession }),
-      draftId: dbDraft.id,
-      chapterNumber: this.params.chapterNumber,
-      chapterTitle: this.params.chapterInfo.title,
-      content: this.params.draftContent,
-      contentRevision: 0,
-    })
   }
 }

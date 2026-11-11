@@ -19,7 +19,6 @@ interface PreviousAppSurface {
   settingsOpen: boolean
   newProjectOpen: boolean
   importNovelOpen: boolean
-  chapterCreationOpen: boolean
 }
 
 let previousSurface: PreviousAppSurface | null = null
@@ -50,12 +49,10 @@ function diffSurface(previous: PreviousAppSurface | null, next: PreviousAppSurfa
   const previousDialog = [
     previous.newProjectOpen && 'new_project',
     previous.importNovelOpen && 'import_novel',
-    previous.chapterCreationOpen && 'chapter_creation',
   ].filter(Boolean).join(',') || 'none'
   const nextDialog = [
     next.newProjectOpen && 'new_project',
     next.importNovelOpen && 'import_novel',
-    next.chapterCreationOpen && 'chapter_creation',
   ].filter(Boolean).join(',') || 'none'
   if (previousDialog !== nextDialog) {
     changes.push({ kind: 'dialog', from: previousDialog, to: nextDialog })
@@ -105,7 +102,6 @@ export function captureAgentEditorSnapshot(options?: { commitSurface?: boolean }
     settingsOpen: layoutState.settingsOpen,
     newProjectOpen: layoutState.newProjectOpen,
     importNovelOpen: layoutState.importNovelOpen,
-    chapterCreationOpen: layoutState.chapterCreationOpen,
   }
 
   const mcpState = useMCPStore.getState()
@@ -121,7 +117,6 @@ export function captureAgentEditorSnapshot(options?: { commitSurface?: boolean }
     settingsOpen: layout.settingsOpen,
     newProjectOpen: layout.newProjectOpen,
     importNovelOpen: layout.importNovelOpen,
-    chapterCreationOpen: layout.chapterCreationOpen,
   }
   const changes = diffSurface(previousSurface, surface)
   if (options?.commitSurface !== false) previousSurface = surface

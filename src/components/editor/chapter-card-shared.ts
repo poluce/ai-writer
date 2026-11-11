@@ -17,7 +17,7 @@ import {
 } from '../../shared/project-session-context'
 import type { ProjectSessionContext } from '../../shared/ipc-channels'
 import { AuthoritativeChapterSequenceError } from '../../services/authoritative-chapter-sequence'
-import type { ChapterBlueprint } from '../../services/workflows/directory-workflow'
+import type { ChapterBlueprint } from '../../services/blueprint-domain'
 import { globalEventBus } from '../../shared/event-bus'
 
 export const ROLES = ['建置', '铺垫', '发展', '冲突', '高潮', '转折', '收尾']

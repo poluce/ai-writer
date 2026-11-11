@@ -9,28 +9,27 @@ import { captureProjectSession, isProjectSessionCurrent, isProjectSessionPath } 
 import { useProjectStore } from '../../stores/project-store'
 import { useLocaleStore } from '../../stores/locale-store'
 import { useEditorStore } from '../../stores/editor-store'
-import { useLLMStore } from '../../stores/llm-store'
 import { ipc } from '../../services/ipc-client'
 import { requireIpcSuccess } from '../../services/ipc-result'
+import { handoffConfirmedReviewToWriter } from '../../services/agent/assistant-handoff'
 import { resolveWritingLanguage } from '../../shared/writing-language'
 import {
   createHumanConfirmedReviewSnapshot,
   hasIncludedReviewItems,
   parseHumanConfirmedReviewSnapshot,
+  renderHumanConfirmedReviewBrief,
   serializeHumanConfirmedReviewSnapshot,
   type HumanConfirmedReviewSnapshot,
 } from '../../shared/human-confirmed-review'
 import {
   type ConfirmedChecklist,
   type EditableReviewItem,
-  availableGenerationModelId,
   confirmationSourceReviewId,
   editableItemsFromReview,
   isReviewId,
   matchesReviewSource,
   parseReport,
 } from './review-report-shared'
-import { ConfirmedRevisionDialog } from './ConfirmedRevisionDialog'
 import { globalEventBus } from '../../shared/event-bus'
 import { confirm } from '../ui/Confirm'
 import { toast } from '../ui/Toast'
@@ -101,7 +100,6 @@ function ReviewReportSession({
   const [editingChecklist, setEditingChecklist] = useState(() => !initialSnapshot || !isReviewId(reviewId))
   const [checklistError, setChecklistError] = useState<string | null>(null)
   const [confirming, setConfirming] = useState(false)
-  const [showRevisionDialog, setShowRevisionDialog] = useState(false)
   const [processing, setProcessing] = useState(false)
   const sourceReviewId = confirmationSourceReviewId(initialSnapshot, reviewId)
   const summary = initialSnapshot?.summary ?? parsedReport.summary
@@ -466,123 +464,99 @@ function ReviewReportSession({
     }
   }
 
-  const startConfirmedRevision = async (generationModelId: string): Promise<string | null> => {
+  const startConfirmedRevision = async (): Promise<void> => {
     if (!confirmed || editingChecklist) {
-      return text(
+      setChecklistError(text(
         '请先确认审稿清单后再启动修稿。',
         'Confirm the review checklist before starting a revision.',
-      )
+      ))
+      return
     }
     if (!hasIncludedReviewItems(confirmed.snapshot)) {
-      const error = text(
+      setChecklistError(text(
         '未纳入任何审稿项，无法启动修稿。请恢复至少一项错误或建议后重新确认。',
         'No review item is included. Restore at least one issue or suggestion, then confirm again before revising.',
-      )
-      setChecklistError(error)
-      return error
+      ))
+      return
     }
     if (!draftPath || !chapterDir) {
-      return text(
+      setChecklistError(text(
         '此审稿报告未关联到可修稿的草稿。',
         'This review is not linked to a revisable draft.',
-      )
+      ))
+      return
     }
 
     const projectSession = captureProjectSession(useProjectStore.getState().currentProject)
     if (!projectSession || !isProjectSessionPath(projectSession, projectKey)) {
-      return text(
+      setChecklistError(text(
         '当前项目会话已失效，请重新打开该项目后再试。',
         'The current project session is no longer active. Reopen the project and try again.',
-      )
+      ))
+      return
     }
 
     setProcessing(true)
     try {
       const { readDraftBody } = await import('../../stores/draft-store')
-      const draftContent = await readDraftBody(
+      const currentDraftContent = await readDraftBody(
         draftPath,
         projectSession.projectPath,
         projectSession,
       )
-      if (!isProjectSessionCurrent(projectSession)) return null
-      if (!draftContent) {
-        return text(
+      if (!isProjectSessionCurrent(projectSession)) return
+      if (!currentDraftContent) {
+        setChecklistError(text(
           '关联草稿为空或无法读取，未启动修稿。',
           'The associated draft is empty or unreadable; revision was not started.',
-        )
+        ))
+        return
       }
 
-      // Re-check after every asynchronous preflight: a deleted or repurposed
-      // profile must never be frozen into a revision workflow.
-      const currentModelId = availableGenerationModelId(
-        useLLMStore.getState().models,
-        generationModelId,
-      )
-      if (!currentModelId) {
-        return text(
-          '所选修稿模型已不可用。请选择一项可用于文本生成的模型后再试。',
-          'The selected revision model is no longer available. Select a compatible generation model and try again.',
-        )
-      }
-
-      const { createRefineFromReviewWorkflow, parseDraftMeta } = await import('../../services/workflows/chapter-workflow')
-      const draftMeta = await parseDraftMeta(
+      const { parseDraftMeta } = await import('../../services/workflows/chapter-workflow')
+      const latestDraftMeta = await parseDraftMeta(
         draftPath,
         projectSession.projectPath,
         projectSession,
       )
-      if (!isProjectSessionCurrent(projectSession)) return null
-      if (!draftMeta) {
-        return text(
+      if (!isProjectSessionCurrent(projectSession)) return
+      if (!latestDraftMeta) {
+        setChecklistError(text(
           '找不到关联草稿，未启动修稿。',
           'The associated draft could not be found; revision was not started.',
-        )
+        ))
+        return
       }
       if (
         !confirmed.snapshot.sourceDraft
-        || !matchesReviewSource(confirmed.snapshot.sourceDraft, draftMeta, draftContent)
+        || !matchesReviewSource(confirmed.snapshot.sourceDraft, latestDraftMeta, currentDraftContent)
       ) {
-        return text(
+        setChecklistError(text(
           '源草稿已变化，未启动修稿；请重新运行 AI 审稿并确认清单。',
           'The source draft changed, so revision was not started. Run AI review and confirm the checklist again.',
-        )
+        ))
+        return
       }
 
-      const frozenGenerationModelId = availableGenerationModelId(
-        useLLMStore.getState().models,
-        currentModelId,
-      )
-      if (!frozenGenerationModelId) {
-        return text(
-          '所选修稿模型已不可用。请选择一项可用于文本生成的模型后再试。',
-          'The selected revision model is no longer available. Select a compatible generation model and try again.',
-        )
-      }
-
-      const chapterNum = draftMeta.chapterNumber || chapterNumber || 0
-      const chapterTitle = draftMeta.chapterTitle || text(
+      const chapterNum = latestDraftMeta.chapterNumber || chapterNumber || 0
+      const chapterTitle = latestDraftMeta.chapterTitle || text(
         '第' + chapterNum + '章',
         'Chapter ' + chapterNum,
       )
-      const { useWorkflowStore } = await import('../../stores/workflow-store')
-      if (!isProjectSessionCurrent(projectSession)) return null
-      useWorkflowStore.getState().startWorkflow(createRefineFromReviewWorkflow({
-        projectPath: projectSession.projectPath,
+      const confirmedBrief = renderHumanConfirmedReviewBrief(confirmed.snapshot, writingLanguage)
+      handoffConfirmedReviewToWriter({
         chapterNumber: chapterNum,
         chapterTitle,
-        draftPath,
-        draftContent,
-        confirmedReviewContent: confirmed.content,
+        draftId: latestDraftMeta.id,
         reviewSourceId: confirmed.reviewSourceId,
-        generationModelId: frozenGenerationModelId,
-      }, projectSession), false)
+        confirmedBrief,
+      })
       setChecklistError(null)
-      return null
     } catch (error) {
-      if (!isProjectSessionCurrent(projectSession)) return null
-      return error instanceof Error
+      if (!isProjectSessionCurrent(projectSession)) return
+      setChecklistError(error instanceof Error
         ? error.message
-        : text('启动审稿修稿时发生错误。', 'An error occurred while starting the review-driven revision.')
+        : text('启动审稿修稿时发生错误。', 'An error occurred while starting the review-driven revision.'))
     } finally {
       if (isProjectSessionCurrent(projectSession)) setProcessing(false)
     }
@@ -636,31 +610,13 @@ function ReviewReportSession({
           setChecklistError(null)
         }}
         onStartRevision={() => {
-          if (!confirmed) return
-          if (!hasIncludedReviewItems(confirmed.snapshot)) {
-            setChecklistError(text(
-              '未纳入任何审稿项，无法启动修稿。请恢复至少一项错误或建议后重新确认。',
-              'No review item is included. Restore at least one issue or suggestion, then confirm again before revising.',
-            ))
-            return
-          }
-          setChecklistError(null)
-          setShowRevisionDialog(true)
+          void startConfirmedRevision()
         }}
         processing={processing}
         reportText={reportText}
         hasConfirmedSnapshot={Boolean(initialSnapshot)}
         {...(isReviewId(reviewId) ? { onDeleteReport: () => { void deleteReport() }, deletingReport } : {})}
       />
-
-      {showRevisionDialog && confirmed && (
-        <ConfirmedRevisionDialog
-          snapshot={confirmed.snapshot}
-          writingLanguage={writingLanguage}
-          onClose={() => setShowRevisionDialog(false)}
-          onStart={startConfirmedRevision}
-        />
-      )}
     </div>
   )
 }

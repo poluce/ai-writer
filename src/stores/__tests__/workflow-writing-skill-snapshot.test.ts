@@ -31,7 +31,7 @@ describe('workflow start without stage-bound skills', () => {
     const contexts: WorkflowContext[] = []
 
     await useWorkflowStore.getState().startWorkflow({
-      type: 'chapter_creation',
+      type: 'chapter_finalize',
       title: 'On-demand skill workflow',
       projectPath,
       projectSession,
@@ -58,7 +58,7 @@ describe('workflow start without stage-bound skills', () => {
     const duplicateExecutor = vi.fn().mockResolvedValue(undefined)
 
     const firstCompletion = useWorkflowStore.getState().startWorkflow({
-      type: 'chapter_creation',
+      type: 'chapter_finalize',
       title: 'First chapter writer',
       projectPath,
       projectSession,
@@ -68,7 +68,7 @@ describe('workflow start without stage-bound skills', () => {
     expect(useWorkflowStore.getState().activeRuns).toHaveLength(1)
 
     await useWorkflowStore.getState().startWorkflow({
-      type: 'chapter_creation',
+      type: 'chapter_finalize',
       title: 'Duplicate chapter writer',
       projectPath,
       projectSession,

@@ -16,7 +16,6 @@ describe('captureAgentEditorSnapshot', () => {
       settingsOpen: false,
       newProjectOpen: false,
       importNovelOpen: false,
-      chapterCreationOpen: false,
     })
   })
 

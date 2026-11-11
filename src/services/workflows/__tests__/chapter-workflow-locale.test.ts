@@ -3,9 +3,8 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { useLocaleStore } from '../../../stores/locale-store'
 import type { ProjectSessionContext } from '../../../shared/ipc-channels'
 import {
-  createChapterWorkflow,
   createFinalizeWorkflow,
-  createRefineFromReviewWorkflow,
+  createRepairFinalizeWorkflow,
 } from '../chapter-workflow'
 
 const projectPath = 'C:\\novels\\english-chapter'
@@ -17,26 +16,10 @@ const originalLocale = useLocaleStore.getState().locale
 afterEach(() => useLocaleStore.setState({ locale: originalLocale }))
 
 describe('chapter workflow locale', () => {
-  it('freezes English titles, steps, descriptions, and completion copy for chapter workflows', () => {
+  it('freezes English titles, steps, descriptions, and completion copy for finalize and repair workflows', () => {
     useLocaleStore.setState({ locale: 'en-US' })
 
     const workflows = [
-      createChapterWorkflow({
-        projectPath,
-        chapterNumber: 2,
-        title: 'A New Term',
-        role: 'Development',
-        purpose: 'Deepen the relationship',
-        characters: ['Maya'],
-        keyEvents: 'Maya joins the literature club.',
-      }, projectSession),
-      createRefineFromReviewWorkflow({
-        projectPath,
-        chapterNumber: 2,
-        chapterTitle: 'A New Term',
-        draftPath: 'vela://draft/2',
-        draftContent: 'Draft',
-      }, projectSession),
       createFinalizeWorkflow({
         projectPath,
         chapterNumber: 2,
@@ -44,6 +27,7 @@ describe('chapter workflow locale', () => {
         draftPath: 'vela://draft/2',
         draftContent: 'Draft',
       }, projectSession),
+      createRepairFinalizeWorkflow(2, projectPath, projectSession),
     ]
 
     expect(workflows.map(workflow => ({
@@ -53,9 +37,8 @@ describe('chapter workflow locale', () => {
       description: workflow.steps[0].description,
       completion: workflow.onComplete?.message,
     }))).toEqual([
-      expect.objectContaining({ locale: 'en-US', title: 'Draft — Chapter 2 · A New Term', step: 'Draft chapter' }),
-      expect.objectContaining({ locale: 'en-US', title: 'Apply review — Chapter 2 A New Term', step: 'Revise from review' }),
       expect.objectContaining({ locale: 'en-US', title: 'Finalize — Chapter 2 A New Term', step: 'Finalize chapter' }),
+      expect.objectContaining({ locale: 'en-US', title: 'Repair post-processing — Chapter 2', step: 'Rebuild post-processing' }),
     ])
     expect(workflows.flatMap(workflow => [
       workflow.title,

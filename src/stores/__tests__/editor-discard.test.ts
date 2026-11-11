@@ -8,7 +8,7 @@ import {
   parseChapterCardDraftLedger,
   updateChapterCardProjectDraft,
 } from '../../stores/chapter-card-draft-ledger'
-import type { ChapterBlueprint } from '../../services/workflows/directory-workflow'
+import type { ChapterBlueprint } from '../../services/blueprint-domain'
 import {
   discardAndCloseEditorTab,
   discardCurrentProjectEditorChanges,

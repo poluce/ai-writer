@@ -4,16 +4,11 @@ import { workflowResourceClaimsConflict } from '../../../shared/workflow-resourc
 import type { ImportPurpose, ImportRunSnapshot } from '../../../shared/import-run'
 import { useProjectStore } from '../../../stores/project-store'
 import { useWorkflowStore } from '../../../stores/workflow-store'
+import { migrateLegacyCharacterRoster } from '../../character-roster-migration'
 import {
-  createArchitectureWorkflow,
-  migrateLegacyCharacterRoster,
-} from '../architecture-workflow'
-import {
-  createChapterWorkflow,
   createFinalizeWorkflow,
+  createRepairFinalizeWorkflow,
 } from '../chapter-workflow'
-import { createBatchChapterWorkflow } from '../batch-chapter-workflow'
-import { createDirectoryWorkflow } from '../directory-workflow'
 import { createImportWorkflow } from '../import-workflow'
 
 vi.mock('../commands/legacy-character-roster-repair.command', () => ({
@@ -53,18 +48,6 @@ function createFinalize(chapterNumber: number) {
   }, PROJECT_SESSION)
 }
 
-function createDraft(chapterNumber: number) {
-  return createChapterWorkflow({
-    projectPath: PROJECT_PATH,
-    chapterNumber,
-    title: `Chapter ${chapterNumber}`,
-    role: 'development',
-    purpose: 'advance the plot',
-    characters: [],
-    keyEvents: 'an event',
-  }, PROJECT_SESSION)
-}
-
 function createImportRun(purpose: ImportPurpose, totalChapters = 1): ImportRunSnapshot {
   return {
     id: `import-${purpose}`,
@@ -98,14 +81,13 @@ function createImport(
   totalChapters = 1,
   authorChapterNumbers?: readonly number[],
 ) {
-  const params = {
+  return createImportWorkflow({
     projectPath: PROJECT_PATH,
     projectSession: PROJECT_SESSION,
     run: createImportRun(purpose, totalChapters),
     executionOwner: 'resource-claim-test',
     authorChapterNumbers,
-  }
-  return createImportWorkflow(params)
+  })
 }
 
 afterEach(() => {
@@ -122,86 +104,19 @@ afterEach(() => {
 })
 
 describe('workflow factory resource claims', () => {
-  it('serializes finalization against shared fact writers', () => {
+  it('serializes finalization and finalization repair against shared fact writers', () => {
     setCurrentProject()
     const firstFinalize = createFinalize(1)
     const secondFinalize = createFinalize(2)
-    const directory = createDirectoryWorkflow(
-      { mode: 'full' },
-      PROJECT_PATH,
-      PROJECT_SESSION,
-    )
+    const repair = createRepairFinalizeWorkflow(1, PROJECT_PATH, PROJECT_SESSION)
 
     expect(firstFinalize.resourceKeys).toEqual(expect.arrayContaining([
       'character-roster',
       'continuity',
       'chapter-summary',
     ]))
-    expect(directory.resourceKeys).toContain('character-roster')
     expect(workflowResourceClaimsConflict(firstFinalize, secondFinalize)).toBe(true)
-    expect(workflowResourceClaimsConflict(firstFinalize, directory)).toBe(true)
-  })
-
-  it('keeps different chapter drafts concurrent when neither writes shared facts', () => {
-    expect(workflowResourceClaimsConflict(createDraft(1), createDraft(2))).toBe(false)
-  })
-
-  it('claims shared facts only for batch workflows that auto-finalize', () => {
-    const autoFinalize = createBatchChapterWorkflow({
-      projectPath: PROJECT_PATH,
-      projectSession: PROJECT_SESSION,
-      startChapterNumber: 1,
-      chapterCount: 1,
-      generationModelId: 'test-model',
-      completionMode: 'auto_finalize',
-    })
-    const reviewDrafts = createBatchChapterWorkflow({
-      projectPath: PROJECT_PATH,
-      projectSession: PROJECT_SESSION,
-      startChapterNumber: 3,
-      chapterCount: 1,
-      generationModelId: 'test-model',
-      completionMode: 'draft_review',
-    })
-
-    expect(autoFinalize.resourceKeys).toEqual(expect.arrayContaining([
-      'character-roster',
-      'continuity',
-      'chapter-summary',
-    ]))
-    expect(reviewDrafts.resourceKeys).toEqual(['chapter:3'])
-    expect(workflowResourceClaimsConflict(autoFinalize, createFinalize(2))).toBe(true)
-    expect(workflowResourceClaimsConflict(reviewDrafts, createFinalize(2))).toBe(false)
-  })
-
-  it('serializes character architecture against other character roster writers', () => {
-    setCurrentProject()
-    const architecture = createArchitectureWorkflow({
-      projectPath: PROJECT_PATH,
-      projectSession: PROJECT_SESSION,
-      selectedSteps: ['characters'],
-    })
-    const finalize = createFinalize(1)
-    const directory = createDirectoryWorkflow(
-      { mode: 'full' },
-      PROJECT_PATH,
-      PROJECT_SESSION,
-    )
-
-    expect(architecture.resourceKeys).toContain('character-roster')
-    expect(workflowResourceClaimsConflict(architecture, finalize)).toBe(true)
-    expect(workflowResourceClaimsConflict(architecture, directory)).toBe(true)
-  })
-
-  it('does not claim the character roster when the character architecture step is omitted', () => {
-    setCurrentProject()
-    const premiseOnly = createArchitectureWorkflow({
-      projectPath: PROJECT_PATH,
-      projectSession: PROJECT_SESSION,
-      selectedSteps: ['premise'],
-    })
-
-    expect(premiseOnly.resourceKeys).toEqual(['architecture'])
+    expect(workflowResourceClaimsConflict(firstFinalize, repair)).toBe(true)
   })
 
   it('serializes the explicit legacy roster repair against roster writers', async () => {
@@ -211,34 +126,12 @@ describe('workflow factory resource claims', () => {
     const repair = useWorkflowStore.getState().history.find(run => run.type === 'post_process')
     expect(repair).toBeDefined()
     expect(repair?.resourceKeys ?? []).toContain('character-roster')
-    const architecture = createArchitectureWorkflow({
-      projectPath: PROJECT_PATH,
-      projectSession: PROJECT_SESSION,
-      selectedSteps: ['characters'],
-    })
-    const directory = createDirectoryWorkflow(
-      { mode: 'full' },
-      PROJECT_PATH,
-      PROJECT_SESSION,
-    )
-    expect(workflowResourceClaimsConflict(repair ?? {}, architecture)).toBe(true)
     expect(workflowResourceClaimsConflict(repair ?? {}, createFinalize(1))).toBe(true)
-    expect(workflowResourceClaimsConflict(repair ?? {}, directory)).toBe(true)
   })
 
   it('serializes reference imports against every project-fact writer they overlap', () => {
     setCurrentProject()
     const referenceImport = createImport('reference')
-    const architecture = createArchitectureWorkflow({
-      projectPath: PROJECT_PATH,
-      projectSession: PROJECT_SESSION,
-      selectedSteps: ['characters'],
-    })
-    const directory = createDirectoryWorkflow(
-      { mode: 'full' },
-      PROJECT_PATH,
-      PROJECT_SESSION,
-    )
 
     expect(referenceImport.resourceKeys).toEqual([
       'novel-config',
@@ -247,23 +140,11 @@ describe('workflow factory resource claims', () => {
       'blueprints',
     ])
     expect(workflowResourceClaimsConflict(referenceImport, createFinalize(1))).toBe(true)
-    expect(workflowResourceClaimsConflict(referenceImport, directory)).toBe(true)
-    expect(workflowResourceClaimsConflict(referenceImport, architecture)).toBe(true)
   })
 
-  it('serializes author imports on finalized facts while preserving an unrelated draft', () => {
+  it('serializes author imports on finalized facts', () => {
     setCurrentProject()
     const authorImport = createImport('author-manuscript', 2, [2, 7])
-    const architecture = createArchitectureWorkflow({
-      projectPath: PROJECT_PATH,
-      projectSession: PROJECT_SESSION,
-      selectedSteps: ['characters'],
-    })
-    const directory = createDirectoryWorkflow(
-      { mode: 'full' },
-      PROJECT_PATH,
-      PROJECT_SESSION,
-    )
 
     expect(authorImport.resourceKeys).toEqual([
       'chapter:2',
@@ -273,11 +154,5 @@ describe('workflow factory resource claims', () => {
       'chapter-summary',
     ])
     expect(workflowResourceClaimsConflict(authorImport, createFinalize(3))).toBe(true)
-    expect(workflowResourceClaimsConflict(authorImport, directory)).toBe(true)
-    expect(workflowResourceClaimsConflict(authorImport, architecture)).toBe(true)
-    expect(workflowResourceClaimsConflict(authorImport, createDraft(7))).toBe(true)
-    expect(workflowResourceClaimsConflict(authorImport, createDraft(2))).toBe(true)
-    expect(workflowResourceClaimsConflict(authorImport, createDraft(1))).toBe(false)
-    expect(workflowResourceClaimsConflict(authorImport, createDraft(3))).toBe(false)
   })
 })

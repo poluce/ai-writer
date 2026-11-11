@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createHash } from 'node:crypto'
 
 import type { StepCallbacks, WorkflowContext } from '../../../../stores/workflow-store'
-import { resetEditorSessionStores, useEditorStore } from '../../../../stores/editor-store'
+import { resetEditorSessionStores } from '../../../../stores/editor-store'
 import { useLLMStore } from '../../../../stores/llm-store'
 import { useProjectStore } from '../../../../stores/project-store'
 import {
@@ -10,19 +10,10 @@ import {
   FinalizeChapterCommand,
   type FinalizePostProcessGeneration,
 } from '../finalize-chapter.command'
-import { RefineFromReviewCommand as RuntimeRefineFromReviewCommand } from '../refine-from-review.command'
-import { savePartialData } from '../architecture.command'
 import { runPostProcessPipeline } from '../../workflow-utils'
 import { createBoundedCompletionError } from '../../bounded-completion'
-import { workflowRuntimeDependencies } from './workflow-generation-runtime.fixture'
 import type { CharacterRosterEntry } from '../../../../shared/character-roster'
 import type { FinalizedSourceIdentity } from '../../../../shared/finalized-continuity'
-
-class RefineFromReviewCommand extends RuntimeRefineFromReviewCommand {
-  constructor(...args: ConstructorParameters<typeof RuntimeRefineFromReviewCommand>) {
-    super(args[0], workflowRuntimeDependencies)
-  }
-}
 
 const finalizationClient = vi.hoisted(() => ({
   commitFinalizationSnapshot: vi.fn(),
@@ -31,27 +22,6 @@ const finalizationClient = vi.hoisted(() => ({
 vi.mock('../../../finalization-client', () => finalizationClient)
 
 const PROJECT_PATH = 'C:\\novels\\A'
-const CONFIRMED_REVIEW_CONTENT = JSON.stringify({
-  kind: 'human-confirmed-review',
-  schemaVersion: 1,
-  sourceReviewId: 7,
-  sourceDraft: {
-    id: 1,
-    chapterNumber: 1,
-    version: 1,
-    status: 'draft',
-    content: '原稿',
-  },
-  summary: '需要修复连续性问题。',
-  authorGuidance: '',
-  items: [{
-    category: '连续性',
-    severity: 'error',
-    description: '修复角色位置矛盾。',
-    decision: 'apply',
-    origin: 'ai',
-  }],
-})
 
 function callbacks(): StepCallbacks {
   return {
@@ -122,21 +92,6 @@ function finalizedSource(
     finalizationId: `finalization-${draftId}`,
     chapterNumber,
     contentHash: createHash('sha256').update(content, 'utf8').digest('hex'),
-  }
-}
-
-function stubLlm(command: object, response: string): void {
-  const target = command as {
-    callLLMWithBuilder: () => Promise<string>
-    callLLMWithBoundedCompletion?: () => Promise<string>
-    callLLMWithBoundedCompletionResult?: () => Promise<{ content: string; artifact?: Record<string, unknown> }>
-  }
-  vi.spyOn(target, 'callLLMWithBuilder').mockResolvedValue(response)
-  if (typeof target.callLLMWithBoundedCompletion === 'function') {
-    vi.spyOn(target as Required<typeof target>, 'callLLMWithBoundedCompletion').mockResolvedValue(response)
-  }
-  if (typeof target.callLLMWithBoundedCompletionResult === 'function') {
-    vi.spyOn(target as Required<typeof target>, 'callLLMWithBoundedCompletionResult').mockResolvedValue({ content: response })
   }
 }
 
@@ -303,41 +258,6 @@ describe('workflow mutation failure boundaries', () => {
     expect(finalizationClient.commitFinalizationSnapshot).toHaveBeenCalledWith(
       expect.objectContaining({ content: '编辑器冻结正文', contentRevision: 8 }),
     )
-  })
-
-  it('rejects an architecture checkpoint write reported as success=false', async () => {
-    const invoke = vi.fn(async (channel: string) => {
-      if (channel === 'fs:write-json') return { success: false, error: 'checkpoint rejected' }
-      throw new Error(`unexpected IPC: ${channel}`)
-    })
-    stubVelaIpc(invoke)
-
-    await expect(savePartialData(
-      PROJECT_PATH,
-      { premise_result: 'premise' },
-      context().projectSession!,
-      '保存架构生成检查点',
-    ))
-      .rejects.toThrow('checkpoint rejected')
-  })
-
-  it.each([
-    ['保存架构生成检查点', '保存架构生成检查点失败'],
-    ['Save architecture-generation checkpoint', 'Failed to save the architecture-generation checkpoint.'],
-  ])('uses the explicit architecture checkpoint fallback when IPC omits an error: %s', async (operationLabel, fallbackMessage) => {
-    const invoke = vi.fn(async (channel: string) => {
-      if (channel === 'fs:write-json') return { success: false }
-      throw new Error(`unexpected IPC: ${channel}`)
-    })
-    stubVelaIpc(invoke)
-
-    await expect(savePartialData(
-      PROJECT_PATH,
-      { premise_result: 'premise' },
-      context().projectSession!,
-      operationLabel,
-      fallbackMessage,
-    )).rejects.toThrow(fallbackMessage)
   })
 
   it('stops finalization when the atomic SQLite commit reports success=false', async () => {
@@ -1058,53 +978,5 @@ describe('workflow mutation failure boundaries', () => {
     await expect(step!.executor(callbacks(), context()))
       .rejects.toThrow('AI 未正常完成生成')
     expect(invoke).not.toHaveBeenCalled()
-  })
-
-  it.each([
-    ['review refinement', () => new RefineFromReviewCommand({
-      draftPath: 'vela://draft/1',
-      draftContent: '原稿',
-      confirmedReviewContent: CONFIRMED_REVIEW_CONTENT,
-      reviewSourceId: 7,
-      chapterNumber: 1,
-    })],
-  ])('does not open a diff when %s revision creation fails', async (_label, makeCommand) => {
-    const invoke = vi.fn(async (channel: string) => {
-      if (channel === 'db:draft-get-meta') {
-        return { id: 1, chapterNumber: 1, version: 1, status: 'draft', source: 'write' }
-      }
-      if (channel === 'db:draft-get-full') {
-        return { id: 1, chapterNumber: 1, version: 1, status: 'draft', content: '原稿' }
-      }
-      if (channel === 'db:review-get-full') {
-        return {
-          id: 7,
-          baseDraftId: 1,
-          content: CONFIRMED_REVIEW_CONTENT,
-          sourceDraft: {
-            id: 1,
-            chapterNumber: 1,
-            version: 1,
-            status: 'draft',
-            content: '原稿',
-          },
-        }
-      }
-      if (channel === 'db:revision-get-pending') return []
-      if (channel === 'db:revision-replace-pending') {
-        return { success: false, error: 'revision rejected' }
-      }
-      throw new Error(`unexpected IPC: ${channel}`)
-    })
-    stubVelaIpc(invoke)
-    const command = makeCommand()
-    stubLlm(command, '修订正文')
-
-    await expect(command.execute({
-      step: {},
-      context: context(),
-      callbacks: callbacks(),
-    })).rejects.toThrow('revision rejected')
-    expect(useEditorStore.getState().tabs).toEqual([])
   })
 })

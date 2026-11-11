@@ -10,7 +10,6 @@ import {
   hasUnsavedArchEdit,
   isArchProjectCurrent,
   reassertBlockedArchEdit,
-  shouldRefreshArchOnWorkflowComplete,
   shouldSyncProjectArchTab,
   writeArchEditState,
 } from '../arch-file-refresh-policy'
@@ -51,29 +50,6 @@ describe('architecture file external refresh protection', () => {
       projectKey: projectA,
       dirty: false,
     }, projectA)).toBe(true)
-  })
-
-  it('refreshes a silent architecture completion by project and run id without a live-run lookup', () => {
-    const payload = {
-      type: 'architecture_generation',
-      projectPath: 'C:\\novels\\A',
-      projectSession: {
-        projectId: 'A',
-        projectPath: 'C:\\novels\\A',
-      },
-      runId: 'silent-architecture-run',
-    }
-    const projectSession = {
-      projectId: 'A',
-      projectPath: 'C:\\novels\\A',
-    }
-
-    expect(shouldRefreshArchOnWorkflowComplete(payload, projectSession)).toBe(true)
-    expect(shouldRefreshArchOnWorkflowComplete(
-      payload,
-      projectSession,
-      'silent-architecture-run',
-    )).toBe(false)
   })
 
   it('blocks generated or externally refreshed content while local edits are unsaved', () => {

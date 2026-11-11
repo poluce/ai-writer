@@ -24,7 +24,7 @@ import {
 } from '../workflow-project-session'
 import { promptLanguageText } from '../../prompt-language'
 import { createStructuredBatchExecutor, type StructuredBatchContract } from '../structured-batch-executor'
-import type { ChapterBlueprint } from '../directory-workflow'
+import type { ChapterBlueprint } from '../../blueprint-domain'
 import { retryDirectoryCharacterSync } from '../directory-character-sync-recovery'
 import type {
   BlueprintRangeCommitReceipt,

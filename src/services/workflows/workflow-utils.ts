@@ -1,7 +1,7 @@
 /**
  * 工作流共享工具函数
  *
- * 供 architecture-workflow / chapter-workflow 等多个工作流复用的通用逻辑
+ * 供章节定稿、小说导入等工作流复用的通用逻辑
  *
  * 核心组件：
  * 1. withRetry — 通用异步重试包装器
