@@ -170,7 +170,7 @@ export default function AgentMessage({ message }: Props) {
 
   if (role === 'user') {
     return (
-      <div className="group flex justify-end mb-2">
+      <div className="group flex flex-col items-end mb-2">
         <div
           className="max-w-[88%] px-3 py-2 rounded-2xl text-xs leading-relaxed break-words whitespace-pre-wrap"
           style={{
@@ -180,9 +180,9 @@ export default function AgentMessage({ message }: Props) {
           }}
         >
           {content}
-          <div className="flex justify-end mt-0.5">
-            {copyButton}
-          </div>
+        </div>
+        <div className="mt-0.5">
+          {copyButton}
         </div>
       </div>
     )
@@ -204,9 +204,6 @@ export default function AgentMessage({ message }: Props) {
         {content ? (
           <div>
             <MarkdownContent content={content} streaming={streaming} />
-            <div className="flex items-center justify-end mt-1 pt-0.5">
-              {copyButton}
-            </div>
           </div>
         ) : (
           <div className="flex items-center justify-end min-h-[16px]">
@@ -215,9 +212,14 @@ export default function AgentMessage({ message }: Props) {
                 <StreamingCursor />
               </span>
             )}
-            {copyButton}
           </div>
         )}
+
+        {content || streaming ? (
+          <div className="flex items-center justify-start mt-1 pt-0.5">
+            {copyButton}
+          </div>
+        ) : null}
 
         {artifacts && artifacts.length > 0 && (
           <div className="mt-2">
