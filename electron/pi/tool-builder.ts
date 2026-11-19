@@ -157,7 +157,7 @@ export function buildBlueprintAgentTools(
   options: AssistantToolKitOptions = {},
 ): AnyAgentTool[] {
   return [
-    createProposeChapterBlueprintTool(language),
+    createProposeChapterBlueprintTool(language, rendererAction),
     createReadBlueprintTool(language),
     createReadContinuityFactsTool(language),
     createReadNarrativeThreadsTool(language),

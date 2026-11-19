@@ -33,7 +33,7 @@ describe('propose_chapter_blueprint', () => {
   it('reads the current blueprint and upserts the merged result', async () => {
     bpGetMock.mockReturnValue({ chapterNumber: 1, title: '旧标题', characters: [] })
     bpUpsertMock.mockReturnValue(undefined)
-    const tool = createProposeChapterBlueprintTool('zh-CN')
+    const tool = createProposeChapterBlueprintTool('zh-CN', () => {})
     const result = await tool.execute('c1', { chapter_number: 1, changes: { title: '新标题' } })
 
     expect(bpUpsertMock).toHaveBeenCalledWith(expect.objectContaining({ chapterNumber: 1, title: '新标题' }))
@@ -42,7 +42,7 @@ describe('propose_chapter_blueprint', () => {
 
   it('creates a new blueprint when it does not exist', async () => {
     bpGetMock.mockReturnValue(null)
-    const tool = createProposeChapterBlueprintTool('zh-CN')
+    const tool = createProposeChapterBlueprintTool('zh-CN', () => {})
     const result = await tool.execute('c1', { chapter_number: 9, changes: { title: '新第九章' } })
 
     expect(bpUpsertMock).toHaveBeenCalledWith(expect.objectContaining({ chapterNumber: 9, title: '新第九章' }))
@@ -56,7 +56,7 @@ describe('propose_chapter_blueprint', () => {
       keyEvents: '林舟调查密室，遭遇黑衣人袭击',
       characters: ['林舟'],
     })
-    const tool = createProposeChapterBlueprintTool('zh-CN')
+    const tool = createProposeChapterBlueprintTool('zh-CN', () => {})
     const result = await tool.execute('c1', {
       chapter_number: 2,
       old_text: '遭遇黑衣人袭击',
@@ -72,7 +72,7 @@ describe('propose_chapter_blueprint', () => {
 
   it('supports batch multi-chapter creation', async () => {
     bpGetMock.mockReturnValue(null)
-    const tool = createProposeChapterBlueprintTool('zh-CN')
+    const tool = createProposeChapterBlueprintTool('zh-CN', () => {})
     const result = await tool.execute('c1', {
       blueprints: [
         { chapter_number: 1, title: '第一章 启程', purpose: '铺垫世界观' },
@@ -89,7 +89,7 @@ describe('propose_chapter_blueprint', () => {
       { chapterNumber: 1, title: '第一章', role: '开端', purpose: '交代背景', keyEvents: '主角苏醒', characters: ['主角'] },
       { chapterNumber: 2, title: '第二章', role: '发展', purpose: '遭遇危机', keyEvents: '反派登场', characters: ['主角', '反派'] },
     ])
-    const tool = createProposeChapterBlueprintTool('zh-CN')
+    const tool = createProposeChapterBlueprintTool('zh-CN', () => {})
     const result = await tool.execute('c1', { action: 'read' })
 
     const textOutput = (result.content[0] as { text: string }).text
@@ -99,7 +99,7 @@ describe('propose_chapter_blueprint', () => {
   })
 
   it('supports deleting a chapter blueprint', async () => {
-    const tool = createProposeChapterBlueprintTool('zh-CN')
+    const tool = createProposeChapterBlueprintTool('zh-CN', () => {})
     const result = await tool.execute('c1', { action: 'delete', chapter_number: 3 })
 
     expect(bpDeleteMock).toHaveBeenCalledWith(3)

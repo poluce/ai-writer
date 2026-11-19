@@ -6,6 +6,7 @@ import { createRoot, type Root } from 'react-dom/client'
 
 import type { ProjectData } from '../../../shared/ipc-channels'
 import type { ChapterBlueprint } from '../../../services/blueprint-domain'
+import { globalEventBus } from '../../../shared/event-bus'
 import { setActiveProjectSessionContext } from '../../../shared/project-session-context'
 import { resetEditorSessionStores, useEditorStore } from '../../../stores/editor-store'
 import { useCharacterStore } from '../../../stores/character-store'
@@ -274,5 +275,35 @@ describe('ChapterCardEditor continuous script ledger', () => {
     expect(chapterMoreButtons).toHaveLength(2)
     await act(async () => chapterMoreButtons[0].click())
     expect(container?.textContent).toContain('删除此章')
+  })
+
+  it('reloads an already open blueprint card when the assistant announces a blueprint refresh', async () => {
+    const { stored } = await mountEditor()
+
+    stored.set(1, { ...stored.get(1)!, title: '心跳归零：第一声钟响' })
+    stored.set(3, {
+      chapterNumber: 3,
+      title: '三楼不该有的脚步声',
+      role: '发展',
+      purpose: '引入危楼楼层规则。',
+      keyEvents: '1. 楼梯间多出一层。\n2. 门外脚步停在身后。',
+      characters: ['陆沉'],
+      suspenseHook: '脚步声停在他身后，却没有呼吸声。',
+      userGuidance: '',
+      notes: '',
+      notesUpdatedAt: '',
+    })
+
+    await act(async () => globalEventBus.emit('REFRESH_RESOURCE', {
+      resources: ['blueprints', 'fileTree'],
+      projectPath: PROJECT_PATH,
+      projectSession: { projectId: 'ledger-ux', projectPath: PROJECT_PATH },
+    }))
+
+    await vi.waitFor(() => {
+      expect(container?.textContent).toContain('心跳归零：第一声钟响')
+    })
+    expect(container?.textContent).not.toContain('心跳骤停与危楼回魂')
+    expect(container?.textContent).toContain('三楼不该有的脚步声')
   })
 })

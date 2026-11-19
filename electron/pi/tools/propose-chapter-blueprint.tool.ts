@@ -67,7 +67,7 @@ export function isProposeChapterBlueprintWrite(params: Record<string, unknown>):
 
 export function createProposeChapterBlueprintTool(
   language: WritingLanguage,
-  rendererAction?: RendererActionSink,
+  rendererAction: RendererActionSink,
 ): AgentTool<typeof Schema, { chapterNumber?: number; fields?: number; totalCount?: number; isNew?: boolean; status?: string }> {
   const text = (zhCN: string, enUS: string) => writingLanguageText(language, zhCN, enUS)
   const description = language === 'en-US'
