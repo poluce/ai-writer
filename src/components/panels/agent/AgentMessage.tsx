@@ -101,7 +101,7 @@ function ToolCallsCollapsibleSection({
       <button
         type="button"
         onClick={() => setExpanded(v => !v)}
-        className="w-full flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[0.72rem] transition-colors cursor-pointer select-none hover:bg-[var(--color-hover)]"
+        className="w-full min-w-0 flex flex-nowrap items-center gap-1.5 px-2.5 py-1 rounded-md text-[0.72rem] transition-colors cursor-pointer select-none overflow-hidden hover:bg-[var(--color-hover)]"
         style={{
           backgroundColor: 'var(--color-bg-secondary)',
           border: '1px solid var(--color-border)',
@@ -109,15 +109,19 @@ function ToolCallsCollapsibleSection({
         }}
       >
         {summary.statusIcon}
-        <span className="font-medium text-[var(--color-text)]">
+        {/* 状态文案固定单行：它是这一行的主体信息，不能被 flex 压缩成一字一行。 */}
+        <span className="font-medium whitespace-nowrap shrink-0 text-[var(--color-text)]">
           {summary.statusText}
         </span>
         {summary.uniqueToolNames.length > 0 && (
-          <span className="truncate opacity-75 text-[var(--color-text-muted)]">
+          <span
+            className="truncate flex-1 min-w-0 opacity-75 text-[var(--color-text-muted)]"
+            title={summary.uniqueToolNames.join(' · ')}
+          >
             · {summary.uniqueToolNames.join(' · ')}
           </span>
         )}
-        <span className="ml-auto flex items-center gap-1 text-[0.68rem] opacity-60 shrink-0">
+        <span className="ml-auto flex items-center gap-1 text-[0.68rem] opacity-60 shrink-0 whitespace-nowrap">
           <span>{expanded ? text('收起', 'Hide') : text('详情', 'Details')}</span>
           {expanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
         </span>

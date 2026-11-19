@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo, type FocusEvent } from 'react'
 import CodeMirror, { ReactCodeMirrorRef, ViewUpdate } from '@uiw/react-codemirror'
 import { openSearchPanel, closeSearchPanel } from '@codemirror/search'
 import { countDraftUnits } from '../../shared/draft-units'
@@ -88,6 +88,8 @@ export default function CodeMirrorEditor({
   // 用一个稳定的回调 + ref 打通，避免两个 hook 的调用顺序形成环。接缝留在这里。
   const clearAnnotationDraftRef = useRef<() => void>(() => {})
   const handleSelectionChange = useCallback(() => { clearAnnotationDraftRef.current() }, [])
+  /** 浮动条自身容器：用于判断点击/焦点是否落在浮动条内部。 */
+  const selectionBubbleRef = useRef<HTMLDivElement | null>(null)
   const {
     bubbleOpen,
     bubblePos,
@@ -187,6 +189,34 @@ export default function CodeMirrorEditor({
     void useAgentStore.getState().sendMessage(prompt, 'writer')
   }, [])
   const closeContextMenu = useCallback(() => setContextMenu(null), [setContextMenu])
+
+  /**
+   * 编辑器区域失去焦点时收起浮动条：焦点若是移到浮动条内部（批注输入框、按钮）
+   * 则保留；移到别处（侧栏、助手面板、页面空白）意味着作者已经不看这段选区了。
+   */
+  const handleEditorAreaBlur = useCallback((event: FocusEvent<HTMLDivElement>) => {
+    const next = event.relatedTarget as Node | null
+    if (next && selectionBubbleRef.current?.contains(next)) return
+    closeBubble()
+  }, [closeBubble])
+
+  /**
+   * 点击编辑器与浮动条之外的任何地方都收起浮动条：选区已经不再是作者关注的对象。
+   * 用捕获阶段监听，避免被目标元素自己的 mousedown 处理（preventDefault / stopPropagation）吃掉。
+   */
+  useEffect(() => {
+    if (!bubbleOpen) return
+    const handleOutsideMouseDown = (event: MouseEvent) => {
+      const target = event.target as Node | null
+      if (!target) return
+      if (selectionBubbleRef.current?.contains(target)) return
+      if (editorRef.current?.view?.dom.contains(target)) return
+      closeBubble()
+    }
+    document.addEventListener('mousedown', handleOutsideMouseDown, true)
+    return () => document.removeEventListener('mousedown', handleOutsideMouseDown, true)
+  }, [bubbleOpen, closeBubble])
+
   const { aiActions, runAIAction, addSelectionToAssistant } = useEditorAiHandoff({
     viewRef: editorRef,
     selectionRange,
@@ -241,7 +271,8 @@ export default function CodeMirrorEditor({
         }
       }}>
       <div className="flex-1 relative min-h-0 overflow-hidden"
-        onContextMenu={handleContextMenu}>
+        onContextMenu={handleContextMenu}
+        onBlur={handleEditorAreaBlur}>
         <div className="absolute inset-0">
           <CodeMirror
             ref={editorRef}
@@ -269,6 +300,7 @@ export default function CodeMirrorEditor({
       {/* Bubble Menu */}
       <EditorSelectionBubble
         open={bubbleOpen && editable}
+        containerRef={selectionBubbleRef}
         position={bubblePos}
         uiText={uiText}
         annotationVisible={Boolean(enableAnnotations && mode === 'prose')}

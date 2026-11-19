@@ -1,3 +1,4 @@
+import '../../../../index.css'
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -7,6 +8,63 @@ import { useLocaleStore } from '../../../../stores/locale-store'
 import AgentMessage from '../AgentMessage'
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+describe('AgentMessage tool summary layout', () => {
+  let container: HTMLDivElement
+  let root: Root
+
+  const toolNames = [
+    'manage_skills', 'read_blueprint', 'read_continuity_facts', 'read_architecture',
+    'manage_characters', 'read_narrative_threads', 'manage_drafts', 'open_editor',
+  ]
+
+  async function mountInWidth(width: number) {
+    useLocaleStore.setState({ locale: 'zh-CN', initialized: true })
+    container = document.createElement('div')
+    container.style.width = `${width}px`
+    document.body.appendChild(container)
+    root = createRoot(container)
+    await act(async () => root.render(<AgentMessage message={{
+      id: 'assistant-summary',
+      role: 'assistant',
+      content: '第 1 章已按最新蓝图完成重写。',
+      createdAt: 1,
+      toolCalls: toolNames.map((toolName, index) => ({
+        id: `tc-${index}`,
+        toolName,
+        arguments: {},
+        status: 'completed' as const,
+      })),
+    }} />))
+  }
+
+  afterEach(async () => {
+    await act(async () => root?.unmount())
+    container?.remove()
+  })
+
+  it.each([220, 360, 700])('keeps the tool summary on one line at %i px', async (width) => {
+    await mountInWidth(width)
+
+    const button = page.getByRole('button', { name: /已执行 8 个操作/ }).element()
+    const status = Array.from(button.querySelectorAll('span'))
+      .find(span => span.textContent?.includes('已执行 8 个操作'))
+    const names = Array.from(button.querySelectorAll('span'))
+      .find(span => span.textContent?.includes('manage_skills'))
+
+    // 状态文案不允许被 flex 压缩成一字一行（此前的显示异常）。
+    expect(status).toBeDefined()
+    expect(status!.getBoundingClientRect().height).toBeLessThan(30)
+    expect(status!.getBoundingClientRect().width).toBeGreaterThan(60)
+    expect(button.getBoundingClientRect().height).toBeLessThan(40)
+
+    // 工具名过长时收窄成省略号，而不是撑高整行。
+    expect(names).toBeDefined()
+    expect(getComputedStyle(names!).whiteSpace).toBe('nowrap')
+    expect(names!.getBoundingClientRect().height).toBeLessThan(30)
+    expect(names!.scrollWidth).toBeGreaterThanOrEqual(names!.clientWidth)
+  })
+})
 
 describe('AgentMessage copy action', () => {
   let container: HTMLDivElement

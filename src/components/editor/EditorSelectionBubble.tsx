@@ -12,6 +12,7 @@
  *    会先关掉它，用 click 会来不及触发。
  */
 import { createPortal } from 'react-dom'
+import type { RefObject } from 'react'
 import { Sparkles, Bold, Pencil, MessageSquarePlus } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { MAX_DRAFT_ANNOTATIONS, MAX_DRAFT_ANNOTATION_NOTE } from '../../shared/draft-annotation'
@@ -19,6 +20,8 @@ import type { EditorAIAction } from './use-editor-ai-handoff'
 
 export interface EditorSelectionBubbleProps {
   open: boolean
+  /** 浮动条自身容器：用于判断焦点/指针是否仍停留在浮动条内部。 */
+  containerRef?: RefObject<HTMLDivElement | null>
   position: { top: number; left: number }
   uiText: (zh: string, en: string) => string
   /** 批注区（prose 模式且开启批注时显示）。 */
@@ -41,6 +44,7 @@ export interface EditorSelectionBubbleProps {
 
 export function EditorSelectionBubble({
   open,
+  containerRef,
   position,
   uiText,
   annotationVisible,
@@ -60,6 +64,8 @@ export function EditorSelectionBubble({
 
   return (
     <div
+      ref={containerRef}
+      data-vela-selection-bubble="true"
       className="fixed z-50 flex items-center gap-0.5 p-1 rounded-xl border select-none shadow-xl transform -translate-x-1/2 -translate-y-full"
       style={{
         top: position.top,
