@@ -47,7 +47,7 @@ const ARCHITECT_STARTERS: readonly AssistantStarter[] = [
   {
     titleZh: '规划分卷大纲与高潮起伏',
     titleEn: 'Outline Volume Arc & Climax',
-    descZh: '运用起承转合编织全书主线与第一卷高潮',
+    descZh: '依循故事结构编织全书主线与第一卷高潮',
     descEn: 'Structure volume arcs and first volume climax',
     promptZh: '请根据当前设定，帮我规划全书的分卷大纲架构，并设计第一卷的高潮起伏与关键转折节拍。',
     promptEn: 'Please help me outline the overarching multi-volume arcs and design the first volume climax beats.',
@@ -82,7 +82,7 @@ const BLUEPRINT_STARTERS: readonly AssistantStarter[] = [
   {
     titleZh: '设计戏剧冲突与高潮节拍',
     titleEn: 'Design Dramatic Conflict & Beats',
-    descZh: '排布起承转合，设计角色主动抉择与代价',
+    descZh: '排布章节节拍，设计角色主动抉择与代价',
     descEn: 'Structure dramatic beats, active choices, and stakes',
     promptZh: '请为本章设计紧凑的戏剧冲突与情节节拍，确保主角有明确行动目标、外部强力阻碍，并在高潮处做出有代价的抉择。',
     promptEn: 'Please design tight dramatic conflict and scene beats for this chapter, ensuring clear protagonist desire, severe obstacles, and a costly choice at the climax.',

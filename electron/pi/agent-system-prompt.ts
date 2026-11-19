@@ -117,6 +117,9 @@ export function buildAssistantProjectFactsBlock(core: ProjectCoreData | null, la
   if (core.wordsPerChapter) {
     parts.push(`${label('每章目标字数', 'Target words per chapter')}: ${core.wordsPerChapter}`)
   }
+  if (modelFacts.plotStructure) {
+    parts.push(`${label('故事结构', 'Story structure')}: ${modelFacts.plotStructure}`)
+  }
   if (modelFacts.narrativePOV) {
     parts.push(`${label('叙事视角', 'Point of view')}: ${modelFacts.narrativePOV}`)
   }

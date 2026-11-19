@@ -98,6 +98,7 @@ describe('buildAssistantSystemPrompt', () => {
     expect(prompt).toContain('Writing Assistant ("writer")')
     expect(prompt).toContain('Current project context')
     expect(prompt).toContain('Project name: 潮门')
+    expect(prompt).toContain('Story structure: Three-act')
     expect(prompt).not.toContain('【不可变系统合同】')
     expect(prompt).not.toContain('长篇小说统筹与创作主助手')
   })
@@ -173,6 +174,17 @@ describe('sub-assistant default modules', () => {
     expect(prompt).toContain('章末钩子')
     expect(prompt).toContain('propose_chapter_blueprint')
     expect(prompt).toContain('read_continuity_facts')
+    expect(prompt).toContain('故事结构: 三幕结构')
+  })
+
+  it('takes the structural framework from the project setting, not from the identity prose', () => {
+    const blocks = resolveAssistantPromptBlocks('blueprint', 'zh-CN')
+    const freeform = buildAssistantSystemPrompt(blocks, core({ plotStructure: 'freeform' }))
+    expect(freeform).toContain('故事结构: 自由结构')
+    expect(freeform).not.toContain('起承转合')
+
+    const kishotenketsu = buildAssistantSystemPrompt(blocks, core({ plotStructure: 'kishotenketsu' }))
+    expect(kishotenketsu).toContain('故事结构: 起承转合')
   })
 
   it('omits the golden-finger fact when the project marks it as not needed', () => {
