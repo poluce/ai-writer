@@ -6,7 +6,7 @@ import { createReadArchitectureTool } from './tools/read-architecture.tool'
 import { createNovelConfigTool } from './tools/novel-config.tool'
 import { createStoryArchitectureTool } from './tools/story-architecture.tool'
 import { createReadBlueprintTool } from './tools/read-blueprint.tool'
-import { createManageDraftsTool } from './tools/manage-drafts.tool'
+import { createManageDraftsTool, resolveDraftAction, type DraftAction } from './tools/manage-drafts.tool'
 import { createManageReviewReportsTool } from './tools/manage-review-reports.tool'
 import { createDeleteReviewReportTool } from './tools/delete-review-report.tool'
 import { createReadProjectStateTool } from './tools/read-project-state.tool'
@@ -27,6 +27,15 @@ import { createManageNarrativeThreadsTool } from './tools/manage-narrative-threa
 import { createSubmitChapterReviewTool } from './tools/submit-chapter-review.tool'
 import { createDelegateToAssistantTool, type AssistantDelegateHandler, type DelegatableAssistantType } from './tools/delegate-to-assistant.tool'
 import type { AnyAgentTool } from './tool-types'
+import {
+  SourceFreshnessGuard,
+  describeSourceRead,
+  formatFreshnessRefusal,
+  toolResultText,
+  type FreshnessViolation,
+  type SourceReadRequest,
+  SOURCE_FRESHNESS_TRACKED_READS,
+} from './source-freshness'
 import { filterAgentSkillCatalog, type AgentSkillCatalogEntry } from '../../src/shared/agent-skills'
 import type { AssistantType } from '../../src/shared/agent-conversation-archive'
 
@@ -252,6 +261,17 @@ export function buildToolsForAssistantType(
   rendererAction: RendererActionSink,
   options: AssistantToolKitOptions = {},
 ): AnyAgentTool[] {
+  const tools = buildAssistantToolSet(assistantType, language, rendererAction, options)
+  // 只有写作助手能真正写草稿；读账本对所有角色都记，校验只在写草稿的回合生效。
+  return withSourceFreshnessGuard(tools, language, { enforceDraftWrites: assistantType === 'writer' })
+}
+
+function buildAssistantToolSet(
+  assistantType: AssistantType,
+  language: WritingLanguage,
+  rendererAction: RendererActionSink,
+  options: AssistantToolKitOptions,
+): AnyAgentTool[] {
   const visibleSkills = filterAgentSkillCatalog(options.skills ?? [], assistantType)
   switch (assistantType) {
     case 'architect':
@@ -271,6 +291,84 @@ export function buildToolsForAssistantType(
         options.delegateHandler,
       )
   }
+}
+
+const DRAFT_CONTENT_MUTATIONS: ReadonlySet<DraftAction> = new Set<DraftAction>(['write', 'replace_excerpt'])
+
+function resolveDraftMutation(params: Record<string, unknown>): DraftAction {
+  return resolveDraftAction(String(params.action ?? 'read').toLowerCase().trim())
+}
+
+function requiredDraftWriteReads(chapterNumber: number, language: WritingLanguage) {
+  const params = { chapter_number: chapterNumber }
+  const request: SourceReadRequest = { toolName: 'read_blueprint', params }
+  return [{ request, label: describeSourceRead('read_blueprint', params, language) }]
+}
+
+function freshnessRefusalResult(violations: readonly FreshnessViolation[], language: WritingLanguage) {
+  return {
+    content: [{ type: 'text' as const, text: formatFreshnessRefusal(violations, language) }],
+    details: { status: 'refused', reason: 'stale-source-facts', violations },
+  }
+}
+
+/**
+ * 给工具集套上源信息新鲜度守卫。
+ *
+ * 追踪的读取工具在成功返回后登记输出指纹；写作助手写草稿前，守卫会重新执行
+ * 这些读取并比对：目标章节蓝图没读过、或读过的任一源信息已经变了，就直接拒绝
+ * 写入（草稿一字不动），把“哪条信息变了、该重新读什么”返回给模型。
+ *
+ * 写工具执行成功后会刷新账本基线，避免助手把自己刚写的改动误判为外部变更。
+ */
+export function withSourceFreshnessGuard(
+  tools: readonly AnyAgentTool[],
+  language: WritingLanguage,
+  wiring: { enforceDraftWrites: boolean },
+): AnyAgentTool[] {
+  const originals = new Map(tools.map(tool => [tool.name, tool]))
+  const guard = new SourceFreshnessGuard({
+    reread: async (request) => {
+      const tool = originals.get(request.toolName)
+      if (!tool) throw new Error(`Source freshness cannot re-read ${request.toolName}`)
+      const result = await tool.execute('source-freshness-reread', request.params as never)
+      return toolResultText(result)
+    },
+  })
+
+  return tools.map(tool => {
+    if (!SOURCE_FRESHNESS_TRACKED_READS.has(tool.name)) return tool
+    return {
+      ...tool,
+      execute: async (toolCallId: string, params: unknown) => {
+        const record = (params ?? {}) as Record<string, unknown>
+        const isDraftTool = tool.name === 'manage_drafts'
+        const draftMutation = isDraftTool ? resolveDraftMutation(record) : null
+        const writes = Boolean(tool.isWriteOperation?.(record))
+          || (draftMutation !== null && draftMutation === 'resolve_annotation')
+
+        if (isDraftTool && wiring.enforceDraftWrites && draftMutation !== null && DRAFT_CONTENT_MUTATIONS.has(draftMutation)) {
+          const chapterNumber = Number(record.chapter_number)
+          const violations = Number.isInteger(chapterNumber) && chapterNumber > 0
+            ? await guard.inspect(requiredDraftWriteReads(chapterNumber, language))
+            : []
+          if (violations.length > 0) return freshnessRefusalResult(violations, language)
+        }
+
+        const result = await tool.execute(toolCallId, params as never)
+        if (writes) {
+          await guard.rebaseline()
+        } else {
+          guard.record(
+            { toolName: tool.name, params: record },
+            describeSourceRead(tool.name, record, language),
+            toolResultText(result),
+          )
+        }
+        return result
+      },
+    } satisfies AnyAgentTool
+  })
 }
 
 /**

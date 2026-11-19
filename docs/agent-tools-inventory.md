@@ -52,6 +52,17 @@
 8. **配置与采样参数只有一个策略源**：`resolveGenerationParameters()` + `resolveReasoningPolicy()`。
    两条轨道（助手对话 / 工作流单发）都必须从这里取参数，不要在调用点各写一份。
 
+9. **写入前的源信息新鲜度守卫（C 方案）**：`electron/pi/source-freshness.ts` 在每回合内登记
+   被追踪读取工具（`read_blueprint`、`read_architecture`、`read_continuity_facts`、
+   `read_narrative_threads`、`read_project_state`、`read_file`、`manage_characters` 与
+   `manage_drafts` 的读取动作）的输出指纹；写作助手执行 `manage_drafts` 的 `write` /
+   `replace_excerpt` 之前，守卫会重新执行这些读取并比对当前状态——目标章蓝图没读过、或
+   读过的任一源信息在读取后被改过，就直接拒绝写入并返回「该重新读什么」，草稿一字不动。
+   写入成功后会刷新基线（助手自己造成的变更不算外部变更）。
+   新增读取工具若要参与守卫，同时加进 `SOURCE_FRESHNESS_TRACKED_READS`；
+   不要把语义检索（`search_knowledge`）加进去：它的结果依赖 embedding 服务与模型状态，
+   无法用重放文本比对。
+
 ## 技能（Skill）与工具的关系
 
 Skill 不作为工具暴露给模型，也**不注册进 harness 的资源表**（架构 ADR 0009 与 ADR 0010：`resources.skills` 的

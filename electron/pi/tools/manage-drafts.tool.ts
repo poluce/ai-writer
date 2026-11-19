@@ -29,7 +29,7 @@ export const DRAFT_ACTIONS = [
 export const DRAFT_TYPES = ['latest', 'draft_v1', 'revised'] as const
 export const WRITE_MODES = ['new_version', 'overwrite'] as const
 
-type DraftAction = typeof DRAFT_ACTIONS[number]
+export type DraftAction = typeof DRAFT_ACTIONS[number]
 type LanguageText = (zhCN: string, enUS: string) => string
 
 type DraftReplacement = {
@@ -126,7 +126,7 @@ function requireOpenProject(text: LanguageText): void {
   }
 }
 
-function resolveDraftAction(rawAction: string): DraftAction {
+export function resolveDraftAction(rawAction: string): DraftAction {
   if (rawAction === 'list_versions' || rawAction === '版本清单' || rawAction === '查看版本') {
     return 'list_versions'
   }
