@@ -74,12 +74,15 @@ describe('OpenProjectFirstPage launcher', () => {
 
     const heading = page.getByRole('heading', { level: 1 })
     await expect.element(heading).toHaveTextContent('掌管仙宗差点被推翻')
-    await expect.element(page.getByText('第 47 章')).toBeVisible()
+    await expect.element(page.getByText('第 47 章', { exact: true })).toBeVisible()
     await expect.element(page.getByText('玄天宗的对账夜')).toBeVisible()
     await expect.element(page.getByText('12.4 万字')).toBeVisible()
     await expect.element(page.getByText('39%')).toBeVisible()
     await expect.element(page.getByText('玄天宗的山门在雨里亮了整夜。')).toBeVisible()
-    await expect.element(page.getByRole('button', { name: '继续写作', exact: true })).toBeVisible()
+    await expect.element(page.getByRole('button', { name: '继续写第 47 章', exact: true })).toBeVisible()
+    await expect.element(page.getByText('/ 120 章', { exact: false })).toBeVisible()
+    await expect.element(page.getByText('已定稿 42 章', { exact: false })).toBeVisible()
+    await expect.element(page.getByPlaceholder('搜索项目')).toBeVisible()
 
     await expect.element(page.getByRole('button', { name: /^雾城档案/ })).toBeVisible()
     await expect.element(page.getByText('第 89 章', { exact: false })).toBeVisible()

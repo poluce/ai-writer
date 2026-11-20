@@ -1,4 +1,4 @@
-import { useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
+import { useMemo, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import {
   ArrowRight,
   BookOpen,
@@ -6,6 +6,7 @@ import {
   FolderOpen,
   MoreHorizontal,
   Plus,
+  Search,
   Trash2,
 } from 'lucide-react'
 import type { Locale } from '../../i18n/types'
@@ -40,6 +41,9 @@ const openProjectShortcut = isMac ? '⌘O' : 'Ctrl O'
 const newProjectKeyshortcut = isMac ? 'Meta+N' : 'Control+N'
 const openProjectKeyshortcut = isMac ? 'Meta+O' : 'Control+O'
 
+/** 章节点阵上限：超过这个数量的章节点阵会退化为一条刻度线 */
+const MAX_CHAPTER_DOTS = 400
+
 function relativeTime(updatedAt: string, locale: Locale): string {
   const timestamp = new Date(updatedAt).getTime()
   if (!Number.isFinite(timestamp)) return ''
@@ -63,10 +67,42 @@ function folderName(projectPath: string): string {
   return parts.length >= 2 ? parts[parts.length - 2] : ''
 }
 
-function progressOf(snapshot: RecentProjectSnapshot | undefined): { percent: number; label: string } | null {
+function percentOf(snapshot: RecentProjectSnapshot | undefined): number | null {
   if (!snapshot?.totalChapters || !snapshot.lastChapterNumber) return null
-  const percent = Math.min(100, Math.round((snapshot.lastChapterNumber / snapshot.totalChapters) * 100))
-  return { percent, label: `${snapshot.lastChapterNumber} / ${snapshot.totalChapters}` }
+  return Math.min(100, Math.round((snapshot.lastChapterNumber / snapshot.totalChapters) * 100))
+}
+
+function padIndex(index: number): string {
+  return String(index + 1).padStart(2, '0')
+}
+
+function ChapterGrid({
+  written,
+  finalized,
+  total,
+}: {
+  written: number
+  finalized: number
+  total: number
+}) {
+  const count = Math.min(total, MAX_CHAPTER_DOTS)
+  const dots = useMemo(
+    () => Array.from({ length: count }, (_, index) => (
+      index < finalized ? 'is-final' : index < written ? 'is-written' : ''
+    )),
+    [count, finalized, written],
+  )
+  return (
+    <div
+      className="launcher-chapters"
+      role="img"
+      aria-label={`${written} / ${total}`}
+    >
+      {dots.map((className, index) => (
+        <i key={index} className={className || undefined} />
+      ))}
+    </div>
+  )
 }
 
 function LauncherHero({
@@ -74,83 +110,135 @@ function LauncherHero({
   text,
   locale,
   onContinue,
+  onBlueprint,
 }: {
   project: RecentProjectEntry
   text: Translate
   locale: Locale
   onContinue: () => void
+  onBlueprint: () => void
 }) {
   const snapshot = project.snapshot
-  const progress = progressOf(snapshot)
-  const metaParts: ReactNode[] = []
-  if (snapshot?.lastChapterNumber) {
-    metaParts.push(
-      <span key="chapter" className="launcher-chip">
-        {text(`第 ${snapshot.lastChapterNumber} 章`, `Chapter ${snapshot.lastChapterNumber}`)}
-      </span>,
-    )
-  }
-  if (snapshot?.lastChapterTitle) {
-    metaParts.push(<span key="chapter-title">{snapshot.lastChapterTitle}</span>)
-  }
+  const percent = percentOf(snapshot)
   const words = snapshot ? formatWords(snapshot.totalWords, locale) : ''
-  if (words) {
-    if (metaParts.length > 0) metaParts.push(<span key="sep-words" className="launcher-sep" />)
-    metaParts.push(<span key="words" className="launcher-soft">{words}</span>)
-  }
-  if (snapshot?.totalChapters) {
-    if (metaParts.length > 0) metaParts.push(<span key="sep-total" className="launcher-sep" />)
-    metaParts.push(
-      <span key="total" className="launcher-soft">
-        {text(`全书 ${snapshot.totalChapters} 章`, `${snapshot.totalChapters} chapters planned`)}
-      </span>,
-    )
-  }
+  const lastChapter = snapshot?.lastChapterNumber ?? 0
+  const totalChapters = snapshot?.totalChapters ?? 0
+  const finalized = snapshot?.finalizedChapters ?? 0
+  const remaining = totalChapters > 0 ? Math.max(totalChapters - lastChapter, 0) : 0
+
+  const hasProgress = Boolean(snapshot && totalChapters > 0)
 
   return (
-    <section className="launcher-hero" aria-labelledby="launcher-continue-title">
-      <div className="launcher-hero-top">
-        <span className="launcher-eyebrow">
-          <span className="launcher-eyebrow-dot" />
-          {text('继续写作', 'Continue writing')}
-        </span>
-        <span className="launcher-when">{relativeTime(project.updatedAt, locale)}</span>
-        <div className="launcher-hero-actions">
-          <button type="button" className="launcher-btn launcher-btn-primary focus-ring" onClick={onContinue}>
-            {text('继续写作', 'Continue')}
-            <ArrowRight size={15} aria-hidden="true" />
-          </button>
+    <section
+      className={`launcher-hero${hasProgress ? '' : ' launcher-hero-single'}`}
+      aria-labelledby="launcher-continue-title"
+    >
+      <div className="launcher-hero-main">
+        <div className="launcher-eyebrow">
+          <span className="launcher-eyebrow-rule" aria-hidden="true" />
+          {text('上次编辑', 'Last edited')} · {relativeTime(project.updatedAt, locale)}
         </div>
-      </div>
-      <h1 id="launcher-continue-title" className="launcher-title">{project.name}</h1>
-      {metaParts.length > 0 && <div className="launcher-meta">{metaParts}</div>}
-      {progress && (
-        <div className="launcher-progress">
-          <span className="launcher-caption">{text(`${progress.label} 章`, `Chapter ${progress.label}`)}</span>
-          <div className="launcher-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.percent}>
-            <span className="launcher-bar-fill" style={{ width: `${progress.percent}%` }} />
+        <div className="launcher-title-row">
+          <h1 id="launcher-continue-title" className="launcher-title">{project.name}</h1>
+          <div className="launcher-actions">
+            <button type="button" className="launcher-continue focus-ring" onClick={onContinue}>
+              {lastChapter > 0
+                ? text(`继续写第 ${lastChapter} 章`, `Continue chapter ${lastChapter}`)
+                : text('继续写作', 'Continue writing')}
+              <ArrowRight size={14} aria-hidden="true" />
+            </button>
+            <button type="button" className="launcher-secondary focus-ring" onClick={onBlueprint}>
+              {text('章节蓝图', 'Chapter blueprint')}
+            </button>
           </div>
-          <span className="launcher-caption">{progress.percent}%</span>
         </div>
-      )}
-      {snapshot?.excerpt && (
-        <div className="launcher-excerpt">
-          <span className="launcher-excerpt-label">{text('上次写到', 'Last written')}</span>
-          <p className="launcher-excerpt-text">{snapshot.excerpt}</p>
+        <div className="launcher-meta">
+          {lastChapter > 0 && (
+            <span className="launcher-meta-strong">
+              {text(`第 ${lastChapter} 章`, `Chapter ${lastChapter}`)}
+            </span>
+          )}
+          {snapshot?.lastChapterTitle && <span>{snapshot.lastChapterTitle}</span>}
+          {words && (
+            <>
+              <span className="launcher-meta-sep" aria-hidden="true" />
+              <span>{words}</span>
+            </>
+          )}
+          {finalized > 0 && (
+            <>
+              <span className="launcher-meta-sep" aria-hidden="true" />
+              <span>{text(`已定稿 ${finalized} 章`, `${finalized} finalized`)}</span>
+            </>
+          )}
+          {totalChapters > 0 && (
+            <>
+              <span className="launcher-meta-sep" aria-hidden="true" />
+              <span>{text(`计划 ${totalChapters} 章`, `${totalChapters} planned`)}</span>
+            </>
+          )}
         </div>
+
+        {snapshot?.excerpt && (
+          <div className="launcher-excerpt">
+            <span className="launcher-excerpt-label">{text('上次写到', 'Last written')}</span>
+            <p className="launcher-excerpt-text">{snapshot.excerpt}</p>
+          </div>
+        )}
+      </div>
+
+      {hasProgress && (
+        <aside className="launcher-progress" aria-label={text('进度', 'Progress')}>
+          <div className="launcher-progress-label">{text('进度', 'Progress')}</div>
+          <div className="launcher-progress-num">
+            <b>{lastChapter}</b>
+            <span>{text(`/ ${totalChapters} 章`, `/ ${totalChapters} chapters`)}</span>
+            {percent !== null && <em className="launcher-progress-percent">{percent}%</em>}
+          </div>
+          {totalChapters <= MAX_CHAPTER_DOTS
+            ? (
+              <ChapterGrid
+                written={lastChapter}
+                finalized={finalized}
+                total={totalChapters}
+              />
+            )
+            : (
+              <div className="launcher-progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent ?? 0}>
+                <span style={{ width: `${percent ?? 0}%` }} />
+              </div>
+            )}
+          <div className="launcher-legend">
+            <span>
+              <i className="is-written" aria-hidden="true" />
+              {text(`已写 ${lastChapter} 章`, `${lastChapter} drafted`)}
+            </span>
+            <span>
+              <i aria-hidden="true" />
+              {text(`待写 ${remaining} 章`, `${remaining} remaining`)}
+            </span>
+          </div>
+          <div className="launcher-stats">
+            <div><span>{text('已写章节', 'Drafted')}</span><b>{lastChapter}</b></div>
+            <div><span>{text('已定稿', 'Finalized')}</span><b>{finalized}</b></div>
+            <div><span>{text('待写章节', 'Remaining')}</span><b>{remaining}</b></div>
+          </div>
+        </aside>
       )}
     </section>
   )
 }
 
-function LauncherRecentRow({
+function LauncherRow({
   project,
+  index,
   text,
   locale,
   onOpen,
   onMore,
 }: {
   project: RecentProjectEntry
+  index: number
   text: Translate
   locale: Locale
   onOpen: () => void
@@ -162,6 +250,9 @@ function LauncherRecentRow({
       ? text(`第 ${snapshot.lastChapterNumber} 章`, `Ch. ${snapshot.lastChapterNumber}`)
       : '',
     snapshot ? formatWords(snapshot.totalWords, locale) : '',
+    snapshot?.finalizedChapters
+      ? text(`已定稿 ${snapshot.finalizedChapters} 章`, `${snapshot.finalizedChapters} finalized`)
+      : '',
     folderName(project.path),
   ].filter(Boolean).join(' · ')
   const time = relativeTime(project.updatedAt, locale)
@@ -174,14 +265,17 @@ function LauncherRecentRow({
         title={project.path}
         onClick={onOpen}
       >
-        <span className="launcher-row-icon" aria-hidden="true">
-          <BookOpen size={14} strokeWidth={1.7} />
-        </span>
+        <span className="launcher-row-index" aria-hidden="true">{padIndex(index)}</span>
         <span className="launcher-row-text">
           <span className="launcher-row-name">{project.name}</span>
           {meta && <span className="launcher-row-meta">{meta}</span>}
         </span>
-        {time && <span className="launcher-row-time">{time}</span>}
+        <span className="launcher-row-tail">
+          {time && <span className="launcher-row-date">{time}</span>}
+          <span className="launcher-row-go" aria-hidden="true">
+            {text('继续 →', 'Continue →')}
+          </span>
+        </span>
       </button>
       <button
         type="button"
@@ -195,96 +289,35 @@ function LauncherRecentRow({
   )
 }
 
-function LauncherStartPanel({
+function LauncherStart({
   text,
-  modelReady,
-  modelName,
-  showNew,
-  showOpen,
   onNew,
   onOpen,
   onDeconstruct,
-  onSettings,
 }: {
   text: Translate
-  modelReady: boolean
-  modelName: string
-  showNew: boolean
-  showOpen: boolean
   onNew: () => void
   onOpen: () => void
   onDeconstruct: () => void
-  onSettings: () => void
 }) {
   return (
-    <section className="launcher-start" aria-labelledby="launcher-start-title">
-      <div className="launcher-sec-head">
-        <h2 id="launcher-start-title" className="launcher-sec-title">{text('开始', 'Start')}</h2>
-      </div>
-      {showNew && (
-        <button
-          type="button"
-          className="launcher-action focus-ring"
-          aria-keyshortcuts={newProjectKeyshortcut}
-          onClick={onNew}
-        >
-          <span className="launcher-action-icon launcher-action-icon-accent" aria-hidden="true">
-            <Plus size={15} />
-          </span>
-          <span className="launcher-action-text">
-            <span className="launcher-action-name">{text('新建项目', 'New project')}</span>
-          </span>
-          <span className="launcher-kbd" aria-hidden="true">{newProjectShortcut}</span>
-        </button>
-      )}
-      {showOpen && (
-        <button
-          type="button"
-          className="launcher-action focus-ring"
-          aria-keyshortcuts={openProjectKeyshortcut}
-          onClick={onOpen}
-        >
-          <span className="launcher-action-icon" aria-hidden="true">
-            <FolderOpen size={15} />
-          </span>
-          <span className="launcher-action-text">
-            <span className="launcher-action-name">{text('打开项目', 'Open project')}</span>
-          </span>
-          <span className="launcher-kbd" aria-hidden="true">{openProjectShortcut}</span>
-        </button>
-      )}
-      <button type="button" className="launcher-action focus-ring" onClick={onDeconstruct}>
-        <span className="launcher-action-icon" aria-hidden="true">
-          <FileUp size={15} />
-        </span>
-        <span className="launcher-action-text">
-          <span className="launcher-action-name">{text('拆解仿写', 'Style study')}</span>
-          <span className="launcher-action-desc">
-            {text('从参考小说提炼文风与结构', 'Derive style and structure from a reference novel')}
-          </span>
-        </span>
+    <div className="launcher-start">
+      <span className="launcher-start-label">{text('开始', 'Start')}</span>
+      <button type="button" className="launcher-start-item focus-ring" aria-keyshortcuts={newProjectKeyshortcut} onClick={onNew}>
+        <Plus size={13} aria-hidden="true" />
+        {text('新建项目', 'New project')}
+        <span className="launcher-kbd" aria-hidden="true">{newProjectShortcut}</span>
       </button>
-
-      <div className="launcher-divider" />
-
-      <div className="launcher-model">
-        <span
-          className={`launcher-model-dot${modelReady ? '' : ' launcher-model-dot-warn'}`}
-          aria-hidden="true"
-        />
-        <span style={{ fontWeight: 600 }}>
-          {modelReady ? text('模型已就绪', 'Model ready') : text('尚未配置模型', 'No model configured')}
-        </span>
-        <span className="launcher-model-name">
-          {modelReady
-            ? modelName
-            : text('接入后才能使用 AI 生成', 'Connect a model to use AI generation')}
-        </span>
-        <button type="button" className="launcher-link focus-ring" onClick={onSettings}>
-          {modelReady ? text('更换', 'Change') : text('去设置', 'Set up')}
-        </button>
-      </div>
-    </section>
+      <button type="button" className="launcher-start-item focus-ring" aria-keyshortcuts={openProjectKeyshortcut} onClick={onOpen}>
+        <FolderOpen size={13} aria-hidden="true" />
+        {text('打开项目', 'Open project')}
+        <span className="launcher-kbd" aria-hidden="true">{openProjectShortcut}</span>
+      </button>
+      <button type="button" className="launcher-start-item focus-ring" onClick={onDeconstruct}>
+        <FileUp size={13} aria-hidden="true" />
+        {text('拆解参考小说', 'Study a reference novel')}
+      </button>
+    </div>
   )
 }
 
@@ -301,33 +334,45 @@ function LauncherIntro({
 }) {
   return (
     <section className="launcher-intro" aria-labelledby="launcher-intro-title">
-      <span className="launcher-eyebrow">
-        <span className="launcher-eyebrow-dot" />
+      <div className="launcher-eyebrow">
+        <span className="launcher-eyebrow-rule" aria-hidden="true" />
         {text('新项目', 'New project')}
-      </span>
-      <h1 id="launcher-intro-title" className="launcher-intro-title">
+      </div>
+      <h1 id="launcher-intro-title" className="launcher-title launcher-title-intro">
         {text('开始一部长篇', 'Start a long-form project')}
       </h1>
       <p className="launcher-intro-sub">
-        {text('从设定到定稿都在本地完成。模型随时可以接入。', 'Everything from premise to final draft stays local. Connect a model whenever you are ready.')}
+        {text(
+          '从一句核心前提到一百章定稿。设定、蓝图、人物与正文都存放在本地项目里，模型随时可以接入。',
+          'From a single premise to a finished hundred-chapter draft. Premise, blueprint, cast and prose stay in your local project; connect a model whenever you are ready.',
+        )}
       </p>
-      <div className="launcher-intro-actions">
-        <button type="button" className="launcher-btn launcher-btn-primary launcher-btn-lg focus-ring" onClick={onNew}>
+      <div className="launcher-actions">
+        <button type="button" className="launcher-continue focus-ring" onClick={onNew}>
           {text('新建项目', 'New project')}
-          <ArrowRight size={16} aria-hidden="true" />
+          <ArrowRight size={14} aria-hidden="true" />
         </button>
-        <button type="button" className="launcher-btn launcher-btn-outline launcher-btn-lg focus-ring" onClick={onOpen}>
-          <FolderOpen size={15} aria-hidden="true" />
+        <button type="button" className="launcher-secondary focus-ring" onClick={onOpen}>
           {text('打开已有项目', 'Open a project')}
         </button>
-      </div>
-      <p className="launcher-intro-alt">
-        {text('或者 ', 'Or ')}
-        <button type="button" className="focus-ring" onClick={onDeconstruct}>
-          {text('拆解一本参考小说', 'study a reference novel')}
+        <button type="button" className="launcher-secondary focus-ring" onClick={onDeconstruct}>
+          {text('拆解参考小说', 'Study a reference novel')}
         </button>
-        {text('，先建立自己的文风与结构约束。', ' to derive your style and structure.')}
-      </p>
+      </div>
+      <div className="launcher-intro-points">
+        <div>
+          <b>{text('本地优先', 'Local first')}</b>
+          <span>{text('项目就是一个文件夹，随时可以备份', 'A project is just a folder you can back up')}</span>
+        </div>
+        <div>
+          <b>{text('蓝图驱动', 'Blueprint driven')}</b>
+          <span>{text('先定结构，再写正文，连续性可追溯', 'Structure first, prose second, continuity traceable')}</span>
+        </div>
+        <div>
+          <b>{text('多助手协作', 'Assistants')}</b>
+          <span>{text('架构、蓝图、写作、审稿各司其职', 'Architect, blueprint, writer and reviewer each own their step')}</span>
+        </div>
+      </div>
     </section>
   )
 }
@@ -335,7 +380,7 @@ function LauncherIntro({
 /**
  * 未打开项目时的主区空态。
  *
- * - launcher：项目工作区的启动页（继续写作 / 最近项目 / 新建入口）；
+ * - launcher：项目工作区的启动页（卷首式主稿区 + 项目书目 + 开始入口）；
  * - workspace：其它工作区（知识库、蓝图…）的空态，由正文自己说明「这是哪儿」。
  */
 export function OpenProjectFirstPage({
@@ -355,15 +400,27 @@ export function OpenProjectFirstPage({
   })
   const [allProjectsOpen, setAllProjectsOpen] = useState(false)
   const [menu, setMenu] = useState<MenuState | null>(null)
+  const [query, setQuery] = useState('')
 
   const latest = recentProjects[0]
-  const others = recentProjects.slice(1, 6)
+  const others = recentProjects.slice(1)
+  const filteredOthers = useMemo(() => {
+    const keyword = query.trim().toLowerCase()
+    if (!keyword) return others
+    return others.filter(project =>
+      project.name.toLowerCase().includes(keyword) || project.path.toLowerCase().includes(keyword),
+    )
+  }, [others, query])
 
   const openNewProject = () => useLayoutStore.getState().openNewProject()
   const openDeconstruction = () => useLayoutStore.getState().openNovelDeconstruction()
   const openSettings = () => useLayoutStore.getState().openSettings()
   const openProject = (projectPath: string) => {
     void useProjectStore.getState().openProject(projectPath)
+  }
+  const openBlueprint = async (projectPath: string) => {
+    const opened = await useProjectStore.getState().openProject(projectPath)
+    if (opened) useLayoutStore.getState().openRightPanel('blueprint')
   }
   const pickProject = async () => {
     const folder = await ipc.invoke('dialog:select-folder')
@@ -444,93 +501,140 @@ export function OpenProjectFirstPage({
     )
   }
 
-  const recentSection = latest ? (
-    <section className="launcher-recent-col" aria-labelledby="launcher-others-title">
-      <div className="launcher-sec-head">
-        <h2 id="launcher-others-title" className="launcher-sec-title">{text('其他项目', 'Other projects')}</h2>
-        <span className="launcher-sec-count">{others.length}</span>
-        <button
-          type="button"
-          className="launcher-link focus-ring"
-          onClick={() => setAllProjectsOpen(true)}
-        >
-          {text('全部项目', 'All projects')} <span aria-hidden="true">→</span>
-        </button>
-      </div>
-      <div className="launcher-list" role="list">
-        {others.length > 0
-          ? others.map(project => (
-              <LauncherRecentRow
-                key={project.path}
-                project={project}
-                text={text}
-                locale={locale as Locale}
-                onOpen={() => openProject(project.path)}
-                onMore={event => openMenu(project, event)}
-              />
-            ))
-          : (
-            <p className="launcher-row-meta" style={{ padding: '8px 12px' }}>
-              {text('还没有其他项目', 'No other projects yet')}
-            </p>
-          )}
-      </div>
-    </section>
-  ) : (
-    <section className="launcher-recent-col" aria-labelledby="launcher-first-recent-title">
-      <div className="launcher-sec-head">
-        <h2 id="launcher-first-recent-title" className="launcher-sec-title">{text('最近项目', 'Recent projects')}</h2>
-      </div>
-      <div className="launcher-empty">
-        <BookOpen size={17} strokeWidth={1.7} aria-hidden="true" />
-        <div>
-          <b>{text('最近打开的作品会显示在这里', 'Your recent projects will appear here')}</b>
-          <span>{text('新建或打开项目后，这里会保留章节与字数进度。', 'Chapter and word-count progress will be kept once you start a project.')}</span>
-        </div>
-      </div>
-    </section>
-  )
-
   return (
     <div className="skin-workspace-page h-full flex flex-col overflow-hidden bg-[var(--color-bg)]">
       <div className="launcher-page">
         <div className="launcher-inner">
-          <div className="launcher-cols">
-            {latest
-              ? (
-                <>
-                  <LauncherHero
-                    project={latest}
-                    text={text}
-                    locale={locale as Locale}
-                    onContinue={() => openProject(latest.path)}
-                  />
-                  {recentSection}
-                </>
-              )
-              : (
-                <>
-                  <LauncherIntro
-                    text={text}
-                    onNew={openNewProject}
-                    onOpen={() => void pickProject()}
-                    onDeconstruct={openDeconstruction}
-                  />
-                  {recentSection}
-                </>
-              )}
-            <LauncherStartPanel
+          <header className="launcher-top">
+            <span className="launcher-kicker">{text('VELA · 工作台', 'VELA · Workbench')}</span>
+            <div className="launcher-model-line">
+              <span
+                className={`launcher-model-dot${modelReady ? '' : ' launcher-model-dot-warn'}`}
+                aria-hidden="true"
+              />
+              <b>{modelReady ? text('模型已就绪', 'Model ready') : text('尚未配置模型', 'No model configured')}</b>
+              <span className="launcher-model-name">
+                {modelReady
+                  ? modelName
+                  : text('接入后才能使用 AI 生成', 'Connect a model to use AI generation')}
+              </span>
+              <button type="button" className="launcher-model-change focus-ring" onClick={openSettings}>
+                {modelReady ? text('更换', 'Change') : text('去设置', 'Set up')}
+              </button>
+            </div>
+          </header>
+
+          {latest
+            ? (
+              <LauncherHero
+                project={latest}
+                text={text}
+                locale={locale as Locale}
+                onContinue={() => openProject(latest.path)}
+                onBlueprint={() => void openBlueprint(latest.path)}
+              />
+            )
+            : (
+              <LauncherIntro
+                text={text}
+                onNew={openNewProject}
+                onOpen={() => void pickProject()}
+                onDeconstruct={openDeconstruction}
+              />
+            )}
+
+          {latest
+            ? (
+              <section className="launcher-projects" aria-labelledby="launcher-projects-title">
+                <div className="launcher-sec">
+                  <h2 id="launcher-projects-title" className="launcher-sec-title">
+                    {text('项目', 'Projects')}
+                  </h2>
+                  <span className="launcher-sec-count">{others.length}</span>
+                  <div className="launcher-sec-tools">
+                    <label className="launcher-search">
+                      <Search size={12} aria-hidden="true" />
+                      <input
+                        value={query}
+                        onChange={event => setQuery(event.target.value)}
+                        placeholder={text('搜索项目', 'Search projects')}
+                        aria-label={text('搜索项目', 'Search projects')}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className="launcher-all focus-ring"
+                      onClick={() => setAllProjectsOpen(true)}
+                    >
+                      {text('全部项目', 'All projects')} →
+                    </button>
+                  </div>
+                </div>
+                <div className="launcher-rows" role="list">
+                  {filteredOthers.length > 0
+                    ? filteredOthers.map((project, index) => (
+                        <LauncherRow
+                          key={project.path}
+                          project={project}
+                          index={index}
+                          text={text}
+                          locale={locale as Locale}
+                          onOpen={() => openProject(project.path)}
+                          onMore={event => openMenu(project, event)}
+                        />
+                      ))
+                    : (
+                      <p className="launcher-rows-empty">
+                        {query.trim()
+                          ? text('没有匹配的项目', 'No matching projects')
+                          : text('还没有其他项目', 'No other projects yet')}
+                      </p>
+                    )}
+                  <button type="button" className="launcher-row-new focus-ring" onClick={openNewProject}>
+                    <span className="launcher-row-index" aria-hidden="true">+</span>
+                    <span className="launcher-row-text">
+                      <span className="launcher-row-name">{text('新建项目', 'New project')}</span>
+                      <span className="launcher-row-meta">
+                        {text('从一个核心前提开始', 'Start from a single premise')}
+                      </span>
+                    </span>
+                    <span className="launcher-row-tail">
+                      <span className="launcher-kbd" aria-hidden="true">{newProjectShortcut}</span>
+                    </span>
+                  </button>
+                </div>
+              </section>
+            )
+            : (
+              <section className="launcher-projects" aria-labelledby="launcher-recent-empty-title">
+                <div className="launcher-sec">
+                  <h2 id="launcher-recent-empty-title" className="launcher-sec-title">
+                    {text('最近项目', 'Recent projects')}
+                  </h2>
+                </div>
+                <div className="launcher-empty">
+                  <BookOpen size={17} strokeWidth={1.7} aria-hidden="true" />
+                  <div>
+                    <b>{text('最近打开的作品会显示在这里', 'Your recent projects will appear here')}</b>
+                    <span>
+                      {text(
+                        '新建或打开项目后，这里会保留章节与字数进度。',
+                        'Chapter and word-count progress will be kept once you start a project.',
+                      )}
+                    </span>
+                  </div>
+                </div>
+              </section>
+            )}
+
+          {latest && (
+            <LauncherStart
               text={text}
-              modelReady={modelReady}
-              modelName={modelName}
-              showNew={Boolean(latest)}
-              showOpen={Boolean(latest)}
               onNew={openNewProject}
               onOpen={() => void pickProject()}
               onDeconstruct={openDeconstruction}
-              onSettings={openSettings}
             />
-          </div>
+          )}
         </div>
       </div>
 
@@ -542,11 +646,12 @@ export function OpenProjectFirstPage({
           <div className="max-h-[60vh] overflow-y-auto p-3">
             {recentProjects.length > 0
               ? (
-                <div className="launcher-list" role="list">
-                  {recentProjects.map(project => (
-                    <LauncherRecentRow
+                <div className="launcher-rows" role="list">
+                  {recentProjects.map((project, index) => (
+                    <LauncherRow
                       key={project.path}
                       project={project}
+                      index={index}
                       text={text}
                       locale={locale as Locale}
                       onOpen={() => openProject(project.path)}
@@ -556,7 +661,7 @@ export function OpenProjectFirstPage({
                 </div>
               )
               : (
-                <p className="launcher-row-meta" style={{ padding: '12px' }}>
+                <p className="launcher-rows-empty">
                   {text('暂无最近项目', 'No recent projects')}
                 </p>
               )}
